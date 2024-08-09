@@ -24,6 +24,8 @@ import com.amazonaws.services.dynamodbv2.model.GlobalSecondaryIndex;
 import com.amazonaws.services.dynamodbv2.model.GlobalSecondaryIndexDescription;
 import com.amazonaws.services.dynamodbv2.model.KeySchemaElement;
 import com.amazonaws.services.dynamodbv2.model.KeyType;
+import com.amazonaws.services.dynamodbv2.model.LocalSecondaryIndex;
+import com.amazonaws.services.dynamodbv2.model.LocalSecondaryIndexDescription;
 import com.amazonaws.services.dynamodbv2.model.Projection;
 import com.amazonaws.services.dynamodbv2.model.ProjectionType;
 import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
@@ -97,6 +99,13 @@ public class CreateTableIT {
                 new AttributeDefinition("COL1", ScalarAttributeType.N));
         createTableRequest.withAttributeDefinitions(
             new AttributeDefinition("COL2", ScalarAttributeType.B));
+
+        List<KeySchemaElement> idx2KeySchemaElements = new ArrayList<>();
+        idx2KeySchemaElements.add(new KeySchemaElement("PK1", KeyType.HASH));
+        idx2KeySchemaElements.add(new KeySchemaElement("LCOL2", KeyType.RANGE));
+        createTableRequest.withAttributeDefinitions(
+            new AttributeDefinition("LCOL2", ScalarAttributeType.S));
+
         List<GlobalSecondaryIndex> globalSecondaryIndexes = new ArrayList<>();
         globalSecondaryIndexes.add(
                 new GlobalSecondaryIndex().withIndexName("IDX1").withKeySchema()
@@ -105,6 +114,15 @@ public class CreateTableIT {
                         .withProjection(new Projection().withProjectionType(
                                 ProjectionType.ALL)));
         createTableRequest.setGlobalSecondaryIndexes(globalSecondaryIndexes);
+
+        List<LocalSecondaryIndex> localSecondaryIndexes = new ArrayList<>();
+        localSecondaryIndexes.add(
+            new LocalSecondaryIndex().withIndexName("IDX2").withKeySchema()
+                .withKeySchema(idx2KeySchemaElements)
+                .withProjection(new Projection().withProjectionType(
+                    ProjectionType.ALL)));
+        createTableRequest.setLocalSecondaryIndexes(localSecondaryIndexes);
+
         CreateTableResult createTableResult1 = amazonDynamoDB.createTable(createTableRequest);
 
         PhoenixDBClient phoenixDBClient = new PhoenixDBClient(url);
@@ -147,8 +165,8 @@ public class CreateTableIT {
 
         Assert.assertEquals(tableDescription1.getGlobalSecondaryIndexes().size(),
             tableDescription2.getGlobalSecondaryIndexes().size());
-        Assert.assertEquals(tableDescription1.getLocalSecondaryIndexes(),
-            tableDescription2.getLocalSecondaryIndexes());
+        Assert.assertEquals(tableDescription1.getLocalSecondaryIndexes().size(),
+            tableDescription2.getLocalSecondaryIndexes().size());
 
         List<GlobalSecondaryIndexDescription> indexDescriptions1 =
             tableDescription1.getGlobalSecondaryIndexes();
@@ -172,13 +190,34 @@ public class CreateTableIT {
             }
         }
 
+        List<LocalSecondaryIndexDescription> localIndexDescriptions1 =
+            tableDescription1.getLocalSecondaryIndexes();
+        List<LocalSecondaryIndexDescription> localIndexDescriptions2 =
+            tableDescription2.getLocalSecondaryIndexes();
+
+        for (int i = 0; i < localIndexDescriptions1.size(); i++) {
+            Assert.assertEquals(localIndexDescriptions1.get(i).getIndexName(),
+                localIndexDescriptions2.get(i).getIndexName());
+            Assert.assertEquals(localIndexDescriptions1.get(i).getKeySchema().size(),
+                localIndexDescriptions2.get(i).getKeySchema().size());
+            for (int j = 0; j < localIndexDescriptions1.get(i).getKeySchema().size(); j++) {
+                Assert.assertEquals(
+                    localIndexDescriptions1.get(i).getKeySchema().get(j).getAttributeName(),
+                    localIndexDescriptions2.get(i).getKeySchema().get(j).getAttributeName());
+                Assert.assertEquals(
+                    localIndexDescriptions1.get(i).getKeySchema().get(j).getKeyType(),
+                    localIndexDescriptions2.get(i).getKeySchema().get(j).getKeyType());
+            }
+        }
+
         Thread.sleep(1000);
 
         Assert.assertTrue("DDB table should have been created before Phoenix table",
             tableDescription1.getCreationDateTime()
                 .before(tableDescription2.getCreationDateTime()));
         Assert.assertTrue(
-            tableDescription2.getCreationDateTime().before(new Date(System.currentTimeMillis())));
+            tableDescription2.getCreationDateTime()
+                .before(new Date(System.currentTimeMillis())));
 
         Assert.assertNull(tableDescription2.getTableArn());
     }

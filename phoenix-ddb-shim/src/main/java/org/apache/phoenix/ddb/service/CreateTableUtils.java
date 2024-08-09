@@ -47,7 +47,7 @@ public class CreateTableUtils {
       final String connectionUrl) {
       CreateTableResult result = new CreateTableResult();
       TableDescription
-          tableDescription = CommonServiceUtils.getTableDescription(tableName, connectionUrl);
+          tableDescription = TableDescriptorUtils.getTableDescription(tableName, connectionUrl);
       result.setTableDescription(tableDescription);
       return result;
   }
