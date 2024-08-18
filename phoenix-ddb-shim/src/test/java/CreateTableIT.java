@@ -30,7 +30,9 @@ import org.apache.phoenix.util.PhoenixRuntime;
 import com.amazonaws.services.dynamodbv2.model.TableDescription;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,6 +51,9 @@ public class CreateTableIT {
         LocalDynamoDbTestBase.localDynamoDb().createV1Client();
 
     private static String url;
+
+    @Rule
+    public final TestName testName = new TestName();
 
     @BeforeClass
     public static void initialize() throws Exception {
@@ -69,17 +74,19 @@ public class CreateTableIT {
 
     @Test
     public void createTableTest1() throws Exception {
+        final String tableName = testName.getMethodName().toUpperCase();
         // create table request
-        CreateTableRequest createTableRequest = DDLTestUtils.getCreateTableRequest("TABLE1",
-                "PK1", ScalarAttributeType.B, "PK2", ScalarAttributeType.S);
+        CreateTableRequest createTableRequest =
+            DDLTestUtils.getCreateTableRequest(tableName, "PK1",
+                ScalarAttributeType.B, "PK2", ScalarAttributeType.S);
 
         // add global index
-        DDLTestUtils.addIndexToRequest(true, createTableRequest, "IDX1", "COL1",
-                ScalarAttributeType.N, "COL2", ScalarAttributeType.B);
+        DDLTestUtils.addIndexToRequest(true, createTableRequest, "IDX1_" + tableName, "COL1",
+            ScalarAttributeType.N, "COL2", ScalarAttributeType.B);
 
         // add local index
-        DDLTestUtils.addIndexToRequest(false, createTableRequest, "IDX2", "PK1",
-                ScalarAttributeType.B, "LCOL2", ScalarAttributeType.S);
+        DDLTestUtils.addIndexToRequest(false, createTableRequest, "IDX2_" + tableName, "PK1",
+            ScalarAttributeType.B, "LCOL2", ScalarAttributeType.S);
 
         CreateTableResult createTableResult1 = amazonDynamoDB.createTable(createTableRequest);
 
@@ -98,13 +105,16 @@ public class CreateTableIT {
 
     @Test
     public void createTableTest2() throws Exception {
+        final String tableName = testName.getMethodName().toUpperCase();
+
         // create table request
-        CreateTableRequest createTableRequest = DDLTestUtils.getCreateTableRequest("TABLE2",
-                "HASH_KEY", ScalarAttributeType.S, null, null);
+        CreateTableRequest createTableRequest =
+            DDLTestUtils.getCreateTableRequest(tableName, "HASH_KEY", ScalarAttributeType.S,
+                null, null);
 
         // add global index
-        DDLTestUtils.addIndexToRequest(true, createTableRequest, "G_IDX", "idx_key1",
-                ScalarAttributeType.B, null, null);
+        DDLTestUtils.addIndexToRequest(true, createTableRequest, "G_IDX_" + tableName, "idx_key1",
+            ScalarAttributeType.B, null, null);
 
         CreateTableResult createTableResult1 = amazonDynamoDB.createTable(createTableRequest);
 
@@ -124,8 +134,9 @@ public class CreateTableIT {
     @Test
     public void createTableTest3() throws Exception {
         // create table request
-        CreateTableRequest createTableRequest = DDLTestUtils.getCreateTableRequest("TABLE3",
-                "PK1", ScalarAttributeType.B, "SORT_KEY", ScalarAttributeType.N);
+        CreateTableRequest createTableRequest =
+            DDLTestUtils.getCreateTableRequest(testName.getMethodName().toUpperCase(), "PK1",
+                ScalarAttributeType.B, "SORT_KEY", ScalarAttributeType.N);
 
         // add local index
         DDLTestUtils.addIndexToRequest(false, createTableRequest, "L_IDX", "PK1",

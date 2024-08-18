@@ -10,7 +10,9 @@ import org.apache.phoenix.util.JacksonUtil;
 import org.apache.phoenix.util.PhoenixRuntime;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,6 +25,9 @@ import static org.apache.phoenix.query.BaseTest.setUpConfigForMiniCluster;
  */
 public class DescribeTableIT {
     private static final Logger LOGGER = LoggerFactory.getLogger(DescribeTableIT.class);
+
+    @Rule
+    public final TestName testName = new TestName();
 
     private final AmazonDynamoDB amazonDynamoDB =
             LocalDynamoDbTestBase.localDynamoDb().createV1Client();
@@ -48,16 +53,17 @@ public class DescribeTableIT {
 
     @Test
     public void describeTableTest() throws Exception {
+        final String tableName = testName.getMethodName().toUpperCase();
         // create table request
-        CreateTableRequest createTableRequest = DDLTestUtils.getCreateTableRequest("TABLE1",
+        CreateTableRequest createTableRequest = DDLTestUtils.getCreateTableRequest(tableName,
                 "PK1", ScalarAttributeType.B, "PK2", ScalarAttributeType.S);
 
         // add global index
-        DDLTestUtils.addIndexToRequest(true, createTableRequest, "IDX1", "COL1",
+        DDLTestUtils.addIndexToRequest(true, createTableRequest, "IDX1_" + tableName, "COL1",
                 ScalarAttributeType.N, "COL2", ScalarAttributeType.B);
 
         // add local index
-        DDLTestUtils.addIndexToRequest(false, createTableRequest, "IDX2", "PK1",
+        DDLTestUtils.addIndexToRequest(false, createTableRequest, "IDX2_" + tableName, "PK1",
                 ScalarAttributeType.B, "LCOL2", ScalarAttributeType.S);
 
         // create table
@@ -66,8 +72,8 @@ public class DescribeTableIT {
         phoenixDBClient.createTable(createTableRequest);
 
         // describe table
-        DescribeTableResult describeTableResult1 = amazonDynamoDB.describeTable("TABLE1");
-        DescribeTableResult describeTableResult2 = phoenixDBClient.describeTable("TABLE1");
+        DescribeTableResult describeTableResult1 = amazonDynamoDB.describeTable(tableName);
+        DescribeTableResult describeTableResult2 = phoenixDBClient.describeTable(tableName);
         LOGGER.info("Describe Table response from DynamoDB: {}",
                 JacksonUtil.getObjectWriterPretty().writeValueAsString(describeTableResult1));
         LOGGER.info("Describe Table response from Phoenix: {}",
