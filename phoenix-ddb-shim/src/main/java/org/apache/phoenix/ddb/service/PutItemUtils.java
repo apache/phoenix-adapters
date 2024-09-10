@@ -6,6 +6,7 @@ import com.amazonaws.services.dynamodbv2.model.PutItemRequest;
 import com.amazonaws.services.dynamodbv2.model.PutItemResult;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.phoenix.ddb.bson.DdbAttributesToBsonDocument;
+import org.apache.phoenix.ddb.utils.BsonUtils;
 import org.apache.phoenix.jdbc.PhoenixConnection;
 import org.apache.phoenix.schema.PColumn;
 import org.apache.phoenix.schema.PTable;
@@ -15,7 +16,6 @@ import org.apache.phoenix.schema.types.PDouble;
 import org.apache.phoenix.schema.types.PVarbinaryEncoded;
 import org.apache.phoenix.schema.types.PVarchar;
 import org.bson.BsonDocument;
-import org.bson.BsonString;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -120,7 +120,7 @@ public class PutItemUtils {
         Map<String, String> exprAttrNames =  request.getExpressionAttributeNames();
         Map<String, AttributeValue> exprAttrVals =  request.getExpressionAttributeValues();
         if (!StringUtils.isEmpty(condExpr)) {
-            String bsonCondExpr = getBsonConditionExpression(condExpr, exprAttrNames, exprAttrVals);
+            String bsonCondExpr = BsonUtils.getBsonConditionExpression(condExpr, exprAttrNames, exprAttrVals);
             String QUERY_FORMAT = (numPKs == 1)
                     ? CONDITIONAL_PUT_WITH_HASH_KEY : CONDITIONAL_PUT_WITH_HASH_SORT_KEY;
             stmt = conn.prepareStatement(
@@ -131,29 +131,5 @@ public class PutItemUtils {
             stmt = conn.prepareStatement(String.format(QUERY_FORMAT, tableName));
         }
         return stmt;
-    }
-
-    /**
-     * Create BSON Condition Expression based on dynamo condition expression,
-     * expression attribute names and expression attribute values.
-     */
-    private static String getBsonConditionExpression(String condExpr,
-                                                     Map<String, String> exprAttrNames,
-                                                     Map<String, AttributeValue> exprAttrVals) {
-
-        // TODO: remove this when phoenix can support attribute_ prefix
-        condExpr = condExpr.replaceAll("attribute_exists", "field_exists");
-        condExpr = condExpr.replaceAll("attribute_not_exists", "field_not_exists");
-
-        // plug expression attribute names in $EXPR
-        for (String k : exprAttrNames.keySet()) {
-            condExpr = condExpr.replaceAll(k, exprAttrNames.get(k));
-        }
-        // BSON_CONDITION_EXPRESSION
-        BsonDocument conditionDoc = new BsonDocument();
-        conditionDoc.put("$EXPR", new BsonString(condExpr));
-        conditionDoc.put("$VAL", DdbAttributesToBsonDocument.getBsonDocument(exprAttrVals));
-
-        return conditionDoc.toJson();
     }
 }

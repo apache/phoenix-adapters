@@ -23,6 +23,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import org.bson.BsonArray;
@@ -47,8 +49,27 @@ public class BsonDocumentToDdbAttributes {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(BsonDocumentToDdbAttributes.class);
 
-  // TODO: Utility to convert only specific Bson field key to Attribute value rather than
-  // deserializing the whole document. To be used by Query/Scan APIs with projection expression.
+  private static final String PROJECTION_REGEX = "([a-zA-Z_][a-zA-Z0-9_]*)|(\\[\\d*\\])";
+  private static final Pattern PROJECTION_PATTERN = Pattern.compile(PROJECTION_REGEX);
+
+  /**
+   * Convert the given BsonDocument into DDB item.
+   * This retrieves only the attributes provided in the list attributesToProject.
+   *
+   * @param bsonDocument The BsonDocument.
+   * @return DDB item as attribute map.
+   */
+  public static Map<String, AttributeValue> getProjectedItem(final BsonDocument bsonDocument,
+                                                             List<String> attributesToProject) {
+    if (attributesToProject.isEmpty()) {
+      return getFullItem(bsonDocument);
+    }
+    BsonDocument result = new BsonDocument();
+    for (String attribute : attributesToProject) {
+       extractAttributeAndConstructBson(bsonDocument, attribute, result);
+    }
+    return getFullItem(result);
+  }
 
   /**
    * Convert the given BsonDocument into DDB item. This retrieves the full item, converting all
@@ -171,4 +192,17 @@ public class BsonDocumentToDdbAttributes {
     throw new RuntimeException("Number type is not known for number: " + number);
   }
 
+  /**
+   * Traverse the given bsonDocument and extract the values for given attributeName into result.
+   */
+  private static void extractAttributeAndConstructBson(BsonDocument bsonDocument,
+                                                                 String attributeName,
+                                                                 BsonDocument result) {
+    Matcher matcher = PROJECTION_PATTERN.matcher(attributeName);
+    // TODO: nested projections
+    while (matcher.find()) {
+      String group = matcher.group();
+      result.put(group, bsonDocument.get(group));
+    }
+  }
 }

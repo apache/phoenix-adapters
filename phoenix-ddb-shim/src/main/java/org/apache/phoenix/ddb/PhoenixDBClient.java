@@ -26,9 +26,12 @@ import com.amazonaws.services.dynamodbv2.model.DescribeTableRequest;
 import com.amazonaws.services.dynamodbv2.model.DescribeTableResult;
 import com.amazonaws.services.dynamodbv2.model.PutItemRequest;
 import com.amazonaws.services.dynamodbv2.model.PutItemResult;
+import com.amazonaws.services.dynamodbv2.model.QueryRequest;
+import com.amazonaws.services.dynamodbv2.model.QueryResult;
 import com.amazonaws.services.dynamodbv2.model.TableDescription;
 import org.apache.phoenix.ddb.service.CreateTableUtils;
 import org.apache.phoenix.ddb.service.PutItemUtils;
+import org.apache.phoenix.ddb.service.QueryUtils;
 import org.apache.phoenix.ddb.service.TableDescriptorUtils;
 import org.apache.phoenix.jdbc.PhoenixDriver;
 import org.apache.phoenix.thirdparty.com.google.common.base.Preconditions;
@@ -105,5 +108,13 @@ public class PhoenixDBClient extends AbstractAmazonDynamoDB {
     @Override
     public PutItemResult putItem(PutItemRequest request) {
         return PutItemUtils.putItem(request, connectionUrl);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public QueryResult query(QueryRequest request) {
+        return QueryUtils.query(request, connectionUrl);
     }
 }
