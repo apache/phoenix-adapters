@@ -21,7 +21,8 @@ package org.apache.phoenix.ddb;
 import com.amazonaws.services.dynamodbv2.AbstractAmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.amazonaws.services.dynamodbv2.model.CreateTableResult;
-
+import com.amazonaws.services.dynamodbv2.model.DeleteTableRequest;
+import com.amazonaws.services.dynamodbv2.model.DeleteTableResult;
 import com.amazonaws.services.dynamodbv2.model.DescribeTableRequest;
 import com.amazonaws.services.dynamodbv2.model.DescribeTableResult;
 import com.amazonaws.services.dynamodbv2.model.PutItemRequest;
@@ -30,6 +31,7 @@ import com.amazonaws.services.dynamodbv2.model.QueryRequest;
 import com.amazonaws.services.dynamodbv2.model.QueryResult;
 import com.amazonaws.services.dynamodbv2.model.TableDescription;
 import org.apache.phoenix.ddb.service.CreateTableUtils;
+import org.apache.phoenix.ddb.service.DeleteTableUtils;
 import org.apache.phoenix.ddb.service.PutItemUtils;
 import org.apache.phoenix.ddb.service.QueryUtils;
 import org.apache.phoenix.ddb.service.TableDescriptorUtils;
@@ -82,6 +84,22 @@ public class PhoenixDBClient extends AbstractAmazonDynamoDB {
     @Override
     public CreateTableResult createTable(CreateTableRequest request) {
         return CreateTableUtils.createTable(request, connectionUrl);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public DeleteTableResult deleteTable(DeleteTableRequest request) {
+        return this.deleteTable(request.getTableName());
+    }
+
+    /**
+    * {@inheritDoc}
+    */
+    @Override
+    public DeleteTableResult deleteTable(String tableName) {
+        return DeleteTableUtils.deleteTable(tableName, connectionUrl);
     }
 
     /**
