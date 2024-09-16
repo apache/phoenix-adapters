@@ -18,18 +18,26 @@
 
 package org.apache.phoenix.ddb.service;
 
+import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 
+import org.apache.phoenix.ddb.bson.DdbAttributesToBsonDocument;
 import org.apache.phoenix.schema.types.PDataType;
 import org.apache.phoenix.schema.types.PDecimal;
 import org.apache.phoenix.schema.types.PDouble;
 import org.apache.phoenix.schema.types.PVarbinaryEncoded;
 import org.apache.phoenix.schema.types.PVarchar;
+import org.bson.BsonDocument;
+import org.bson.BsonString;
+
+import java.util.Map;
 
 /**
  * Common utilities to be used by PhoenixDBClient APIs.
  */
 public class CommonServiceUtils {
+
+    public static final String DOUBLE_QUOTE = "\"";
 
     public static ScalarAttributeType getScalarAttributeFromPDataType(PDataType<?> pDataType) {
         if (pDataType == PVarchar.INSTANCE) {
@@ -58,4 +66,27 @@ public class CommonServiceUtils {
         return keyName;
     }
 
+    /**
+     * Return string representation of BSON Condition Expression based on dynamo condition
+     * expression, expression attribute names and expression attribute values.
+     */
+    public static String getBsonConditionExpression(String condExpr,
+                                                       Map<String, String> exprAttrNames,
+                                                       Map<String, AttributeValue> exprAttrVals) {
+
+        // TODO: remove this when phoenix can support attribute_ prefix
+        condExpr = condExpr.replaceAll("attribute_exists", "field_exists");
+        condExpr = condExpr.replaceAll("attribute_not_exists", "field_not_exists");
+
+        // plug expression attribute names in $EXPR
+        for (String k : exprAttrNames.keySet()) {
+            condExpr = condExpr.replaceAll(k, exprAttrNames.get(k));
+        }
+        // BSON_CONDITION_EXPRESSION
+        BsonDocument conditionDoc = new BsonDocument();
+        conditionDoc.put("$EXPR", new BsonString(condExpr));
+        conditionDoc.put("$VAL", DdbAttributesToBsonDocument.getBsonDocument(exprAttrVals));
+
+        return conditionDoc.toJson();
+    }
 }

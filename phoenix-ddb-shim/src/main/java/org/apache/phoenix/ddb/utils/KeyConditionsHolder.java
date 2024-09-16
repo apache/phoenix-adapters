@@ -1,9 +1,14 @@
 package org.apache.phoenix.ddb.utils;
 
+import org.apache.phoenix.schema.PColumn;
+
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import static org.apache.phoenix.ddb.service.CommonServiceUtils.DOUBLE_QUOTE;
 
 /**
  * Helper class to parse KeyConditionExpression provided in a DynamoDB request:
@@ -24,6 +29,8 @@ public class KeyConditionsHolder {
     private final Pattern KEY_PATTERN = Pattern.compile(KEY_REGEX);
     private String keyCondExpr;
     private Map<String, String> exprAttrNames;
+    private List<PColumn> pkCols;
+    private boolean useIndex;
     private String partitionKeyName;
     private String partitionValue;
     private String beginsWithSortKey;
@@ -33,9 +40,23 @@ public class KeyConditionsHolder {
     private String sortKeyValue1;
     private String sortKeyValue2;
 
+    /**
+     * keeping track of Primary Key PColumns here since we
+     * need to get the BSON_VALUE name when using indexes.
+     */
+    private PColumn partitionKeyPKCol;
+    private PColumn sortKeyPKCol;
+
     public KeyConditionsHolder(String keyCondExpr, Map<String, String> exprAttrNames) {
+        this(keyCondExpr, exprAttrNames, null, false);
+    }
+
+    public KeyConditionsHolder(String keyCondExpr, Map<String, String> exprAttrNames,
+                               List<PColumn> pkCols, boolean useIndex) {
         this.keyCondExpr = keyCondExpr;
         this.exprAttrNames = (exprAttrNames != null) ? exprAttrNames : new HashMap<>();
+        this.pkCols = pkCols;
+        this.useIndex = useIndex;
         this.parse();
     }
 
@@ -71,6 +92,10 @@ public class KeyConditionsHolder {
         return beginsWithSortKeyVal;
     }
 
+    public PColumn getSortKeyPKCol() {
+        return sortKeyPKCol;
+    }
+
     public boolean hasBetween() {
         return sortKeyOperator.equals("BETWEEN") && sortKeyValue2 != null;
     }
@@ -83,11 +108,21 @@ public class KeyConditionsHolder {
      * Return the conditions for a SQL WHERE clause for a PreparedStatement.
      */
     public String getSQLWhereClause() {
+        String partitionKeyName = useIndex
+                ? this.partitionKeyPKCol.getName().getString().substring(1)
+                : DOUBLE_QUOTE + this.partitionKeyName + DOUBLE_QUOTE;
+        String sortKeyName = "";
+        if (hasSortKey()) {
+            sortKeyName = useIndex
+                    ? this.sortKeyPKCol.getName().getString().substring(1)
+                    : DOUBLE_QUOTE + this.sortKeyName + DOUBLE_QUOTE;
+        }
+
         StringBuilder sb = new StringBuilder();
-        sb.append(getPartitionKeyName());
+        sb.append(partitionKeyName);
         sb.append(" = ? ");
         // PK1 = ? (AND PK2 op val1 [val2])
-        if (sortKeyName != null) {
+        if (hasSortKey()) {
             sb.append(" AND ");
             sb.append(sortKeyName + " ");
             if (hasBeginsWith()) {
@@ -129,5 +164,10 @@ public class KeyConditionsHolder {
                 : (beginsWithSortKey != null)
                 ? exprAttrNames.getOrDefault(beginsWithSortKey, beginsWithSortKey)
                 : null;
+
+        if(pkCols != null) {
+            this.partitionKeyPKCol = pkCols.get(0);
+            this.sortKeyPKCol = (pkCols.size()==2) ? pkCols.get(1) : null;
+        }
     }
 }

@@ -124,7 +124,7 @@ public class ConditionalPutItemIT {
 
         // check phoenix row, there should be no update
         try (Connection connection = DriverManager.getConnection(url)) {
-            ResultSet rs = connection.createStatement().executeQuery("SELECT * FROM " + tableName + " WHERE attr_0 = 'val1'");
+            ResultSet rs = connection.createStatement().executeQuery("SELECT * FROM " + tableName + " WHERE \"attr_0\" = 'val1'");
             Assert.assertTrue(rs.next());
             BsonDocument rowBsonDoc = (BsonDocument) rs.getObject(2);
             Assert.assertEquals(rowBsonDoc.get("attr_1").asInt32().getValue(), 123);
@@ -197,7 +197,7 @@ public class ConditionalPutItemIT {
 
         // check phoenix row, there should be update to the row
         try (Connection connection = DriverManager.getConnection(url)) {
-            ResultSet rs = connection.createStatement().executeQuery("SELECT * FROM " + tableName + " WHERE attr_0 = 'val1'");
+            ResultSet rs = connection.createStatement().executeQuery("SELECT * FROM " + tableName + " WHERE \"attr_0\" = 'val1'");
             Assert.assertTrue(rs.next());
             BsonDocument rowBsonDoc = (BsonDocument) rs.getObject(2);
             Assert.assertEquals(rowBsonDoc.get("attr_1").asInt32().getValue(), 999);
@@ -272,7 +272,7 @@ public class ConditionalPutItemIT {
 
         // check phoenix row, there should be no update to the row
         try (Connection connection = DriverManager.getConnection(url)) {
-            ResultSet rs = connection.createStatement().executeQuery("SELECT * FROM " + tableName + " WHERE attr_0 = 'str_val_0'");
+            ResultSet rs = connection.createStatement().executeQuery("SELECT * FROM " + tableName + " WHERE \"attr_0\" = 'str_val_0'");
             Assert.assertTrue(rs.next());
             Map<String, AttributeValue> phoenixItem = BsonDocumentToDdbAttributes.getFullItem((BsonDocument) rs.getObject(2));
             Assert.assertEquals(item1, phoenixItem);
@@ -343,7 +343,7 @@ public class ConditionalPutItemIT {
 
         // check phoenix row, there should be update to the row
         try (Connection connection = DriverManager.getConnection(url)) {
-            ResultSet rs = connection.createStatement().executeQuery("SELECT * FROM " + tableName + " WHERE attr_0 = 'str_val_0'");
+            ResultSet rs = connection.createStatement().executeQuery("SELECT * FROM " + tableName + " WHERE \"attr_0\" = 'str_val_0'");
             Assert.assertTrue(rs.next());
             Map<String, AttributeValue> phoenixItem = BsonDocumentToDdbAttributes.getFullItem((BsonDocument) rs.getObject(2));
             Assert.assertEquals(phoenixItem, item2);

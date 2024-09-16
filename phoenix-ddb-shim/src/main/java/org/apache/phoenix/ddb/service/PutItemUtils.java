@@ -6,7 +6,6 @@ import com.amazonaws.services.dynamodbv2.model.PutItemRequest;
 import com.amazonaws.services.dynamodbv2.model.PutItemResult;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.phoenix.ddb.bson.DdbAttributesToBsonDocument;
-import org.apache.phoenix.ddb.utils.BsonUtils;
 import org.apache.phoenix.jdbc.PhoenixConnection;
 import org.apache.phoenix.schema.PColumn;
 import org.apache.phoenix.schema.PTable;
@@ -90,7 +89,7 @@ public class PutItemUtils {
             AttributeValue> item) throws SQLException {
         for (int i=0; i<pkCols.size(); i++) {
             PColumn pkCol = pkCols.get(i);
-            String colName = pkCol.getName().toString().toLowerCase();
+            String colName = pkCol.getName().toString();
             PDataType type = pkCol.getDataType();
             if (type.equals(PDouble.INSTANCE)) {
                 Double value = Double.parseDouble(item.get(colName).getN());
@@ -120,7 +119,8 @@ public class PutItemUtils {
         Map<String, String> exprAttrNames =  request.getExpressionAttributeNames();
         Map<String, AttributeValue> exprAttrVals =  request.getExpressionAttributeValues();
         if (!StringUtils.isEmpty(condExpr)) {
-            String bsonCondExpr = BsonUtils.getBsonConditionExpression(condExpr, exprAttrNames, exprAttrVals);
+            String bsonCondExpr = CommonServiceUtils
+                    .getBsonConditionExpression(condExpr, exprAttrNames, exprAttrVals);
             String QUERY_FORMAT = (numPKs == 1)
                     ? CONDITIONAL_PUT_WITH_HASH_KEY : CONDITIONAL_PUT_WITH_HASH_SORT_KEY;
             stmt = conn.prepareStatement(

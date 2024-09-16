@@ -5,12 +5,9 @@ import com.amazonaws.services.dynamodbv2.model.QueryRequest;
 import com.amazonaws.services.dynamodbv2.model.QueryResult;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.phoenix.ddb.bson.BsonDocumentToDdbAttributes;
-import org.apache.phoenix.ddb.utils.BsonUtils;
 import org.apache.phoenix.ddb.utils.KeyConditionsHolder;
-import org.apache.phoenix.jdbc.PhoenixConnection;
+import org.apache.phoenix.ddb.utils.PhoenixUtils;
 import org.apache.phoenix.schema.PColumn;
-import org.apache.phoenix.schema.PTable;
-import org.apache.phoenix.schema.PTableKey;
 import org.bson.BsonDocument;
 import org.bson.RawBsonDocument;
 import org.slf4j.Logger;
@@ -25,6 +22,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import static org.apache.phoenix.ddb.service.CommonServiceUtils.DOUBLE_QUOTE;
+
 public class QueryUtils {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(QueryUtils.class);
@@ -38,17 +37,21 @@ public class QueryUtils {
         int count = 0;
         List<Map<String, AttributeValue>> items = new ArrayList<>();
 
-        PTable table;
+        String tableName = request.getTableName();
+        String indexName = request.getIndexName();
+        boolean useIndex = !StringUtils.isEmpty(indexName);
         RawBsonDocument lastBsonDoc = null;
+        List<PColumn> tablePKCols, indexPKCols = null;
         try (Connection connection = DriverManager.getConnection(connectionUrl)) {
             // get PKs from phoenix
-            PhoenixConnection phoenixConnection = connection.unwrap(PhoenixConnection.class);
-            table = phoenixConnection.getTable(
-                    new PTableKey(phoenixConnection.getTenantId(), request.getTableName()));
-            boolean isSortKeyPresent = table.getPKColumns().size() == 2;;
+            tablePKCols = PhoenixUtils.getPKColumns(connection, tableName);
+            if (useIndex) {
+                indexPKCols = PhoenixUtils.getOnlyIndexPKColumns(connection, indexName, tableName);
+            }
 
             // build PreparedStatement and execute
-            PreparedStatement stmt = getPreparedStatement(connection, request, table.getPKColumns());
+            PreparedStatement stmt
+                    = getPreparedStatement(connection, request, useIndex, tablePKCols, indexPKCols);
             LOGGER.info("SELECT Query: " + stmt);
             ResultSet rs  = stmt.executeQuery();
             while (rs.next()) {
@@ -65,21 +68,18 @@ public class QueryUtils {
         return new QueryResult().withItems(items).withCount(count)
                 .withLastEvaluatedKey(count == 0
                         ? null
-                        : getLastEvaluatedKey(lastBsonDoc, table.getPKColumns()));
+                        : getLastEvaluatedKey(lastBsonDoc, useIndex, tablePKCols, indexPKCols));
     }
 
     /**
      * Build the SELECT query based on the query request parameters.
      * Return a PreparedStatement with values set.
      */
-    private static PreparedStatement getPreparedStatement(Connection conn, QueryRequest request,
-                                                          List<PColumn> pkCols)
+    public static PreparedStatement getPreparedStatement(Connection conn, QueryRequest request,
+                          boolean useIndex, List<PColumn> tablePKCols, List<PColumn> indexPKCols)
             throws SQLException {
         String tableName = request.getTableName();
         String indexName = request.getIndexName();
-
-        // TODO: use BSON_VALUE for attributes when index is given
-        boolean hasIndex = StringUtils.isEmpty(indexName);
 
         Map<String, String> exprAttrNames =  request.getExpressionAttributeNames();
         String keyCondExpr = request.getKeyConditionExpression();
@@ -91,46 +91,44 @@ public class QueryUtils {
                                                     tableName, indexName, tableName));
 
         // parse Key Conditions
-        KeyConditionsHolder keyConditions = new KeyConditionsHolder(keyCondExpr, exprAttrNames);
-        String partitionKeyName = keyConditions.getPartitionKeyName();
-        String sortKeyName = keyConditions.getSortKeyName();
+        KeyConditionsHolder keyConditions
+                = new KeyConditionsHolder(keyCondExpr, exprAttrNames,
+                                            useIndex ? indexPKCols : tablePKCols, useIndex);
+        PColumn sortKeyPKCol = keyConditions.getSortKeyPKCol();
 
         // append all conditions for WHERE clause
         queryBuilder.append(keyConditions.getSQLWhereClause());
-        sortKeyName = addExclusiveStartKeyCondition(queryBuilder,
-                request, pkCols, partitionKeyName, sortKeyName);
+        addExclusiveStartKeyCondition(queryBuilder, request, useIndex, sortKeyPKCol);
         addFilterCondition(queryBuilder, request);
-        addScanIndexForwardCondition(queryBuilder, request, sortKeyName);
+        addScanIndexForwardCondition(queryBuilder, request, useIndex, sortKeyPKCol);
         addLimit(queryBuilder, request);
 
         // Set values on the PreparedStatement
         PreparedStatement stmt = conn.prepareStatement(queryBuilder.toString());
-        setPreparedStatementValues(stmt, request, keyConditions, sortKeyName);
+        setPreparedStatementValues(stmt, request, keyConditions, useIndex, sortKeyPKCol);
         return stmt;
     }
 
     /**
      * If table has a sortKey and the QueryRequest provides an ExclusiveStartKey,
-     * add the condition for the sortKey to the query.
+     * add the condition for the sortKey to the query. If the request provides an index,
+     * replace sortKey name with a BSON_VALUE expression.
      * Return the sortKeyName here in case the QueryRequest's KeyConditionExpression
      * did not have a condition on the sortKey.
      */
-    private static String addExclusiveStartKeyCondition(StringBuilder queryBuilder,
+    private static PColumn addExclusiveStartKeyCondition(StringBuilder queryBuilder,
                                                         QueryRequest request,
-                                                        List<PColumn> pkCols,
-                                                        String partitionKeyName,
-                                                        String sortKeyName) {
+                                                        boolean useIndex,
+                                                        PColumn sortKeyPKCol) {
         Map<String, AttributeValue> exclusiveStartKey = request.getExclusiveStartKey();
-        if (exclusiveStartKey != null) {
-            for (PColumn pkCol : pkCols) {
-                String pkName = pkCol.getName().getString().toLowerCase();
-                if (!pkName.equals(partitionKeyName)) {
-                    sortKeyName = pkName;
-                    queryBuilder.append(" AND " + pkName + " > ? ");
-                }
-            }
+        if (exclusiveStartKey != null && sortKeyPKCol != null) {
+            String name = sortKeyPKCol.getName().toString();
+            name =  (useIndex)
+                    ? name.substring(1)
+                    : DOUBLE_QUOTE + name + DOUBLE_QUOTE;
+            queryBuilder.append(" AND " + name + " > ? ");
         }
-        return sortKeyName;
+        return sortKeyPKCol;
     }
 
     /**
@@ -142,8 +140,8 @@ public class QueryUtils {
         if (!StringUtils.isEmpty(filterExpr)) {
             Map<String, String> exprAttrNames =  request.getExpressionAttributeNames();
             Map<String, AttributeValue> exprAttrVals =  request.getExpressionAttributeValues();
-            String bsonCondExpr
-                    = BsonUtils.getBsonConditionExpression(filterExpr, exprAttrNames, exprAttrVals);
+            String bsonCondExpr = CommonServiceUtils
+                    .getBsonConditionExpression(filterExpr, exprAttrNames, exprAttrVals);
             queryBuilder.append(" AND BSON_CONDITION_EXPRESSION(COL, '");
             queryBuilder.append(bsonCondExpr);
             queryBuilder.append("')" );
@@ -153,12 +151,17 @@ public class QueryUtils {
     /**
      * If the QueryRequest has ScanIndexForward set to False and there is a sortKey,
      * add an ORDER BY sortKey DESC clause to the query.
+     * When using an index, use the BSON_VALUE expression.
      */
     private static void addScanIndexForwardCondition(StringBuilder queryBuilder,
-                                                     QueryRequest request, String sortKeyName) {
+                                 QueryRequest request, boolean useIndex, PColumn sortKeyPKCol) {
         Boolean scanIndexForward = request.getScanIndexForward();
-        if (scanIndexForward != null && !scanIndexForward && sortKeyName != null) {
-            queryBuilder.append(" ORDER BY " + sortKeyName + " DESC ");
+        if (scanIndexForward != null && !scanIndexForward && sortKeyPKCol != null) {
+            String name = sortKeyPKCol.getName().getString();
+            name =  (useIndex)
+                    ? name.substring(1)
+                    : DOUBLE_QUOTE + name + DOUBLE_QUOTE;
+            queryBuilder.append(" ORDER BY " + name + " DESC ");
         }
     }
 
@@ -179,7 +182,7 @@ public class QueryUtils {
      */
     private static void setPreparedStatementValues(PreparedStatement stmt, QueryRequest request,
                                                   KeyConditionsHolder keyConditions,
-                                                   String sortKeyName)
+                                                   boolean useIndex, PColumn sortKeyPKCol)
             throws SQLException {
         int index = 1;
         Map<String, AttributeValue> exclusiveStartKey =  request.getExclusiveStartKey();
@@ -199,8 +202,10 @@ public class QueryUtils {
                 }
             }
         }
-        if (exclusiveStartKey != null && sortKeyName != null) {
-            setKeyValueOnStatement(stmt, index, exclusiveStartKey.get(sortKeyName), false);
+        if (exclusiveStartKey != null && sortKeyPKCol != null) {
+            String name = sortKeyPKCol.getName().toString();
+            name =  (useIndex) ? CommonServiceUtils.getKeyNameFromBsonValueFunc(name) : name;
+            setKeyValueOnStatement(stmt, index, exclusiveStartKey.get(name), false);
         }
     }
 
@@ -242,12 +247,20 @@ public class QueryUtils {
 
     /**
      * Return the attribute value map with only the primary keys from the given bson document.
+     * Return both data and index table keys when querying index table.
      */
     private static Map<String, AttributeValue> getLastEvaluatedKey(BsonDocument lastBsonDoc,
-                                                                   List<PColumn> pkCols) {
+                                                                   boolean useIndex,
+                                                                   List<PColumn> tablePKCols,
+                                                                   List<PColumn> indexPKCols) {
         List<String> keys = new ArrayList<>();
-        for (PColumn pkCol : pkCols) {
-            keys.add(pkCol.getName().toString().toLowerCase());
+        for (PColumn pkCol : tablePKCols) {
+            keys.add(pkCol.getName().toString());
+        }
+        if (useIndex && indexPKCols != null) {
+            for (PColumn pkCol : indexPKCols) {
+                keys.add(CommonServiceUtils.getKeyNameFromBsonValueFunc(pkCol.getName().toString()));
+            }
         }
         return BsonDocumentToDdbAttributes.getProjectedItem(lastBsonDoc, keys);
     }

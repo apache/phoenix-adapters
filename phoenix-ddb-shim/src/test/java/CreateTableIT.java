@@ -24,17 +24,24 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.phoenix.ddb.PhoenixDBClient;
+import org.apache.phoenix.ddb.utils.PhoenixUtils;
+import org.apache.phoenix.schema.PColumn;
 import org.apache.phoenix.util.JacksonUtil;
 import org.apache.phoenix.util.PhoenixRuntime;
 
 import com.amazonaws.services.dynamodbv2.model.TableDescription;
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.util.List;
 
 import static org.apache.phoenix.query.BaseTest.setUpConfigForMiniCluster;
 
@@ -155,5 +162,44 @@ public class CreateTableIT {
         TableDescription tableDescription1 = createTableResult1.getTableDescription();
         TableDescription tableDescription2 = createTableResult2.getTableDescription();
         DDLTestUtils.assertTableDescriptions(tableDescription1, tableDescription2);
+    }
+
+
+    @Test
+    public void createTableTest4() throws Exception {
+        String tableName = testName.getMethodName().toUpperCase();
+        // create table request
+        CreateTableRequest createTableRequest =
+                DDLTestUtils.getCreateTableRequest(tableName, "aBc_DeF",
+                        ScalarAttributeType.B, "xYzwQt", ScalarAttributeType.N);
+
+
+        PhoenixDBClient phoenixDBClient = new PhoenixDBClient(url);
+        phoenixDBClient.createTable(createTableRequest);
+        try (Connection connection = DriverManager.getConnection(url)) {
+            List<PColumn> pkCols = PhoenixUtils.getPKColumns(connection, tableName);
+            Assert.assertEquals(2, pkCols.size());
+            Assert.assertEquals("aBc_DeF", pkCols.get(0).getName().getString());
+            Assert.assertEquals("xYzwQt", pkCols.get(1).getName().getString());
+        }
+    }
+
+    @Test
+    public void createTableTest5() throws Exception {
+        String tableName = testName.getMethodName().toUpperCase();
+        // create table request
+        CreateTableRequest createTableRequest =
+                DDLTestUtils.getCreateTableRequest(tableName, "lowercase",
+                        ScalarAttributeType.B, "UPPERCASE", ScalarAttributeType.N);
+
+
+        PhoenixDBClient phoenixDBClient = new PhoenixDBClient(url);
+        phoenixDBClient.createTable(createTableRequest);
+        try (Connection connection = DriverManager.getConnection(url)) {
+            List<PColumn> pkCols = PhoenixUtils.getPKColumns(connection, tableName);
+            Assert.assertEquals(2, pkCols.size());
+            Assert.assertEquals("lowercase", pkCols.get(0).getName().getString());
+            Assert.assertEquals("UPPERCASE", pkCols.get(1).getName().getString());
+        }
     }
 }

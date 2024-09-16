@@ -405,6 +405,7 @@ public class QueryIT {
         while (phoenixResult.getCount() > 0) {
             Assert.assertEquals(dynamoResult.getCount(), phoenixResult.getCount());
             Assert.assertEquals(dynamoResult.getItems(), phoenixResult.getItems());
+            Assert.assertEquals(dynamoResult.getLastEvaluatedKey(), phoenixResult.getLastEvaluatedKey());
             qr.setExclusiveStartKey(phoenixResult.getLastEvaluatedKey());
             phoenixResult = phoenixDBClient.query(qr);
             dynamoResult = amazonDynamoDB.query(qr);
