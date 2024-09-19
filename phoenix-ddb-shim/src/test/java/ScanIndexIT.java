@@ -1,0 +1,272 @@
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
+import com.amazonaws.services.dynamodbv2.model.AttributeValue;
+import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
+import com.amazonaws.services.dynamodbv2.model.PutItemRequest;
+import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
+import com.amazonaws.services.dynamodbv2.model.ScanRequest;
+import com.amazonaws.services.dynamodbv2.model.ScanResult;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.HBaseTestingUtility;
+import org.apache.phoenix.ddb.PhoenixDBClient;
+import org.apache.phoenix.util.PhoenixRuntime;
+import org.junit.AfterClass;
+import org.junit.Assert;
+import org.junit.BeforeClass;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TestName;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.sql.SQLException;
+import java.util.HashMap;
+import java.util.Map;
+
+import static org.apache.phoenix.query.BaseTest.setUpConfigForMiniCluster;
+
+public class ScanIndexIT {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(ScanIndexIT.class);
+
+    private final AmazonDynamoDB amazonDynamoDB =
+            LocalDynamoDbTestBase.localDynamoDb().createV1Client();
+
+    private static String url;
+
+    @Rule
+    public final TestName testName = new TestName();
+
+    @BeforeClass
+    public static void initialize() throws Exception {
+        LocalDynamoDbTestBase.localDynamoDb().start();
+        Configuration conf = HBaseConfiguration.create();
+        HBaseTestingUtility utility = new HBaseTestingUtility(conf);
+        setUpConfigForMiniCluster(conf);
+
+        utility.startMiniCluster();
+        String zkQuorum = "localhost:" + utility.getZkCluster().getClientPort();
+        url = PhoenixRuntime.JDBC_PROTOCOL + PhoenixRuntime.JDBC_PROTOCOL_SEPARATOR + zkQuorum;
+    }
+
+    @AfterClass
+    public static void stopLocalDynamoDb() {
+        LocalDynamoDbTestBase.localDynamoDb().stop();
+    }
+
+    @Test
+    public void testScanIndexOnlyHashKey() throws SQLException {
+        //create table
+        final String tableName = testName.getMethodName().toUpperCase();
+        final String indexName = "G_IDX" + tableName;
+        CreateTableRequest createTableRequest =
+                DDLTestUtils.getCreateTableRequest(tableName, "attr_0",
+                        ScalarAttributeType.S, "attr_1", ScalarAttributeType.N);
+        PhoenixDBClient phoenixDBClient = new PhoenixDBClient(url);
+
+        DDLTestUtils.addIndexToRequest(true, createTableRequest, indexName, "title",
+                ScalarAttributeType.S, null, null);
+        phoenixDBClient.createTable(createTableRequest);
+        amazonDynamoDB.createTable(createTableRequest);
+
+        //put
+        PutItemRequest putItemRequest1 = new PutItemRequest(tableName, getItem1());
+        PutItemRequest putItemRequest2 = new PutItemRequest(tableName, getItem2());
+        PutItemRequest putItemRequest3 = new PutItemRequest(tableName, getItem3());
+        PutItemRequest putItemRequest4 = new PutItemRequest(tableName, getItem4());
+        phoenixDBClient.putItem(putItemRequest1);
+        phoenixDBClient.putItem(putItemRequest2);
+        phoenixDBClient.putItem(putItemRequest3);
+        phoenixDBClient.putItem(putItemRequest4);
+        amazonDynamoDB.putItem(putItemRequest1);
+        amazonDynamoDB.putItem(putItemRequest2);
+        amazonDynamoDB.putItem(putItemRequest3);
+        amazonDynamoDB.putItem(putItemRequest4);
+
+        ScanRequest sr = new ScanRequest(tableName);
+        sr.setIndexName(indexName);
+        sr.setFilterExpression("#0 BETWEEN :v1 AND :v2");
+        Map<String,String> exprAttrNames = new HashMap<>();
+        exprAttrNames.put("#0", "title");
+        sr.setExpressionAttributeNames(exprAttrNames);
+        Map<String, AttributeValue> exprAttrVals = new HashMap();
+        exprAttrVals.put(":v1", new AttributeValue().withS("Title1"));
+        exprAttrVals.put(":v2", new AttributeValue().withS("Title4"));
+        sr.setExpressionAttributeValues(exprAttrVals);
+        ScanResult phoenixResult = phoenixDBClient.scan(sr);
+        ScanResult dynamoResult = amazonDynamoDB.scan(sr);
+        // dynamo does not guarantee ordering of partition keys in Scan, so only check count
+        Assert.assertEquals(dynamoResult.getCount(), phoenixResult.getCount());
+
+        // explain plan
+        TestUtils.validateIndexUsed(sr, url);
+    }
+
+    @Test
+    public void testScanIndexBothKeys() throws SQLException {
+        //create table
+        final String tableName = testName.getMethodName().toUpperCase();
+        final String indexName = "G_IDX" + tableName;
+        CreateTableRequest createTableRequest =
+                DDLTestUtils.getCreateTableRequest(tableName, "attr_0",
+                        ScalarAttributeType.S, "attr_1", ScalarAttributeType.N);
+        PhoenixDBClient phoenixDBClient = new PhoenixDBClient(url);
+
+        DDLTestUtils.addIndexToRequest(true, createTableRequest, indexName, "title",
+                ScalarAttributeType.S, "Id2", ScalarAttributeType.N);
+        phoenixDBClient.createTable(createTableRequest);
+        amazonDynamoDB.createTable(createTableRequest);
+
+        //put
+        PutItemRequest putItemRequest1 = new PutItemRequest(tableName, getItem1());
+        PutItemRequest putItemRequest2 = new PutItemRequest(tableName, getItem2());
+        PutItemRequest putItemRequest3 = new PutItemRequest(tableName, getItem3());
+        PutItemRequest putItemRequest4 = new PutItemRequest(tableName, getItem4());
+        phoenixDBClient.putItem(putItemRequest1);
+        phoenixDBClient.putItem(putItemRequest2);
+        phoenixDBClient.putItem(putItemRequest3);
+        phoenixDBClient.putItem(putItemRequest4);
+        amazonDynamoDB.putItem(putItemRequest1);
+        amazonDynamoDB.putItem(putItemRequest2);
+        amazonDynamoDB.putItem(putItemRequest3);
+        amazonDynamoDB.putItem(putItemRequest4);
+
+        ScanRequest sr = new ScanRequest(tableName);
+        sr.setIndexName(indexName);
+        sr.setFilterExpression("#1 > :v3 AND #0 BETWEEN :v1 AND :v2");
+        Map<String,String> exprAttrNames = new HashMap<>();
+        exprAttrNames.put("#0", "title");
+        exprAttrNames.put("#1", "Id2");
+        sr.setExpressionAttributeNames(exprAttrNames);
+        Map<String, AttributeValue> exprAttrVals = new HashMap();
+        exprAttrVals.put(":v1", new AttributeValue().withS("Title1"));
+        exprAttrVals.put(":v2", new AttributeValue().withS("Title4"));
+        exprAttrVals.put(":v3", new AttributeValue().withN("150.09"));
+        sr.setExpressionAttributeValues(exprAttrVals);
+        ScanResult phoenixResult = phoenixDBClient.scan(sr);
+        ScanResult dynamoResult = amazonDynamoDB.scan(sr);
+        // dynamo does not guarantee ordering of partition keys in Scan, so only check count
+        Assert.assertEquals(dynamoResult.getCount(), phoenixResult.getCount());
+
+        // explain plan
+        TestUtils.validateIndexUsed(sr, url);
+    }
+
+    @Test
+    public void testScanIndexWithPagination() throws SQLException {
+        //create table
+        final String tableName = testName.getMethodName().toUpperCase();
+        final String indexName = "G_IDX" + tableName;
+        CreateTableRequest createTableRequest =
+                DDLTestUtils.getCreateTableRequest(tableName, "attr_0",
+                        ScalarAttributeType.S, "attr_1", ScalarAttributeType.N);
+        PhoenixDBClient phoenixDBClient = new PhoenixDBClient(url);
+
+        DDLTestUtils.addIndexToRequest(true, createTableRequest, indexName, "title",
+                ScalarAttributeType.S, null, null);
+        phoenixDBClient.createTable(createTableRequest);
+        amazonDynamoDB.createTable(createTableRequest);
+
+        //put
+        PutItemRequest putItemRequest1 = new PutItemRequest(tableName, getItem1());
+        PutItemRequest putItemRequest2 = new PutItemRequest(tableName, getItem2());
+        PutItemRequest putItemRequest3 = new PutItemRequest(tableName, getItem3());
+        PutItemRequest putItemRequest4 = new PutItemRequest(tableName, getItem4());
+        phoenixDBClient.putItem(putItemRequest1);
+        phoenixDBClient.putItem(putItemRequest2);
+        phoenixDBClient.putItem(putItemRequest3);
+        phoenixDBClient.putItem(putItemRequest4);
+        amazonDynamoDB.putItem(putItemRequest1);
+        amazonDynamoDB.putItem(putItemRequest2);
+        amazonDynamoDB.putItem(putItemRequest3);
+        amazonDynamoDB.putItem(putItemRequest4);
+
+        ScanRequest sr = new ScanRequest(tableName);
+        sr.setIndexName(indexName);
+        sr.setFilterExpression("#0 BETWEEN :v1 AND :v2");
+        Map<String,String> exprAttrNames = new HashMap<>();
+        exprAttrNames.put("#0", "title");
+        sr.setExpressionAttributeNames(exprAttrNames);
+        Map<String, AttributeValue> exprAttrVals = new HashMap();
+        exprAttrVals.put(":v1", new AttributeValue().withS("Title1"));
+        exprAttrVals.put(":v2", new AttributeValue().withS("Title3"));
+        sr.setExpressionAttributeValues(exprAttrVals);
+        sr.setLimit(1);
+        ScanResult phoenixResult, dynamoResult;
+        int paginationCount = 0;
+        do {
+            phoenixResult = phoenixDBClient.scan(sr);
+            dynamoResult = amazonDynamoDB.scan(sr);
+            Assert.assertEquals(dynamoResult.getItems(), phoenixResult.getItems());
+            paginationCount++;
+            TestUtils.validateIndexUsed(sr, url);
+            sr.setExclusiveStartKey(phoenixResult.getLastEvaluatedKey());
+        } while (phoenixResult.getCount() > 0);
+        // 1 more than total number of results expected
+        Assert.assertEquals(4, paginationCount);
+    }
+
+    private static Map<String, AttributeValue> getItem1() {
+        Map<String, AttributeValue> item = new HashMap<>();
+        item.put("attr_0", new AttributeValue().withS("A"));
+        item.put("attr_1", new AttributeValue().withN("1"));
+        item.put("Id1", new AttributeValue().withN("-5"));
+        item.put("Id2", new AttributeValue().withN("10.10"));
+        item.put("title", new AttributeValue().withS("Title1"));
+        Map<String, AttributeValue> reviewMap1 = new HashMap<>();
+        reviewMap1.put("reviewer", new AttributeValue().withS("Alice"));
+        Map<String, AttributeValue> fiveStarMap = new HashMap<>();
+        fiveStarMap.put("FiveStar", new AttributeValue().withL(new AttributeValue().withM(reviewMap1)));
+        item.put("Reviews", new AttributeValue().withM(fiveStarMap));
+        return item;
+    }
+
+    private static Map<String, AttributeValue> getItem2() {
+        Map<String, AttributeValue> item = new HashMap<>();
+        item.put("attr_0", new AttributeValue().withS("B"));
+        item.put("attr_1", new AttributeValue().withN("2"));
+        item.put("Id1", new AttributeValue().withN("-15"));
+        item.put("Id2", new AttributeValue().withN("150.10"));
+        item.put("title", new AttributeValue().withS("Title2"));
+        Map<String, AttributeValue> reviewMap1 = new HashMap<>();
+        reviewMap1.put("reviewer", new AttributeValue().withS("Bob1"));
+        Map<String, AttributeValue> reviewMap2 = new HashMap<>();
+        reviewMap2.put("reviewer", new AttributeValue().withS("Bob2"));
+        Map<String, AttributeValue> fiveStarMap = new HashMap<>();
+        fiveStarMap.put("FiveStar", new AttributeValue().withL(
+                new AttributeValue().withM(reviewMap1),
+                new AttributeValue().withM(reviewMap2)));
+        item.put("Reviews", new AttributeValue().withM(fiveStarMap));
+        return item;
+    }
+
+    private static Map<String, AttributeValue> getItem3() {
+        Map<String, AttributeValue> item = new HashMap<>();
+        item.put("attr_0", new AttributeValue().withS("C"));
+        item.put("attr_1", new AttributeValue().withN("3"));
+        item.put("Id1", new AttributeValue().withN("11"));
+        item.put("Id2", new AttributeValue().withN("1000.10"));
+        item.put("title", new AttributeValue().withS("Title3"));
+        Map<String, AttributeValue> reviewMap1 = new HashMap<>();
+        reviewMap1.put("reviewer", new AttributeValue().withS("Carl"));
+        Map<String, AttributeValue> fiveStarMap = new HashMap<>();
+        fiveStarMap.put("FiveStar", new AttributeValue().withL(new AttributeValue().withM(reviewMap1)));
+        item.put("Reviews", new AttributeValue().withM(fiveStarMap));
+        return item;
+    }
+
+    private static Map<String, AttributeValue> getItem4() {
+        Map<String, AttributeValue> item = new HashMap<>();
+        item.put("attr_0", new AttributeValue().withS("D"));
+        item.put("attr_1", new AttributeValue().withN("4"));
+        item.put("Id1", new AttributeValue().withN("-23"));
+        item.put("Id2", new AttributeValue().withN("99.10"));
+        item.put("title", new AttributeValue().withS("Title40"));
+        Map<String, AttributeValue> reviewMap1 = new HashMap<>();
+        reviewMap1.put("reviewer", new AttributeValue().withS("Drake"));
+        Map<String, AttributeValue> fiveStarMap = new HashMap<>();
+        fiveStarMap.put("FiveStar", new AttributeValue().withL(new AttributeValue().withM(reviewMap1)));
+        item.put("Reviews", new AttributeValue().withM(fiveStarMap));
+        return item;
+    }
+}

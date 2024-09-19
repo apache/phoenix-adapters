@@ -1,5 +1,6 @@
 package org.apache.phoenix.ddb.utils;
 
+import org.apache.phoenix.ddb.service.CommonServiceUtils;
 import org.apache.phoenix.schema.PColumn;
 
 import java.util.HashMap;
@@ -7,8 +8,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import static org.apache.phoenix.ddb.service.CommonServiceUtils.DOUBLE_QUOTE;
 
 /**
  * Helper class to parse KeyConditionExpression provided in a DynamoDB request:
@@ -96,6 +95,8 @@ public class KeyConditionsHolder {
         return sortKeyPKCol;
     }
 
+    public PColumn getPartitionKeyPKCol() { return partitionKeyPKCol; }
+
     public boolean hasBetween() {
         return sortKeyOperator.equals("BETWEEN") && sortKeyValue2 != null;
     }
@@ -110,12 +111,12 @@ public class KeyConditionsHolder {
     public String getSQLWhereClause() {
         String partitionKeyName = useIndex
                 ? this.partitionKeyPKCol.getName().getString().substring(1)
-                : DOUBLE_QUOTE + this.partitionKeyName + DOUBLE_QUOTE;
+                : CommonServiceUtils.getEscapedArgument(this.partitionKeyName);
         String sortKeyName = "";
         if (hasSortKey()) {
             sortKeyName = useIndex
                     ? this.sortKeyPKCol.getName().getString().substring(1)
-                    : DOUBLE_QUOTE + this.sortKeyName + DOUBLE_QUOTE;
+                    : CommonServiceUtils.getEscapedArgument(this.sortKeyName);
         }
 
         StringBuilder sb = new StringBuilder();

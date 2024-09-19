@@ -226,12 +226,13 @@ public class QueryIT {
         qr.setKeyConditionExpression("#0 = :v0");
         Map<String, String> exprAttrNames = new HashMap<>();
         exprAttrNames.put("#0", "attr_0");
-        qr.setExpressionAttributeNames(exprAttrNames);
         Map<String, AttributeValue> exprAttrVal = new HashMap<>();
         exprAttrVal.put(":v0", new AttributeValue().withS("B"));
         qr.setExpressionAttributeValues(exprAttrVal);
-        String projectionExpr = "Id2, title";
+        String projectionExpr = "Id2, title, #proj";
         qr.setProjectionExpression(projectionExpr);
+        exprAttrNames.put("#proj", "A.B");
+        qr.setExpressionAttributeNames(exprAttrNames);
 
         // query result, should return 1 item with only the projected attributes
         QueryResult phoenixResult = phoenixDBClient.query(qr);
@@ -424,6 +425,7 @@ public class QueryIT {
         Map<String, AttributeValue> fiveStarMap = new HashMap<>();
         fiveStarMap.put("FiveStar", new AttributeValue().withL(new AttributeValue().withM(reviewMap1)));
         item.put("Reviews", new AttributeValue().withM(fiveStarMap));
+        item.put("A.B", new AttributeValue().withS("not nested field 1"));
         return item;
     }
 
@@ -443,6 +445,7 @@ public class QueryIT {
                 new AttributeValue().withM(reviewMap1),
                 new AttributeValue().withM(reviewMap2)));
         item.put("Reviews", new AttributeValue().withM(fiveStarMap));
+        item.put("A.B", new AttributeValue().withS("not nested field 2"));
         return item;
     }
 
@@ -458,6 +461,7 @@ public class QueryIT {
         Map<String, AttributeValue> fiveStarMap = new HashMap<>();
         fiveStarMap.put("FiveStar", new AttributeValue().withL(new AttributeValue().withM(reviewMap1)));
         item.put("Reviews", new AttributeValue().withM(fiveStarMap));
+        item.put("A.B", new AttributeValue().withS("not nested field 3"));
         return item;
     }
 
@@ -473,6 +477,7 @@ public class QueryIT {
         Map<String, AttributeValue> fiveStarMap = new HashMap<>();
         fiveStarMap.put("FiveStar", new AttributeValue().withL(new AttributeValue().withM(reviewMap1)));
         item.put("Reviews", new AttributeValue().withM(fiveStarMap));
+        item.put("A.B", new AttributeValue().withS("not nested field 4"));
         return item;
     }
 }

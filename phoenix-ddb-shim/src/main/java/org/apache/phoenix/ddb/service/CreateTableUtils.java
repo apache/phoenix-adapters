@@ -39,8 +39,6 @@ import org.slf4j.LoggerFactory;
 
 import org.apache.phoenix.thirdparty.com.google.common.base.Preconditions;
 
-import static org.apache.phoenix.ddb.service.CommonServiceUtils.DOUBLE_QUOTE;
-
 public class CreateTableUtils {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(CreateTableUtils.class);
@@ -162,7 +160,7 @@ public class CreateTableUtils {
       Set<String> pkColsSet = new HashSet<>();
 
       KeySchemaElement hashKey = keySchemaElements.get(0);
-      String hashKeyQuoted = DOUBLE_QUOTE + hashKey.getAttributeName() + DOUBLE_QUOTE;
+      String hashKeyQuoted = CommonServiceUtils.getEscapedArgument(hashKey.getAttributeName());
       cols.append(hashKeyQuoted).append(" ");
       pkCols.append(hashKeyQuoted);
 
@@ -193,7 +191,7 @@ public class CreateTableUtils {
       if (keySchemaElements.size() == 2) {
           cols.append(", ");
           KeySchemaElement rangeKey = keySchemaElements.get(1);
-          String rangeKeyQuoted = DOUBLE_QUOTE + rangeKey.getAttributeName() + DOUBLE_QUOTE;
+          String rangeKeyQuoted = CommonServiceUtils.getEscapedArgument(rangeKey.getAttributeName());
           cols.append(rangeKeyQuoted).append(" ");
           pkCols.append(",").append(rangeKeyQuoted);
 

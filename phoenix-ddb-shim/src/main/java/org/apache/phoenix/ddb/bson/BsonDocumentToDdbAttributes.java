@@ -273,7 +273,8 @@ public class BsonDocumentToDdbAttributes {
    */
   private static void updateNewBsonDocumentByFieldKeyValue(final String documentFieldKey,
       final BsonDocument bsonDocument, final Map<String, AttributeValue> map) {
-    if (documentFieldKey.contains(".") || documentFieldKey.contains("[")) {
+    if ((documentFieldKey.contains(".") && bsonDocument.get(documentFieldKey) == null)
+            || documentFieldKey.contains("[")) {
       StringBuilder sb = new StringBuilder();
       for (int i = 0; i < documentFieldKey.length(); i++) {
         if (documentFieldKey.charAt(i) == '.') {

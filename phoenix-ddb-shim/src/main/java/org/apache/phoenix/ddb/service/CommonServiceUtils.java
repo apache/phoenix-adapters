@@ -21,12 +21,14 @@ package org.apache.phoenix.ddb.service;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.phoenix.ddb.bson.DdbAttributesToBsonDocument;
 import org.apache.phoenix.schema.types.PDataType;
 import org.apache.phoenix.schema.types.PDecimal;
 import org.apache.phoenix.schema.types.PDouble;
 import org.apache.phoenix.schema.types.PVarbinaryEncoded;
 import org.apache.phoenix.schema.types.PVarchar;
+import org.apache.phoenix.thirdparty.com.google.common.base.Preconditions;
 import org.bson.BsonDocument;
 import org.bson.BsonString;
 
@@ -38,6 +40,7 @@ import java.util.Map;
 public class CommonServiceUtils {
 
     public static final String DOUBLE_QUOTE = "\"";
+    public static final String HASH = "#";
 
     public static ScalarAttributeType getScalarAttributeFromPDataType(PDataType<?> pDataType) {
         if (pDataType == PVarchar.INSTANCE) {
@@ -79,14 +82,32 @@ public class CommonServiceUtils {
         condExpr = condExpr.replaceAll("attribute_not_exists", "field_not_exists");
 
         // plug expression attribute names in $EXPR
-        for (String k : exprAttrNames.keySet()) {
-            condExpr = condExpr.replaceAll(k, exprAttrNames.get(k));
-        }
+        condExpr = replaceExpressionAttributeNames(condExpr, exprAttrNames);
+
         // BSON_CONDITION_EXPRESSION
         BsonDocument conditionDoc = new BsonDocument();
         conditionDoc.put("$EXPR", new BsonString(condExpr));
         conditionDoc.put("$VAL", DdbAttributesToBsonDocument.getBsonDocument(exprAttrVals));
 
         return conditionDoc.toJson();
+    }
+
+    /**
+     * Enclose given argument within double quotes. This is used to escape column names in queries.
+     */
+    public static String getEscapedArgument(String argument) {
+        return DOUBLE_QUOTE + argument + DOUBLE_QUOTE;
+    }
+
+    /**
+     * Replace all occurrences of aliases in the given String using expression attribute map.
+     */
+    public static String replaceExpressionAttributeNames(String s,
+                                                       Map<String, String> exprAttrNames) {
+        if (exprAttrNames == null || !s.contains(HASH)) return s;
+        for (String k : exprAttrNames.keySet()) {
+            s = StringUtils.replace(s, k, exprAttrNames.get(k));
+        }
+        return s;
     }
 }

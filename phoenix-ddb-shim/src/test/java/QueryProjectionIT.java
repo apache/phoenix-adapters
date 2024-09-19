@@ -151,7 +151,7 @@ public class QueryProjectionIT {
                 new AttributeValue().withS("hello")
         );
         item.put("track", list2);
-
+        item.put("A.B", new AttributeValue().withS("not nested field 1"));
         return item;
     }
 
@@ -242,11 +242,22 @@ public class QueryProjectionIT {
         test("track[0].shot[2][0].city.standard[1],track[0].shot[2][0].city.standard[2], track[0].shot[2][0].city.standard[0]");
     }
 
-    private QueryRequest getQueryRequest() {
-        QueryRequest qr = new QueryRequest(TABLE_NAME);
-        qr.setKeyConditionExpression("#0 = :v0");
+    @Test
+    public void test18() {
         Map<String, String> exprAttrNames = new HashMap<>();
-        exprAttrNames.put("#0", "attr_0");
+        exprAttrNames.put("#0", "track");
+        exprAttrNames.put("#1", "shot");
+        exprAttrNames.put("#2", "city");
+        exprAttrNames.put("#3", "standard");
+        exprAttrNames.put("#4", "A.B");
+        testWithMap("#0[0].#1[2][0].#2.#3[1],#0[0].#1[2][0].#2.#3[2], #0[0].#1[2][0].#2.#3[0], #4", exprAttrNames);
+    }
+
+    private QueryRequest getQueryRequest(Map<String, String> exprAttrNames) {
+        QueryRequest qr = new QueryRequest(TABLE_NAME);
+        qr.setKeyConditionExpression("#hashKey = :v0");
+        if (exprAttrNames == null) exprAttrNames = new HashMap<>();
+        exprAttrNames.put("#hashKey", "attr_0");
         qr.setExpressionAttributeNames(exprAttrNames);
         Map<String, AttributeValue> exprAttrVal = new HashMap<>();
         exprAttrVal.put(":v0", new AttributeValue().withS("B"));
@@ -255,7 +266,16 @@ public class QueryProjectionIT {
     }
 
     private void test(String projectionExpr) {
-        QueryRequest qr = getQueryRequest();
+        QueryRequest qr = getQueryRequest(null);
+        qr.setProjectionExpression(projectionExpr);
+        QueryResult phoenixResult = phoenixDBClient.query(qr);
+        QueryResult dynamoResult = amazonDynamoDB.query(qr);
+        Assert.assertEquals(dynamoResult.getCount(), phoenixResult.getCount());
+        Assert.assertEquals(dynamoResult.getItems().get(0), phoenixResult.getItems().get(0));
+    }
+
+    private void testWithMap(String projectionExpr, Map<String, String> exprAttrNames) {
+        QueryRequest qr = getQueryRequest(exprAttrNames);
         qr.setProjectionExpression(projectionExpr);
         QueryResult phoenixResult = phoenixDBClient.query(qr);
         QueryResult dynamoResult = amazonDynamoDB.query(qr);
