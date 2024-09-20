@@ -34,14 +34,16 @@ import com.amazonaws.services.dynamodbv2.model.GlobalSecondaryIndex;
 import com.amazonaws.services.dynamodbv2.model.KeySchemaElement;
 import com.amazonaws.services.dynamodbv2.model.LocalSecondaryIndex;
 import com.amazonaws.services.dynamodbv2.model.TableDescription;
+import org.apache.phoenix.ddb.utils.CommonServiceUtils;
+import org.apache.phoenix.ddb.utils.TableDescriptorUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.phoenix.thirdparty.com.google.common.base.Preconditions;
 
-public class CreateTableUtils {
+public class CreateTableService {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(CreateTableUtils.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(CreateTableService.class);
 
   public static CreateTableResult getCreateTableResponse(final String tableName,
       final String connectionUrl) {

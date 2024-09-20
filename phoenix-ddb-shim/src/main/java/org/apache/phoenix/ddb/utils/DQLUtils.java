@@ -1,4 +1,4 @@
-package org.apache.phoenix.ddb.service;
+package org.apache.phoenix.ddb.utils;
 
 import com.amazonaws.AmazonWebServiceResult;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;

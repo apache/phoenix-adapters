@@ -2,8 +2,8 @@ import com.amazonaws.services.dynamodbv2.model.QueryRequest;
 import com.amazonaws.services.dynamodbv2.model.ScanRequest;
 import org.apache.phoenix.compile.ExplainPlan;
 import org.apache.phoenix.compile.ExplainPlanAttributes;
-import org.apache.phoenix.ddb.service.QueryUtils;
-import org.apache.phoenix.ddb.service.ScanUtils;
+import org.apache.phoenix.ddb.service.QueryService;
+import org.apache.phoenix.ddb.service.ScanService;
 import org.apache.phoenix.ddb.utils.PhoenixUtils;
 import org.apache.phoenix.jdbc.PhoenixPreparedStatement;
 import org.apache.phoenix.schema.PColumn;
@@ -27,7 +27,7 @@ public class TestUtils {
         try (Connection connection = DriverManager.getConnection(url)) {
             tablePKCols = PhoenixUtils.getPKColumns(connection, tableName);
             indexPKCols = PhoenixUtils.getOnlyIndexPKColumns(connection, indexName, tableName);
-            PreparedStatement ps = QueryUtils.getPreparedStatement(connection, qr, true, tablePKCols, indexPKCols);
+            PreparedStatement ps = QueryService.getPreparedStatement(connection, qr, true, tablePKCols, indexPKCols);
             ExplainPlan plan = ps.unwrap(PhoenixPreparedStatement.class).optimizeQuery().getExplainPlan();
             ExplainPlanAttributes explainPlanAttributes = plan.getPlanStepsAsAttributes();
             Assert.assertEquals(indexName, explainPlanAttributes.getTableName());
@@ -44,7 +44,7 @@ public class TestUtils {
         try (Connection connection = DriverManager.getConnection(url)) {
             tablePKCols = PhoenixUtils.getPKColumns(connection, tableName);
             indexPKCols = PhoenixUtils.getOnlyIndexPKColumns(connection, indexName, tableName);
-            PreparedStatement ps = ScanUtils.getPreparedStatement(connection, sr, true, tablePKCols, indexPKCols);
+            PreparedStatement ps = ScanService.getPreparedStatement(connection, sr, true, tablePKCols, indexPKCols);
             ExplainPlan plan = ps.unwrap(PhoenixPreparedStatement.class).optimizeQuery().getExplainPlan();
             ExplainPlanAttributes explainPlanAttributes = plan.getPlanStepsAsAttributes();
             Assert.assertEquals(indexName, explainPlanAttributes.getTableName());

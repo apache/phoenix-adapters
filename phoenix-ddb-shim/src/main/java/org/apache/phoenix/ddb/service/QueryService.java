@@ -4,6 +4,8 @@ import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.QueryRequest;
 import com.amazonaws.services.dynamodbv2.model.QueryResult;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.phoenix.ddb.utils.CommonServiceUtils;
+import org.apache.phoenix.ddb.utils.DQLUtils;
 import org.apache.phoenix.ddb.utils.KeyConditionsHolder;
 import org.apache.phoenix.ddb.utils.PhoenixUtils;
 import org.apache.phoenix.schema.PColumn;
@@ -17,9 +19,9 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 
-public class QueryUtils {
+public class QueryService {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(QueryUtils.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(QueryService.class);
     private static final String SELECT_QUERY = "SELECT COL FROM %s WHERE ";
     private static final String SELECT_QUERY_WITH_INDEX_HINT
             = "SELECT /*+ INDEX(%s %s) */ COL FROM %s WHERE ";
@@ -41,7 +43,7 @@ public class QueryUtils {
             // build PreparedStatement and execute
             PreparedStatement stmt
                     = getPreparedStatement(connection, request, useIndex, tablePKCols, indexPKCols);
-            return (QueryResult)DQLUtils.executeStatementReturnResult(true, stmt,
+            return (QueryResult) DQLUtils.executeStatementReturnResult(true, stmt,
                     getProjectionAttributes(request), useIndex, tablePKCols, indexPKCols);
         } catch (SQLException e) {
             throw new RuntimeException(e);

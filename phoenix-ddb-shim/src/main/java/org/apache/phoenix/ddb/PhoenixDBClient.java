@@ -32,12 +32,12 @@ import com.amazonaws.services.dynamodbv2.model.QueryResult;
 import com.amazonaws.services.dynamodbv2.model.ScanRequest;
 import com.amazonaws.services.dynamodbv2.model.ScanResult;
 import com.amazonaws.services.dynamodbv2.model.TableDescription;
-import org.apache.phoenix.ddb.service.CreateTableUtils;
-import org.apache.phoenix.ddb.service.DeleteTableUtils;
-import org.apache.phoenix.ddb.service.PutItemUtils;
-import org.apache.phoenix.ddb.service.QueryUtils;
-import org.apache.phoenix.ddb.service.ScanUtils;
-import org.apache.phoenix.ddb.service.TableDescriptorUtils;
+import org.apache.phoenix.ddb.service.CreateTableService;
+import org.apache.phoenix.ddb.service.DeleteTableService;
+import org.apache.phoenix.ddb.service.PutItemService;
+import org.apache.phoenix.ddb.service.QueryService;
+import org.apache.phoenix.ddb.service.ScanService;
+import org.apache.phoenix.ddb.utils.TableDescriptorUtils;
 import org.apache.phoenix.jdbc.PhoenixDriver;
 import org.apache.phoenix.thirdparty.com.google.common.base.Preconditions;
 import org.apache.phoenix.util.PhoenixRuntime;
@@ -86,7 +86,7 @@ public class PhoenixDBClient extends AbstractAmazonDynamoDB {
      */
     @Override
     public CreateTableResult createTable(CreateTableRequest request) {
-        return CreateTableUtils.createTable(request, connectionUrl);
+        return CreateTableService.createTable(request, connectionUrl);
     }
 
     /**
@@ -102,7 +102,7 @@ public class PhoenixDBClient extends AbstractAmazonDynamoDB {
     */
     @Override
     public DeleteTableResult deleteTable(String tableName) {
-        return DeleteTableUtils.deleteTable(tableName, connectionUrl);
+        return DeleteTableService.deleteTable(tableName, connectionUrl);
     }
 
     /**
@@ -128,7 +128,7 @@ public class PhoenixDBClient extends AbstractAmazonDynamoDB {
      */
     @Override
     public PutItemResult putItem(PutItemRequest request) {
-        return PutItemUtils.putItem(request, connectionUrl);
+        return PutItemService.putItem(request, connectionUrl);
     }
 
     /**
@@ -136,7 +136,7 @@ public class PhoenixDBClient extends AbstractAmazonDynamoDB {
      */
     @Override
     public QueryResult query(QueryRequest request) {
-        return QueryUtils.query(request, connectionUrl);
+        return QueryService.query(request, connectionUrl);
     }
 
     /**
@@ -144,6 +144,6 @@ public class PhoenixDBClient extends AbstractAmazonDynamoDB {
      */
     @Override
     public ScanResult scan(ScanRequest request) {
-        return ScanUtils.scan(request, connectionUrl);
+        return ScanService.scan(request, connectionUrl);
     }
 }

@@ -1,6 +1,5 @@
 package org.apache.phoenix.ddb.utils;
 
-import org.apache.phoenix.ddb.service.CommonServiceUtils;
 import org.apache.phoenix.schema.PColumn;
 
 import java.util.HashMap;

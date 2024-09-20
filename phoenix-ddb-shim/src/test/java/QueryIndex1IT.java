@@ -8,13 +8,7 @@ import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
-import org.apache.phoenix.compile.ExplainPlan;
-import org.apache.phoenix.compile.ExplainPlanAttributes;
 import org.apache.phoenix.ddb.PhoenixDBClient;
-import org.apache.phoenix.ddb.service.QueryUtils;
-import org.apache.phoenix.ddb.utils.PhoenixUtils;
-import org.apache.phoenix.jdbc.PhoenixPreparedStatement;
-import org.apache.phoenix.schema.PColumn;
 import org.apache.phoenix.util.PhoenixRuntime;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -25,12 +19,8 @@ import org.junit.rules.TestName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 import static org.apache.phoenix.query.BaseTest.setUpConfigForMiniCluster;

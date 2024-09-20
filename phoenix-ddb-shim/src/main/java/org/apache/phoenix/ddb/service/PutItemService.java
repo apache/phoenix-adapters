@@ -6,6 +6,7 @@ import com.amazonaws.services.dynamodbv2.model.PutItemRequest;
 import com.amazonaws.services.dynamodbv2.model.PutItemResult;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.phoenix.ddb.bson.DdbAttributesToBsonDocument;
+import org.apache.phoenix.ddb.utils.CommonServiceUtils;
 import org.apache.phoenix.jdbc.PhoenixConnection;
 import org.apache.phoenix.schema.PColumn;
 import org.apache.phoenix.schema.PTable;
@@ -25,9 +26,9 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 
-public class PutItemUtils {
+public class PutItemService {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(PutItemUtils.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(PutItemService.class);
 
     private static final String PUT_WITH_HASH_KEY = "UPSERT INTO %s VALUES (?,?)";
     private static final String PUT_WITH_HASH_SORT_KEY = "UPSERT INTO %s VALUES (?,?,?)";

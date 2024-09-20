@@ -22,15 +22,15 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 
 import com.amazonaws.services.dynamodbv2.model.DeleteTableResult;
-import com.amazonaws.services.dynamodbv2.model.DeleteTableRequest;
 import com.amazonaws.services.dynamodbv2.model.TableDescription;
 
+import org.apache.phoenix.ddb.utils.TableDescriptorUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 
-public class DeleteTableUtils {
-    private static final Logger LOGGER = LoggerFactory.getLogger(DeleteTableUtils.class);
+public class DeleteTableService {
+    private static final Logger LOGGER = LoggerFactory.getLogger(DeleteTableService.class);
 
     public static DeleteTableResult deleteTable(final String tableName,
                                                 final String connectionUrl) {

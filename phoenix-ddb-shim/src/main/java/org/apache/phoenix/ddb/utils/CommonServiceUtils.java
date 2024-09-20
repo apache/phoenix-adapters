@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package org.apache.phoenix.ddb.service;
+package org.apache.phoenix.ddb.utils;
 
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;

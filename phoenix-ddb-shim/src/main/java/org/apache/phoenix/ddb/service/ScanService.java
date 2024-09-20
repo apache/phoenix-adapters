@@ -1,11 +1,11 @@
 package org.apache.phoenix.ddb.service;
 
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
-import com.amazonaws.services.dynamodbv2.model.QueryRequest;
 import com.amazonaws.services.dynamodbv2.model.ScanRequest;
 import com.amazonaws.services.dynamodbv2.model.ScanResult;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.phoenix.ddb.utils.KeyConditionsHolder;
+import org.apache.phoenix.ddb.utils.CommonServiceUtils;
+import org.apache.phoenix.ddb.utils.DQLUtils;
 import org.apache.phoenix.ddb.utils.PhoenixUtils;
 import org.apache.phoenix.schema.PColumn;
 import org.slf4j.Logger;
@@ -18,9 +18,9 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 
-public class ScanUtils {
+public class ScanService {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(QueryUtils.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(ScanService.class);
     private static final String SELECT_QUERY = "SELECT COL FROM %s ";
 
     private static final String SELECT_QUERY_WITH_INDEX_HINT
@@ -39,7 +39,7 @@ public class ScanUtils {
                 indexPKCols = PhoenixUtils.getOnlyIndexPKColumns(connection, indexName, tableName);
             }
             PreparedStatement stmt = getPreparedStatement(connection, request, useIndex, tablePKCols, indexPKCols);
-            return (ScanResult)DQLUtils.executeStatementReturnResult(false, stmt,
+            return (ScanResult) DQLUtils.executeStatementReturnResult(false, stmt,
                     getProjectionAttributes(request), useIndex, tablePKCols, indexPKCols);
         } catch (SQLException e) {
             throw new RuntimeException(e);

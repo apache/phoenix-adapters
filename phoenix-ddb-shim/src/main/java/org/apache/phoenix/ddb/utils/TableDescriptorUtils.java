@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package org.apache.phoenix.ddb.service;
+package org.apache.phoenix.ddb.utils;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
