@@ -20,14 +20,18 @@ import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.amazonaws.services.dynamodbv2.model.CreateTableResult;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
+import com.amazonaws.services.dynamodbv2.model.StreamSpecification;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.phoenix.ddb.PhoenixDBClient;
 import org.apache.phoenix.ddb.utils.PhoenixUtils;
 import org.apache.phoenix.end2end.ServerMetadataCacheTestImpl;
+import org.apache.phoenix.jdbc.PhoenixConnection;
 import org.apache.phoenix.jdbc.PhoenixDriver;
 import org.apache.phoenix.schema.PColumn;
+import org.apache.phoenix.schema.PTable;
+import org.apache.phoenix.util.CDCUtil;
 import org.apache.phoenix.util.JacksonUtil;
 import org.apache.phoenix.util.PhoenixRuntime;
 import org.apache.phoenix.util.ServerUtil;
@@ -218,6 +222,29 @@ public class CreateTableIT {
             Assert.assertEquals(2, pkCols.size());
             Assert.assertEquals("lowercase", pkCols.get(0).getName().getString());
             Assert.assertEquals("UPPERCASE", pkCols.get(1).getName().getString());
+        }
+    }
+
+    @Test(timeout = 120000)
+    public void createTableWithStreamTest() throws Exception {
+        String tableName = testName.getMethodName().toUpperCase();
+        // create table request
+        CreateTableRequest createTableRequest =
+                DDLTestUtils.getCreateTableRequest(tableName, "hashKey",
+                        ScalarAttributeType.B, "sortKey", ScalarAttributeType.N);
+
+        DDLTestUtils.addStreamSpecToRequest(createTableRequest, "NEW_IMAGE");
+
+        PhoenixDBClient phoenixDBClient = new PhoenixDBClient(url);
+        CreateTableResult createTableResult1 = amazonDynamoDB.createTable(createTableRequest);
+        CreateTableResult createTableResult2 = phoenixDBClient.createTable(createTableRequest);
+        TableDescription tableDescription1 = createTableResult1.getTableDescription();
+        TableDescription tableDescription2 = createTableResult2.getTableDescription();
+        DDLTestUtils.assertTableDescriptions(tableDescription1, tableDescription2);
+
+        try (Connection connection = DriverManager.getConnection(url)) {
+            DDLTestUtils.assertCDCMetadata(connection.unwrap(PhoenixConnection.class),
+                    tableDescription2, "NEW_IMAGE");
         }
     }
 }

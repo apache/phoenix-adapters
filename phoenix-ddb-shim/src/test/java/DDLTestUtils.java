@@ -10,9 +10,16 @@ import com.amazonaws.services.dynamodbv2.model.Projection;
 import com.amazonaws.services.dynamodbv2.model.ProjectionType;
 import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
+import com.amazonaws.services.dynamodbv2.model.StreamSpecification;
 import com.amazonaws.services.dynamodbv2.model.TableDescription;
+import org.apache.phoenix.jdbc.PhoenixConnection;
+import org.apache.phoenix.schema.PTable;
+import org.apache.phoenix.util.CDCUtil;
 import org.junit.Assert;
 
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -65,6 +72,16 @@ public class DDLTestUtils {
         } else {
             addLocalIndexToRequest(request, indexName, idxKeySchemaElements);
         }
+    }
+
+    /**
+     * Add StreamSpecification to the given CreateTableRequest with the given stream type.
+     */
+    public static void addStreamSpecToRequest(CreateTableRequest request, String streamType) {
+        StreamSpecification streamSpec = new StreamSpecification();
+        streamSpec.setStreamEnabled(true);
+        streamSpec.setStreamViewType(streamType);
+        request.setStreamSpecification(streamSpec);
     }
 
     /**
@@ -172,6 +189,39 @@ public class DDLTestUtils {
                         .before(new Date(System.currentTimeMillis())));
 
         Assert.assertNull(tableDescription2.getTableArn());
+
+        // stream spec
+        StreamSpecification streamSpec1 = tableDescription1.getStreamSpecification();
+        StreamSpecification streamSpec2 = tableDescription2.getStreamSpecification();
+        Assert.assertEquals(streamSpec1, streamSpec2);
+    }
+
+    /**
+     * Verify CDC metadata in TableDescription returned from Phoenix client.
+     * CDC index, SCHEMA_VERSION column in PTable and timestamp.
+     */
+    public static void assertCDCMetadata(PhoenixConnection pconn, TableDescription td,
+                                         String streamType)
+            throws SQLException {
+        String tableName = td.getTableName();
+        Assert.assertTrue(td
+                .getLatestStreamArn().startsWith("stream-"+ tableName + "-" + streamType+ "-"));
+
+        PTable dataTable = pconn.getTable(tableName);
+        Assert.assertEquals(streamType, dataTable.getSchemaVersion());
+        boolean cdcIndexPresent = false;
+        PTable cdcIndex = null;
+        for (PTable index : dataTable.getIndexes()) {
+            if (CDCUtil.isCDCIndex(index.getName().getString())) {
+                cdcIndexPresent = true;
+                cdcIndex = index;
+            }
+        }
+        Assert.assertTrue(cdcIndexPresent);
+        Assert.assertEquals(String.valueOf(cdcIndex.getTimeStamp()+1),
+                td.getLatestStreamLabel());
+        Assert.assertTrue(td
+                .getLatestStreamArn().contains(String.valueOf(cdcIndex.getTimeStamp()+1)));
     }
 
     private static void addGlobalIndexToRequest(CreateTableRequest request, String indexName,

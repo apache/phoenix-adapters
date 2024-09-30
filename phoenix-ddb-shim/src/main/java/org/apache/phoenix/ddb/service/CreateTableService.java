@@ -33,6 +33,7 @@ import com.amazonaws.services.dynamodbv2.model.CreateTableResult;
 import com.amazonaws.services.dynamodbv2.model.GlobalSecondaryIndex;
 import com.amazonaws.services.dynamodbv2.model.KeySchemaElement;
 import com.amazonaws.services.dynamodbv2.model.LocalSecondaryIndex;
+import com.amazonaws.services.dynamodbv2.model.StreamSpecification;
 import com.amazonaws.services.dynamodbv2.model.TableDescription;
 import org.apache.phoenix.ddb.utils.CommonServiceUtils;
 import org.apache.phoenix.ddb.utils.TableDescriptorUtils;
@@ -44,6 +45,9 @@ import org.apache.phoenix.thirdparty.com.google.common.base.Preconditions;
 public class CreateTableService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(CreateTableService.class);
+
+  private static final String CREATE_CDC_DDL = "CREATE CDC CDC_%s on %s";
+  private static final String ALTER_TABLE_STREAM_TYPE_DDL = "ALTER TABLE %s set SCHEMA_VERSION = '%s'";
 
   public static CreateTableResult getCreateTableResponse(final String tableName,
       final String connectionUrl) {
@@ -151,6 +155,23 @@ public class CreateTableService {
       return indexDDLs;
   }
 
+    /**
+     * If StreamEnabled is set to true, return 2 DDLs for CDC.
+     * 1. CREATE CDC ddl to create the virtual cdc table and index
+     * 2. ALTER TABLE ddl to store Stream Type in the table metadata
+     */
+  public static List<String> getCdcDDL(CreateTableRequest request) {
+      final List<String> cdcDDLs = new ArrayList<>();
+      StreamSpecification streamSpec = request.getStreamSpecification();
+      if (streamSpec != null && streamSpec.getStreamEnabled()) {
+        String tableName = request.getTableName();
+        String streamType = streamSpec.getStreamViewType();
+        cdcDDLs.add(String.format(CREATE_CDC_DDL, tableName, tableName));
+        cdcDDLs.add(String.format(ALTER_TABLE_STREAM_TYPE_DDL, tableName, streamType));
+      }
+      return cdcDDLs;
+  }
+
   public static CreateTableResult createTable(final CreateTableRequest request,
       final String connectionUrl) {
       final String tableName = request.getTableName();
@@ -233,10 +254,18 @@ public class CreateTableService {
           LOGGER.info("Create Index Query: " + createIndexDDL);
       }
 
+      List<String> createCdcDDLs = getCdcDDL(request);
+      for (String ddl : createCdcDDLs) {
+          LOGGER.info("CDC DDL: " + ddl);
+      }
+
       try (Connection connection = DriverManager.getConnection(connectionUrl)) {
           connection.createStatement().execute(createTableDDL);
           for (String createIndexDDL : createIndexDDLs) {
               connection.createStatement().execute(createIndexDDL);
+          }
+          for (String ddl : createCdcDDLs) {
+              connection.createStatement().execute(ddl);
           }
       } catch (SQLException e) {
           throw new RuntimeException(e);

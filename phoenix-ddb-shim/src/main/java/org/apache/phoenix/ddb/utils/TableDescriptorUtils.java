@@ -33,6 +33,7 @@ import com.amazonaws.services.dynamodbv2.model.IndexStatus;
 import com.amazonaws.services.dynamodbv2.model.KeySchemaElement;
 import com.amazonaws.services.dynamodbv2.model.KeyType;
 import com.amazonaws.services.dynamodbv2.model.LocalSecondaryIndexDescription;
+import com.amazonaws.services.dynamodbv2.model.StreamSpecification;
 import com.amazonaws.services.dynamodbv2.model.TableDescription;
 import com.amazonaws.services.dynamodbv2.model.TableStatus;
 
@@ -40,6 +41,7 @@ import org.apache.phoenix.jdbc.PhoenixConnection;
 import org.apache.phoenix.schema.PColumn;
 import org.apache.phoenix.schema.PTable;
 import org.apache.phoenix.schema.PTableKey;
+import org.apache.phoenix.util.CDCUtil;
 
 /**
  * Utilities to build TableDescriptor object for the given Phoenix table object.
@@ -54,6 +56,9 @@ public class TableDescriptorUtils {
           List<LocalSecondaryIndexDescription> localSecondaryIndexDescriptions =
               new ArrayList<>();
           for (PTable index : table.getIndexes()) {
+              // skip the CDC index when building table descriptor
+              if (CDCUtil.isCDCIndex(index.getName().getString())) continue;
+
               List<PColumn> respPkColumns = index.getPKColumns();
               List<KeySchemaElement> respKeySchemaElements = new ArrayList<>();
               String hashKeyName = respPkColumns.get(0).getName().getString();
@@ -147,10 +152,28 @@ public class TableDescriptorUtils {
           tableDescription.setAttributeDefinitions(respAttributeDefs);
 
           updateTableDescriptorForIndexes(table, tableDescription, attributeDefinitionSet);
+          updateStreamSpecification(table, tableDescription, phoenixConnection);
           tableDescription.setCreationDateTime(new Date(table.getTimeStamp()));
           return tableDescription;
       } catch (SQLException e) {
           throw new RuntimeException(e);
+      }
+  }
+
+    /**
+     * If stream is enabled on this table i.e. SCHEMA_VERSION is set to some Stream Type,
+     * populate the StreamSpecification, LatestStreamArn and LatestStreamLabel in the
+     * TableDescription
+     */
+  private static void updateStreamSpecification(PTable table, TableDescription tableDescription,
+                                                PhoenixConnection pconn) throws SQLException {
+      if (table.getSchemaVersion() != null) {
+          StreamSpecification streamSpec = new StreamSpecification();
+          streamSpec.setStreamEnabled(true);
+          streamSpec.setStreamViewType(table.getSchemaVersion());
+          tableDescription.setLatestStreamArn(DDBShimCDCUtils.getLatestStreamARN(pconn, table));
+          tableDescription.setLatestStreamLabel(DDBShimCDCUtils.getLatestStreamLabel(pconn, table));
+          tableDescription.setStreamSpecification(streamSpec);
       }
   }
 }
