@@ -5,17 +5,27 @@ import com.amazonaws.services.dynamodbv2.model.ConditionalCheckFailedException;
 import com.amazonaws.services.dynamodbv2.model.PutItemRequest;
 import com.amazonaws.services.dynamodbv2.model.PutItemResult;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.hadoop.hbase.Cell;
+import org.apache.hadoop.hbase.util.Pair;
+import org.apache.phoenix.ddb.bson.BsonDocumentToDdbAttributes;
 import org.apache.phoenix.ddb.bson.DdbAttributesToBsonDocument;
 import org.apache.phoenix.ddb.utils.CommonServiceUtils;
 import org.apache.phoenix.jdbc.PhoenixConnection;
+import org.apache.phoenix.jdbc.PhoenixPreparedStatement;
+import org.apache.phoenix.query.QueryConstants;
 import org.apache.phoenix.schema.PColumn;
 import org.apache.phoenix.schema.PTable;
 import org.apache.phoenix.schema.PTableKey;
+import org.apache.phoenix.schema.tuple.Tuple;
+import org.apache.phoenix.schema.types.PBson;
 import org.apache.phoenix.schema.types.PDataType;
 import org.apache.phoenix.schema.types.PDouble;
 import org.apache.phoenix.schema.types.PVarbinaryEncoded;
 import org.apache.phoenix.schema.types.PVarchar;
+
+import com.amazonaws.services.dynamodbv2.model.ReturnValuesOnConditionCheckFailure;
 import org.bson.BsonDocument;
+import org.bson.RawBsonDocument;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,9 +58,11 @@ public class PutItemService {
         Map<String, AttributeValue> item = request.getItem();
         BsonDocument bsonDoc = DdbAttributesToBsonDocument.getBsonDocument(item);
 
-        // TODO: implement ReturnValues and ReturnValuesOnConditionCheckFailure for phoenix
         String returnValuesOnConditionCheckFailure =
                 request.getReturnValuesOnConditionCheckFailure();
+        // TODO: implement ReturnValues for Phoenix. Currently, PHOENIX-7398 supports returning
+        // old row only for condition check failure. For successful update, it returns updated full
+        // new row. We need to introduce new API that returns old row even with successful update.
         String returnValues = request.getReturnValues();
 
         try (Connection connection = DriverManager.getConnection(connectionUrl)) {
@@ -71,16 +83,45 @@ public class PutItemService {
             stmt.setObject(pkCols.size()+1, bsonDoc);
 
             //execute, auto commit is on
-            LOGGER.info("Upsert Query for PutItem: " + stmt);
-            int returnStatus = stmt.executeUpdate();
-            if (returnStatus == 0 && StringUtils.isEmpty(returnValuesOnConditionCheckFailure)) {
-                throw new ConditionalCheckFailedException("Conditional request failed: "
-                        + request.getConditionExpression());
-            }
+            LOGGER.info("Upsert Query for PutItem: {}", stmt);
+            executeUpdate(request, returnValuesOnConditionCheckFailure, stmt, table,
+                pkCols);
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
         return new PutItemResult();
+    }
+
+    private static void executeUpdate(PutItemRequest request,
+        String returnValuesOnConditionCheckFailure, PreparedStatement stmt, PTable table,
+        List<PColumn> pkCols) throws SQLException, ConditionalCheckFailedException {
+        if (StringUtils.isEmpty(returnValuesOnConditionCheckFailure)
+            || ReturnValuesOnConditionCheckFailure.NONE.toString()
+            .equals(returnValuesOnConditionCheckFailure)) {
+            int returnStatus = stmt.executeUpdate();
+            if (returnStatus == 0) {
+                throw new ConditionalCheckFailedException(
+                    "Conditional request failed: " + request.getConditionExpression());
+            }
+        } else if (ReturnValuesOnConditionCheckFailure.ALL_OLD.toString()
+            .equals(returnValuesOnConditionCheckFailure)) {
+            Pair<Integer, Tuple> tuplePair =
+                stmt.unwrap(PhoenixPreparedStatement.class).executeUpdateReturnRow();
+            if (tuplePair.getFirst() == 0) {
+                Tuple tuple = tuplePair.getSecond();
+                Cell cell = tuple.getValue(QueryConstants.DEFAULT_COLUMN_FAMILY_BYTES,
+                    table.getColumns().get(pkCols.size()).getColumnQualifierBytes());
+                RawBsonDocument rawBsonDocument =
+                    (RawBsonDocument) PBson.INSTANCE.toObject(cell.getValueArray(),
+                        cell.getValueOffset(), cell.getValueLength());
+                ConditionalCheckFailedException conditionalCheckFailedException =
+                    new ConditionalCheckFailedException(
+                        "Conditional request failed: " + request.getConditionExpression());
+                conditionalCheckFailedException.setItem(
+                    BsonDocumentToDdbAttributes.getFullItem(rawBsonDocument));
+                throw conditionalCheckFailedException;
+            }
+        }
     }
 
     /**

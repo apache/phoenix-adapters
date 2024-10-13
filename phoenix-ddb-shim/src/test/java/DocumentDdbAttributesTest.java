@@ -74,6 +74,19 @@ public class DocumentDdbAttributesTest {
   protected static Map<String, AttributeValue> getItem1() {
     Map<String, AttributeValue> item = new HashMap<>();
     item.put("attr_0", new AttributeValue().withS("str_val_0"));
+    commonAttributeValues1(item);
+    return item;
+  }
+
+  protected static Map<String, AttributeValue> getItemWithBinary1() {
+    Map<String, AttributeValue> item = new HashMap<>();
+    item.put("attr_0", new AttributeValue().withB(ByteBuffer.wrap(Bytes.toBytes("str_val_0"))));
+    item.put("pk2", new AttributeValue().withB(ByteBuffer.wrap(Bytes.toBytes("str_val_2"))));
+    commonAttributeValues1(item);
+    return item;
+  }
+
+  private static void commonAttributeValues1(Map<String, AttributeValue> item) {
     item.put("attr_1", new AttributeValue().withN("1295.03"));
     item.put("attr_5", new AttributeValue().withL(
         new AttributeValue().withN("1234"),
@@ -145,12 +158,24 @@ public class DocumentDdbAttributesTest {
             new AttributeValue().withS("1234abcd"),
             new AttributeValue().withL(new AttributeValue().withS("xyz0123"),
                 new AttributeValue().withM(nestedList1Map1))));
-    return item;
   }
 
   protected static Map<String, AttributeValue> getItem2() {
     Map<String, AttributeValue> item = new HashMap<>();
     item.put("attr_0", new AttributeValue().withS("str_val_0"));
+    commonAttributeValues2(item);
+    return item;
+  }
+
+  protected static Map<String, AttributeValue> getItemWithBinary2() {
+    Map<String, AttributeValue> item = new HashMap<>();
+    item.put("attr_0", new AttributeValue().withB(ByteBuffer.wrap(Bytes.toBytes("str_val_0"))));
+    item.put("pk2", new AttributeValue().withB(ByteBuffer.wrap(Bytes.toBytes("str_val_2"))));
+    commonAttributeValues2(item);
+    return item;
+  }
+
+  private static void commonAttributeValues2(Map<String, AttributeValue> item) {
     item.put("attr_1", new AttributeValue().withN("1295.03"));
     item.put("attr_5", new AttributeValue().withL(
         new AttributeValue().withN("1234"),
@@ -250,7 +275,6 @@ public class DocumentDdbAttributesTest {
                     ByteBuffer.wrap(Bytes.toBytes("val01")),
                     ByteBuffer.wrap(Bytes.toBytes("val02")),
                     ByteBuffer.wrap(Bytes.toBytes("val03"))))));
-    return item;
   }
 
   private static Map<String, AttributeValue> getItem3() {
