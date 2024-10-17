@@ -25,6 +25,8 @@ import com.amazonaws.services.dynamodbv2.model.DeleteTableRequest;
 import com.amazonaws.services.dynamodbv2.model.DeleteTableResult;
 import com.amazonaws.services.dynamodbv2.model.DescribeTableRequest;
 import com.amazonaws.services.dynamodbv2.model.DescribeTableResult;
+import com.amazonaws.services.dynamodbv2.model.GetItemRequest;
+import com.amazonaws.services.dynamodbv2.model.GetItemResult;
 import com.amazonaws.services.dynamodbv2.model.PutItemRequest;
 import com.amazonaws.services.dynamodbv2.model.PutItemResult;
 import com.amazonaws.services.dynamodbv2.model.QueryRequest;
@@ -34,6 +36,7 @@ import com.amazonaws.services.dynamodbv2.model.ScanResult;
 import com.amazonaws.services.dynamodbv2.model.TableDescription;
 import org.apache.phoenix.ddb.service.CreateTableService;
 import org.apache.phoenix.ddb.service.DeleteTableService;
+import org.apache.phoenix.ddb.service.GetItemService;
 import org.apache.phoenix.ddb.service.PutItemService;
 import org.apache.phoenix.ddb.service.QueryService;
 import org.apache.phoenix.ddb.service.ScanService;
@@ -121,6 +124,14 @@ public class PhoenixDBClient extends AbstractAmazonDynamoDB {
         TableDescription tableDescription
                 = TableDescriptorUtils.getTableDescription(tableName, connectionUrl);
         return new DescribeTableResult().withTable(tableDescription);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public GetItemResult getItem(GetItemRequest request){
+        return GetItemService.getItem(request, connectionUrl);
     }
 
     /**
