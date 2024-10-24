@@ -33,12 +33,14 @@ public class ScanService {
         String indexName = request.getIndexName();
         boolean useIndex = !StringUtils.isEmpty(indexName);
         List<PColumn> tablePKCols, indexPKCols = null;
-        try (Connection connection = DriverManager.getConnection(connectionUrl)) {
+        try (Connection connection = DriverManager.getConnection(connectionUrl,
+                DQLUtils.getConnectionProps())) {
             tablePKCols = PhoenixUtils.getPKColumns(connection, tableName);
             if (useIndex) {
                 indexPKCols = PhoenixUtils.getOnlyIndexPKColumns(connection, indexName, tableName);
             }
-            PreparedStatement stmt = getPreparedStatement(connection, request, useIndex, tablePKCols, indexPKCols);
+            PreparedStatement stmt
+                    = getPreparedStatement(connection, request, useIndex, tablePKCols, indexPKCols);
             return (ScanResult) DQLUtils.executeStatementReturnResult(false, stmt,
                     getProjectionAttributes(request), useIndex, tablePKCols, indexPKCols);
         } catch (SQLException e) {

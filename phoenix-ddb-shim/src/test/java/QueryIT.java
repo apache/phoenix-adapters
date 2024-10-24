@@ -175,6 +175,7 @@ public class QueryIT {
         Assert.assertTrue(dynamoResult.getCount() == 1);
         Assert.assertEquals(dynamoResult.getCount(), phoenixResult.getCount());
         Assert.assertEquals(dynamoResult.getItems().get(0), phoenixResult.getItems().get(0));
+        Assert.assertEquals(dynamoResult.getScannedCount(), phoenixResult.getScannedCount());
     }
 
     @Test(timeout = 120000)
@@ -220,6 +221,7 @@ public class QueryIT {
         Assert.assertTrue(dynamoResult.getCount() == 1);
         Assert.assertEquals(dynamoResult.getCount(), phoenixResult.getCount());
         Assert.assertEquals(dynamoResult.getItems().get(0), phoenixResult.getItems().get(0));
+        Assert.assertEquals(dynamoResult.getScannedCount(), phoenixResult.getScannedCount());
     }
 
     @Test(timeout = 120000)
@@ -261,6 +263,7 @@ public class QueryIT {
         Assert.assertTrue(dynamoResult.getCount() == 1);
         Assert.assertEquals(dynamoResult.getCount(), phoenixResult.getCount());
         Assert.assertEquals(dynamoResult.getItems().get(0), phoenixResult.getItems().get(0));
+        Assert.assertEquals(dynamoResult.getScannedCount(), phoenixResult.getScannedCount());
     }
 
     @Test(timeout = 120000)
@@ -311,6 +314,7 @@ public class QueryIT {
             int sortKeyVal2 = Integer.parseInt(phoenixResult.getItems().get(i+1).get("attr_1").getN());
             Assert.assertTrue(sortKeyVal1 >= sortKeyVal2);
         }
+        Assert.assertEquals(dynamoResult.getScannedCount(), phoenixResult.getScannedCount());
     }
 
     @Test(timeout = 120000)

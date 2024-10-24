@@ -6,6 +6,7 @@ import com.amazonaws.services.dynamodbv2.model.QueryResult;
 import com.amazonaws.services.dynamodbv2.model.ScanResult;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.phoenix.ddb.bson.BsonDocumentToDdbAttributes;
+import org.apache.phoenix.query.QueryServices;
 import org.apache.phoenix.schema.PColumn;
 import org.bson.BsonDocument;
 import org.bson.RawBsonDocument;
@@ -17,6 +18,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 
 /**
  * Utility methods used for both Query and Scan API requests.
@@ -47,10 +49,13 @@ public class DQLUtils {
         }
         Map<String, AttributeValue> lastKey
                 = DQLUtils.getLastEvaluatedKey(lastBsonDoc, useIndex, tablePKCols, indexPKCols);
+        int countRowsScanned = (int) PhoenixUtils.getRowsScanned(rs);
         if (isQuery) {
-            return new QueryResult().withItems(items).withCount(count).withLastEvaluatedKey(lastKey);
+            return new QueryResult().withItems(items).withCount(count)
+                    .withLastEvaluatedKey(lastKey).withScannedCount(countRowsScanned);
         } else {
-            return new ScanResult().withItems(items).withCount(count).withLastEvaluatedKey(lastKey);
+            return new ScanResult().withItems(items).withCount(count)
+                    .withLastEvaluatedKey(lastKey).withScannedCount(countRowsScanned);
         }
     }
 
@@ -179,5 +184,13 @@ public class DQLUtils {
         } else if (attrVal.getB() != null) {
             stmt.setBytes(index, attrVal.getB().array());
         }
+    }
+
+    /**
+     * Return DQL specific connection configuration properties.
+     */
+    public static Properties getConnectionProps() {
+        Properties props = PhoenixUtils.getConnectionProps();
+        return props;
     }
 }

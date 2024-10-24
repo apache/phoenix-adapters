@@ -117,6 +117,7 @@ public class ScanIndexIT {
         ScanResult dynamoResult = amazonDynamoDB.scan(sr);
         // dynamo does not guarantee ordering of partition keys in Scan, so only check count
         Assert.assertEquals(dynamoResult.getCount(), phoenixResult.getCount());
+        Assert.assertEquals(dynamoResult.getScannedCount(), phoenixResult.getScannedCount());
 
         // explain plan
         TestUtils.validateIndexUsed(sr, url);
@@ -167,6 +168,7 @@ public class ScanIndexIT {
         ScanResult dynamoResult = amazonDynamoDB.scan(sr);
         // dynamo does not guarantee ordering of partition keys in Scan, so only check count
         Assert.assertEquals(dynamoResult.getCount(), phoenixResult.getCount());
+        Assert.assertEquals(dynamoResult.getScannedCount(), phoenixResult.getScannedCount());
 
         // explain plan
         TestUtils.validateIndexUsed(sr, url);

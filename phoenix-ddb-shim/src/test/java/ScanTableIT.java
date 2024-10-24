@@ -115,6 +115,7 @@ public class ScanTableIT {
             Assert.assertNotNull(item.get("Reviews").getM().get("FiveStar").getL().get(0).getM().get("reviewer"));
             Assert.assertNotNull(item.get("title"));
         }
+        Assert.assertEquals(dynamoResult.getScannedCount(), phoenixResult.getScannedCount());
     }
 
     @Test(timeout = 120000)
@@ -172,6 +173,7 @@ public class ScanTableIT {
             Assert.assertNotNull(item.get("Reviews").getM().get("FiveStar").getL().get(0).getM().get("reviewer"));
             Assert.assertNotNull(item.get("title"));
         }
+        Assert.assertEquals(dynamoResult.getScannedCount(), phoenixResult.getScannedCount());
     }
 
     @Test(timeout = 120000)
@@ -210,6 +212,7 @@ public class ScanTableIT {
         ScanResult phoenixResult = phoenixDBClient.scan(sr);
         ScanResult dynamoResult = amazonDynamoDB.scan(sr);
         Assert.assertEquals(dynamoResult.getItems(), phoenixResult.getItems());
+        Assert.assertEquals(dynamoResult.getScannedCount(), phoenixResult.getScannedCount());
     }
 
     @Test(timeout = 120000)
@@ -250,6 +253,7 @@ public class ScanTableIT {
         ScanResult phoenixResult = phoenixDBClient.scan(sr);
         ScanResult dynamoResult = amazonDynamoDB.scan(sr);
         Assert.assertEquals(dynamoResult.getItems(), phoenixResult.getItems());
+        Assert.assertEquals(dynamoResult.getScannedCount(), phoenixResult.getScannedCount());
     }
 
     /**

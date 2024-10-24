@@ -121,6 +121,7 @@ public class QueryIndex1IT {
         QueryResult dynamoResult = amazonDynamoDB.query(qr);
         Assert.assertEquals(dynamoResult.getCount(), phoenixResult.getCount());
         Assert.assertEquals(dynamoResult.getItems().get(0), phoenixResult.getItems().get(0));
+        Assert.assertEquals(dynamoResult.getScannedCount(), phoenixResult.getScannedCount());
 
         // check last evaluated key
         Map<String, AttributeValue> lastKey = phoenixResult.getLastEvaluatedKey();
@@ -231,6 +232,7 @@ public class QueryIndex1IT {
         QueryResult dynamoResult = amazonDynamoDB.query(qr);
         Assert.assertEquals(dynamoResult.getCount(), phoenixResult.getCount());
         Assert.assertEquals(dynamoResult.getItems().get(0), phoenixResult.getItems().get(0));
+        Assert.assertEquals(dynamoResult.getScannedCount(), phoenixResult.getScannedCount());
 
         // check last evaluated key
         Map<String, AttributeValue> lastKey = phoenixResult.getLastEvaluatedKey();
