@@ -19,6 +19,8 @@
 package org.apache.phoenix.ddb;
 
 import com.amazonaws.services.dynamodbv2.AbstractAmazonDynamoDB;
+import com.amazonaws.services.dynamodbv2.model.BatchGetItemRequest;
+import com.amazonaws.services.dynamodbv2.model.BatchGetItemResult;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.amazonaws.services.dynamodbv2.model.CreateTableResult;
 import com.amazonaws.services.dynamodbv2.model.DeleteTableRequest;
@@ -36,6 +38,7 @@ import com.amazonaws.services.dynamodbv2.model.ScanResult;
 import com.amazonaws.services.dynamodbv2.model.TableDescription;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemRequest;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemResult;
+import org.apache.phoenix.ddb.service.BatchGetItemService;
 import org.apache.phoenix.ddb.service.CreateTableService;
 import org.apache.phoenix.ddb.service.DeleteTableService;
 import org.apache.phoenix.ddb.service.GetItemService;
@@ -86,6 +89,15 @@ public class PhoenixDBClient extends AbstractAmazonDynamoDB {
             throw new RuntimeException(e);
         }
     }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public BatchGetItemResult batchGetItem(BatchGetItemRequest request){
+        return BatchGetItemService.batchGetItem(request, connectionUrl);
+    }
+
 
     /**
      * {@inheritDoc}
