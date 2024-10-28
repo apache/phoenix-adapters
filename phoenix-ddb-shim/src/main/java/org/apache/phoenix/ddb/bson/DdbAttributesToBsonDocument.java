@@ -73,6 +73,7 @@ public class DdbAttributesToBsonDocument {
    * @return Corresponding BsonDocument.
    */
   public static BsonDocument getBsonDocument(final Map<String, AttributeValue> item) {
+    if (item == null) return null;
     BsonDocument bsonDocument = new BsonDocument();
     for (Map.Entry<String, AttributeValue> entry : item.entrySet()) {
       updateBsonDocEntries(entry, bsonDocument);

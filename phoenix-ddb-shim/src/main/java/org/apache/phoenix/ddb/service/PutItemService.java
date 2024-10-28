@@ -10,6 +10,7 @@ import org.apache.hadoop.hbase.util.Pair;
 import org.apache.phoenix.ddb.bson.BsonDocumentToDdbAttributes;
 import org.apache.phoenix.ddb.bson.DdbAttributesToBsonDocument;
 import org.apache.phoenix.ddb.utils.CommonServiceUtils;
+import org.apache.phoenix.ddb.utils.DMLUtils;
 import org.apache.phoenix.jdbc.PhoenixConnection;
 import org.apache.phoenix.jdbc.PhoenixPreparedStatement;
 import org.apache.phoenix.query.QueryConstants;
@@ -56,14 +57,8 @@ public class PutItemService {
     public static PutItemResult putItem(PutItemRequest request, String connectionUrl) {
         // get tableName, item, conditional expr and convert item to bson
         Map<String, AttributeValue> item = request.getItem();
+        PutItemResult result = new PutItemResult();
         BsonDocument bsonDoc = DdbAttributesToBsonDocument.getBsonDocument(item);
-
-        String returnValuesOnConditionCheckFailure =
-                request.getReturnValuesOnConditionCheckFailure();
-        // TODO: implement ReturnValues for Phoenix. Currently, PHOENIX-7398 supports returning
-        // old row only for condition check failure. For successful update, it returns updated full
-        // new row. We need to introduce new API that returns old row even with successful update.
-        String returnValues = request.getReturnValues();
 
         try (Connection connection = DriverManager.getConnection(connectionUrl)) {
             connection.setAutoCommit(true);
@@ -77,76 +72,22 @@ public class PutItemService {
             PreparedStatement stmt
                     = getPreparedStatement(connection, request, pkCols.size());
             // extract PKs from item
-            setKeysOnStatement(stmt, pkCols, item);
+            DMLUtils.setKeysOnStatement(stmt, pkCols, item);
 
             // set bson document of entire item
             stmt.setObject(pkCols.size()+1, bsonDoc);
 
             //execute, auto commit is on
             LOGGER.info("Upsert Query for PutItem: {}", stmt);
-            executeUpdate(request, returnValuesOnConditionCheckFailure, stmt, table,
-                pkCols);
+            Map<String, AttributeValue> returnAttrs
+                    = DMLUtils.executeUpdate(stmt, request.getReturnValues(),
+                    request.getReturnValuesOnConditionCheckFailure(),
+                    request.getConditionExpression(), table, pkCols);
+            result.setAttributes(returnAttrs);
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
-        return new PutItemResult();
-    }
-
-    private static void executeUpdate(PutItemRequest request,
-        String returnValuesOnConditionCheckFailure, PreparedStatement stmt, PTable table,
-        List<PColumn> pkCols) throws SQLException, ConditionalCheckFailedException {
-        if (StringUtils.isEmpty(returnValuesOnConditionCheckFailure)
-            || ReturnValuesOnConditionCheckFailure.NONE.toString()
-            .equals(returnValuesOnConditionCheckFailure)) {
-            int returnStatus = stmt.executeUpdate();
-            if (returnStatus == 0) {
-                throw new ConditionalCheckFailedException(
-                    "Conditional request failed: " + request.getConditionExpression());
-            }
-        } else if (ReturnValuesOnConditionCheckFailure.ALL_OLD.toString()
-            .equals(returnValuesOnConditionCheckFailure)) {
-            Pair<Integer, Tuple> tuplePair =
-                stmt.unwrap(PhoenixPreparedStatement.class).executeUpdateReturnRow();
-            if (tuplePair.getFirst() == 0) {
-                Tuple tuple = tuplePair.getSecond();
-                Cell cell = tuple.getValue(QueryConstants.DEFAULT_COLUMN_FAMILY_BYTES,
-                    table.getColumns().get(pkCols.size()).getColumnQualifierBytes());
-                RawBsonDocument rawBsonDocument =
-                    (RawBsonDocument) PBson.INSTANCE.toObject(cell.getValueArray(),
-                        cell.getValueOffset(), cell.getValueLength());
-                ConditionalCheckFailedException conditionalCheckFailedException =
-                    new ConditionalCheckFailedException(
-                        "Conditional request failed: " + request.getConditionExpression());
-                conditionalCheckFailedException.setItem(
-                    BsonDocumentToDdbAttributes.getFullItem(rawBsonDocument));
-                throw conditionalCheckFailedException;
-            }
-        }
-    }
-
-    /**
-     * Extract values for keys from the item and set them on the PreparedStatement.
-     */
-    private static void setKeysOnStatement(PreparedStatement stmt, List<PColumn> pkCols, Map<String,
-            AttributeValue> item) throws SQLException {
-        for (int i=0; i<pkCols.size(); i++) {
-            PColumn pkCol = pkCols.get(i);
-            String colName = pkCol.getName().toString();
-            PDataType type = pkCol.getDataType();
-            if (type.equals(PDouble.INSTANCE)) {
-                Double value = Double.parseDouble(item.get(colName).getN());
-                stmt.setDouble(i+1, value);
-            } else if (type.equals(PVarchar.INSTANCE)) {
-                String value = item.get(colName).getS();
-                stmt.setString(i+1, value);
-            } else if (type.equals(PVarbinaryEncoded.INSTANCE)) {
-                byte[] b = item.get(colName).getB().array();
-                stmt.setBytes(i+1, b);
-            } else {
-                throw new IllegalArgumentException("Primary Key column type "
-                        + type + " is not " + "correct type");
-            }
-        }
+        return result;
     }
 
     /**

@@ -23,12 +23,12 @@ import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.phoenix.ddb.bson.DdbAttributesToBsonDocument;
+import org.apache.phoenix.ddb.bson.UpdateExpressionDdbToBson;
 import org.apache.phoenix.schema.types.PDataType;
 import org.apache.phoenix.schema.types.PDecimal;
 import org.apache.phoenix.schema.types.PDouble;
 import org.apache.phoenix.schema.types.PVarbinaryEncoded;
 import org.apache.phoenix.schema.types.PVarchar;
-import org.apache.phoenix.thirdparty.com.google.common.base.Preconditions;
 import org.bson.BsonDocument;
 import org.bson.BsonString;
 
@@ -90,6 +90,20 @@ public class CommonServiceUtils {
         conditionDoc.put("$VAL", DdbAttributesToBsonDocument.getBsonDocument(exprAttrVals));
 
         return conditionDoc.toJson();
+    }
+
+    /**
+     * Return BsonDocument representation of BSON Update Expression based on dynamo update
+     * expression, expression attribute names and expression attribute values.
+     */
+    public static BsonDocument getBsonUpdateExpression(String updateExpr,
+                                                       Map<String, String> exprAttrNames,
+                                                       Map<String, AttributeValue> exprAttrVals) {
+
+        updateExpr = replaceExpressionAttributeNames(updateExpr, exprAttrNames);
+        return UpdateExpressionDdbToBson
+                .getBsonDocumentForUpdateExpression(updateExpr,
+                        DdbAttributesToBsonDocument.getBsonDocument(exprAttrVals));
     }
 
     /**

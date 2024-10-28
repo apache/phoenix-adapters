@@ -34,12 +34,15 @@ import com.amazonaws.services.dynamodbv2.model.QueryResult;
 import com.amazonaws.services.dynamodbv2.model.ScanRequest;
 import com.amazonaws.services.dynamodbv2.model.ScanResult;
 import com.amazonaws.services.dynamodbv2.model.TableDescription;
+import com.amazonaws.services.dynamodbv2.model.UpdateItemRequest;
+import com.amazonaws.services.dynamodbv2.model.UpdateItemResult;
 import org.apache.phoenix.ddb.service.CreateTableService;
 import org.apache.phoenix.ddb.service.DeleteTableService;
 import org.apache.phoenix.ddb.service.GetItemService;
 import org.apache.phoenix.ddb.service.PutItemService;
 import org.apache.phoenix.ddb.service.QueryService;
 import org.apache.phoenix.ddb.service.ScanService;
+import org.apache.phoenix.ddb.service.UpdateItemService;
 import org.apache.phoenix.ddb.utils.TableDescriptorUtils;
 import org.apache.phoenix.jdbc.PhoenixDriver;
 import org.apache.phoenix.thirdparty.com.google.common.base.Preconditions;
@@ -156,5 +159,13 @@ public class PhoenixDBClient extends AbstractAmazonDynamoDB {
     @Override
     public ScanResult scan(ScanRequest request) {
         return ScanService.scan(request, connectionUrl);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public UpdateItemResult updateItem(UpdateItemRequest request) {
+        return UpdateItemService.updateItem(request, connectionUrl);
     }
 }
