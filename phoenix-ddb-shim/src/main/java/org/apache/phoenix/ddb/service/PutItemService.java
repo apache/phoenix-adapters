@@ -1,32 +1,18 @@
 package org.apache.phoenix.ddb.service;
 
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
-import com.amazonaws.services.dynamodbv2.model.ConditionalCheckFailedException;
 import com.amazonaws.services.dynamodbv2.model.PutItemRequest;
 import com.amazonaws.services.dynamodbv2.model.PutItemResult;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.hadoop.hbase.Cell;
-import org.apache.hadoop.hbase.util.Pair;
-import org.apache.phoenix.ddb.bson.BsonDocumentToDdbAttributes;
 import org.apache.phoenix.ddb.bson.DdbAttributesToBsonDocument;
 import org.apache.phoenix.ddb.utils.CommonServiceUtils;
 import org.apache.phoenix.ddb.utils.DMLUtils;
 import org.apache.phoenix.jdbc.PhoenixConnection;
-import org.apache.phoenix.jdbc.PhoenixPreparedStatement;
-import org.apache.phoenix.query.QueryConstants;
 import org.apache.phoenix.schema.PColumn;
 import org.apache.phoenix.schema.PTable;
 import org.apache.phoenix.schema.PTableKey;
-import org.apache.phoenix.schema.tuple.Tuple;
-import org.apache.phoenix.schema.types.PBson;
-import org.apache.phoenix.schema.types.PDataType;
-import org.apache.phoenix.schema.types.PDouble;
-import org.apache.phoenix.schema.types.PVarbinaryEncoded;
-import org.apache.phoenix.schema.types.PVarchar;
 
-import com.amazonaws.services.dynamodbv2.model.ReturnValuesOnConditionCheckFailure;
 import org.bson.BsonDocument;
-import org.bson.RawBsonDocument;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -55,38 +41,41 @@ public class PutItemService {
             " ELSE COL END";
 
     public static PutItemResult putItem(PutItemRequest request, String connectionUrl) {
-        // get tableName, item, conditional expr and convert item to bson
-        Map<String, AttributeValue> item = request.getItem();
-        PutItemResult result = new PutItemResult();
-        BsonDocument bsonDoc = DdbAttributesToBsonDocument.getBsonDocument(item);
-
+        PutItemResult result;
         try (Connection connection = DriverManager.getConnection(connectionUrl)) {
             connection.setAutoCommit(true);
-            // get PTable and PK PColumns
-            PhoenixConnection phoenixConnection = connection.unwrap(PhoenixConnection.class);
-            PTable table = phoenixConnection.getTable(
-                    new PTableKey(phoenixConnection.getTenantId(), request.getTableName()));
-            List<PColumn> pkCols = table.getPKColumns();
-
-            //create statement based on PKs and conditional expression
-            PreparedStatement stmt
-                    = getPreparedStatement(connection, request, pkCols.size());
-            // extract PKs from item
-            DMLUtils.setKeysOnStatement(stmt, pkCols, item);
-
-            // set bson document of entire item
-            stmt.setObject(pkCols.size()+1, bsonDoc);
-
-            //execute, auto commit is on
-            LOGGER.info("Upsert Query for PutItem: {}", stmt);
-            Map<String, AttributeValue> returnAttrs
-                    = DMLUtils.executeUpdate(stmt, request.getReturnValues(),
-                    request.getReturnValuesOnConditionCheckFailure(),
-                    request.getConditionExpression(), table, pkCols);
-            result.setAttributes(returnAttrs);
+            result = putItemWithConn(connection, request);
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
+        return result;
+    }
+
+    public static PutItemResult putItemWithConn(Connection connection, PutItemRequest request)
+            throws SQLException {
+        Map<String, AttributeValue> item = request.getItem();
+        PutItemResult result = new PutItemResult();
+        BsonDocument bsonDoc = DdbAttributesToBsonDocument.getBsonDocument(item);
+        // get PTable and PK PColumns
+        PhoenixConnection phoenixConnection = connection.unwrap(PhoenixConnection.class);
+        PTable table = phoenixConnection.getTable(
+                new PTableKey(phoenixConnection.getTenantId(), request.getTableName()));
+        List<PColumn> pkCols = table.getPKColumns();
+
+        //create statement based on PKs and conditional expression
+        PreparedStatement stmt = getPreparedStatement(connection, request, pkCols.size());
+        // extract PKs from item
+        DMLUtils.setKeysOnStatement(stmt, pkCols, item);
+        // set bson document of entire item
+        stmt.setObject(pkCols.size()+1, bsonDoc);
+
+        //execute, auto commit is on
+        LOGGER.info("Upsert Query for PutItem: {}", stmt);
+        Map<String, AttributeValue> returnAttrs
+                = DMLUtils.executeUpdate(stmt, request.getReturnValues(),
+                request.getReturnValuesOnConditionCheckFailure(),
+                request.getConditionExpression(), table, pkCols);
+        result.setAttributes(returnAttrs);
         return result;
     }
 

@@ -24,26 +24,34 @@ public class DeleteItemService {
     private static final Logger LOGGER = LoggerFactory.getLogger(DeleteItemService.class);
     private static final String DELETE_QUERY = "DELETE FROM %s WHERE %s = ? ";
     private static final String CLAUSE_FOR_SORT_COL = "AND %s = ?";
+
     public static DeleteItemResult deleteItem(DeleteItemRequest request, String connectionUrl)  {
-        DeleteItemResult result = new DeleteItemResult();
+        DeleteItemResult result;
         try (Connection connection = DriverManager.getConnection(connectionUrl)) {
-            PhoenixConnection phoenixConnection = connection.unwrap(PhoenixConnection.class);
-            PTable table = phoenixConnection.getTable(
-                    new PTableKey(phoenixConnection.getTenantId(), request.getTableName()));
             connection.setAutoCommit(true);
-            // get PKs from phoenix
-            List<PColumn> pkCols = table.getPKColumns();
-            //build prepared statement and execute
-            PreparedStatement stmt =
-                    getPreparedStatement(connection, request, pkCols);
-            Map<String, AttributeValue> returnAttrs
-                    = DMLUtils.executeUpdate(stmt, request.getReturnValues(),
-                    request.getReturnValuesOnConditionCheckFailure(),
-                    request.getConditionExpression(), table, pkCols);
-            result.setAttributes(returnAttrs);
+            result = deleteItemWithConn(connection, request);
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
+        return result;
+    }
+
+    public static DeleteItemResult deleteItemWithConn(Connection connection, DeleteItemRequest request)
+            throws SQLException {
+        DeleteItemResult result = new DeleteItemResult();
+        PhoenixConnection phoenixConnection = connection.unwrap(PhoenixConnection.class);
+        PTable table = phoenixConnection.getTable(
+                new PTableKey(phoenixConnection.getTenantId(), request.getTableName()));
+        // get PKs from phoenix
+        List<PColumn> pkCols = table.getPKColumns();
+        //build prepared statement and execute
+        PreparedStatement stmt =
+                getPreparedStatement(connection, request, pkCols);
+        Map<String, AttributeValue> returnAttrs
+                = DMLUtils.executeUpdate(stmt, request.getReturnValues(),
+                request.getReturnValuesOnConditionCheckFailure(),
+                request.getConditionExpression(), table, pkCols);
+        result.setAttributes(returnAttrs);
         return result;
     }
 

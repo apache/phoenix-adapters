@@ -21,6 +21,8 @@ package org.apache.phoenix.ddb;
 import com.amazonaws.services.dynamodbv2.AbstractAmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.model.BatchGetItemRequest;
 import com.amazonaws.services.dynamodbv2.model.BatchGetItemResult;
+import com.amazonaws.services.dynamodbv2.model.BatchWriteItemRequest;
+import com.amazonaws.services.dynamodbv2.model.BatchWriteItemResult;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.amazonaws.services.dynamodbv2.model.CreateTableResult;
 import com.amazonaws.services.dynamodbv2.model.DeleteItemRequest;
@@ -41,6 +43,7 @@ import com.amazonaws.services.dynamodbv2.model.TableDescription;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemRequest;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemResult;
 import org.apache.phoenix.ddb.service.BatchGetItemService;
+import org.apache.phoenix.ddb.service.BatchWriteItemService;
 import org.apache.phoenix.ddb.service.CreateTableService;
 import org.apache.phoenix.ddb.service.DeleteItemService;
 import org.apache.phoenix.ddb.service.DeleteTableService;
@@ -99,6 +102,11 @@ public class PhoenixDBClient extends AbstractAmazonDynamoDB {
     @Override
     public BatchGetItemResult batchGetItem(BatchGetItemRequest request){
         return BatchGetItemService.batchGetItem(request, connectionUrl);
+    }
+
+    @Override
+    public BatchWriteItemResult batchWriteItem(BatchWriteItemRequest request) {
+        return BatchWriteItemService.batchWriteItem(request, connectionUrl);
     }
 
 
