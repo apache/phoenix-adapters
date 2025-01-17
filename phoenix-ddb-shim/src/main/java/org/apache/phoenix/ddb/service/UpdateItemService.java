@@ -67,7 +67,7 @@ public class UpdateItemService {
             Map<String, AttributeValue> returnAttrs
                     = DMLUtils.executeUpdate(stmt, request.getReturnValues(),
                     request.getReturnValuesOnConditionCheckFailure(),
-                    request.getConditionExpression(), table, pkCols);
+                    request.getConditionExpression(), pkCols);
             result.setAttributes(returnAttrs);
         } catch (SQLException e) {
             throw new RuntimeException(e);

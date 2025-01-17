@@ -2,19 +2,13 @@ package org.apache.phoenix.ddb.utils;
 
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.ConditionalCheckFailedException;
-import com.amazonaws.services.dynamodbv2.model.PutItemRequest;
-import com.amazonaws.services.dynamodbv2.model.PutItemResult;
+import com.amazonaws.services.dynamodbv2.model.ReturnValue;
 import com.amazonaws.services.dynamodbv2.model.ReturnValuesOnConditionCheckFailure;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.util.Pair;
 import org.apache.phoenix.ddb.bson.BsonDocumentToDdbAttributes;
 import org.apache.phoenix.jdbc.PhoenixPreparedStatement;
-import org.apache.phoenix.query.QueryConstants;
 import org.apache.phoenix.schema.PColumn;
-import org.apache.phoenix.schema.PTable;
-import org.apache.phoenix.schema.tuple.Tuple;
-import org.apache.phoenix.schema.types.PBson;
 import org.apache.phoenix.schema.types.PDataType;
 import org.apache.phoenix.schema.types.PDouble;
 import org.apache.phoenix.schema.types.PVarbinaryEncoded;
@@ -22,6 +16,7 @@ import org.apache.phoenix.schema.types.PVarchar;
 import org.bson.RawBsonDocument;
 
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
@@ -56,47 +51,65 @@ public class DMLUtils {
     /**
      * Executes the given PreparedStatement of an UPSERT query for PutItem/UpdateItem API.
      *
-     * If returnValuesOnConditionCheckFailure is not set or set to NONE, throws
-     * ConditionalCheckFailedException.
-     * If it is set to ALL_OLD, populates the item into the exception.
+     * If conditionExpression is given and it fails, throw ConditionalCheckFailedException.
+     *  - if returnValuesOnConditionCheckFailure is ALL_OLD, set the item on the Exception
+     * If conditionExpression succeeds and returnValue is ALL_NEW, return the item.
      *
-     * TODO: implement ReturnValues when Phoenix supports them
-     * TODO: ReturnValues is applicable only when update is successful
-     * TODO: NONE | ALL_OLD | UPDATED_OLD | ALL_NEW | UPDATED_NEW
+     * TODO: UPDATED_OLD | UPDATED_NEW
+     * TODO: ALL_OLD when condition succeeds
      */
     public static Map<String, AttributeValue> executeUpdate(PreparedStatement stmt,
-                                              String returnValues,
-                                              String returnValuesOnConditionCheckFailure,
-                                              String condExpr, PTable table, List<PColumn> pkCols)
+                                                            String returnValue,
+                                                            String returnValuesOnConditionCheckFailure,
+                                                            String condExpr, List<PColumn> pkCols)
             throws SQLException, ConditionalCheckFailedException {
         Map<String, AttributeValue> returnAttrs = null;
-        if (StringUtils.isEmpty(returnValuesOnConditionCheckFailure)
-                || ReturnValuesOnConditionCheckFailure.NONE.toString()
-                .equals(returnValuesOnConditionCheckFailure)) {
+        if (!needReturnRow(returnValue, returnValuesOnConditionCheckFailure)) {
             int returnStatus = stmt.executeUpdate();
             if (returnStatus == 0) {
-                throw new ConditionalCheckFailedException(
-                        "Conditional request failed: " + condExpr);
+                throw new ConditionalCheckFailedException("Conditional request failed: " + condExpr);
             }
-        } else if (ReturnValuesOnConditionCheckFailure.ALL_OLD.toString()
-                .equals(returnValuesOnConditionCheckFailure)) {
-            Pair<Integer, Tuple> tuplePair =
-                    stmt.unwrap(PhoenixPreparedStatement.class).executeUpdateReturnRow();
-            if (tuplePair.getFirst() == 0) {
-                Tuple tuple = tuplePair.getSecond();
-                Cell cell = tuple.getValue(QueryConstants.DEFAULT_COLUMN_FAMILY_BYTES,
-                        table.getColumns().get(pkCols.size()).getColumnQualifierBytes());
-                RawBsonDocument rawBsonDocument =
-                        (RawBsonDocument) PBson.INSTANCE.toObject(cell.getValueArray(),
-                                cell.getValueOffset(), cell.getValueLength());
+            return null;
+        }
+        // atomic update
+        Pair<Integer, ResultSet> resultPair =
+                stmt.unwrap(PhoenixPreparedStatement.class).executeAtomicUpdateReturnRow();
+        int returnStatus = resultPair.getFirst();
+        ResultSet rs = resultPair.getSecond();
+        RawBsonDocument rawBsonDocument = (RawBsonDocument) rs.getObject(pkCols.size()+1);
+        if (returnStatus == 0) {
+            if (!StringUtils.isEmpty(condExpr)) {
                 ConditionalCheckFailedException conditionalCheckFailedException =
                         new ConditionalCheckFailedException(
                                 "Conditional request failed: " + condExpr);
-                conditionalCheckFailedException.setItem(
-                        BsonDocumentToDdbAttributes.getFullItem(rawBsonDocument));
+                if (ReturnValuesOnConditionCheckFailure.ALL_OLD.toString()
+                        .equals(returnValuesOnConditionCheckFailure)) {
+                    conditionalCheckFailedException.setItem(
+                            BsonDocumentToDdbAttributes.getFullItem(rawBsonDocument));
+                }
                 throw conditionalCheckFailedException;
+            } else if (ReturnValue.ALL_OLD.toString().equals(returnValue)) {
+                returnAttrs = BsonDocumentToDdbAttributes.getFullItem(rawBsonDocument);
+            }
+        } else {
+            if (ReturnValue.ALL_NEW.toString().equals(returnValue)) {
+                returnAttrs = BsonDocumentToDdbAttributes.getFullItem(rawBsonDocument);
             }
         }
         return returnAttrs;
+    }
+
+    /**
+     * Use return row api only if
+     * returnValue is not empty/null and not NONE
+     * OR
+     * returnValuesOnConditionCheckFailure is not empty/null and not NONE
+     */
+    private static boolean needReturnRow(String returnValue,
+                                      String returnValuesOnConditionCheckFailure) {
+        return (!StringUtils.isEmpty(returnValue)
+                    && !ReturnValue.NONE.toString().equals(returnValue))
+                || (!StringUtils.isEmpty(returnValuesOnConditionCheckFailure)
+                        && !ReturnValuesOnConditionCheckFailure.NONE.toString().equals(returnValuesOnConditionCheckFailure));
     }
 }

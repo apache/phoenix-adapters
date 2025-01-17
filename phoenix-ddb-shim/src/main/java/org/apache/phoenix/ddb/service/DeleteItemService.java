@@ -50,7 +50,7 @@ public class DeleteItemService {
         Map<String, AttributeValue> returnAttrs
                 = DMLUtils.executeUpdate(stmt, request.getReturnValues(),
                 request.getReturnValuesOnConditionCheckFailure(),
-                request.getConditionExpression(), table, pkCols);
+                request.getConditionExpression(), pkCols);
         result.setAttributes(returnAttrs);
         return result;
     }

@@ -6,6 +6,7 @@ import com.amazonaws.services.dynamodbv2.model.GetItemResult;
 import com.amazonaws.services.dynamodbv2.model.PutItemRequest;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemRequest;
+import com.amazonaws.services.dynamodbv2.model.UpdateItemResult;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
@@ -34,6 +35,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
+import static com.amazonaws.services.dynamodbv2.model.ReturnValue.ALL_NEW;
 import static org.apache.phoenix.query.BaseTest.setUpConfigForMiniCluster;
 
 /**
@@ -313,8 +315,10 @@ public class UpdateItemBaseTests {
         exprAttrVal.put(":v3", new AttributeValue().withN("1000000"));
         exprAttrVal.put(":v4", new AttributeValue().withS("dEsCrIpTiOn1"));
         uir.setExpressionAttributeValues(exprAttrVal);
-        amazonDynamoDB.updateItem(uir);
-        phoenixDBClient.updateItem(uir);
+        uir.setReturnValues(ALL_NEW);
+        UpdateItemResult dynamoResult = amazonDynamoDB.updateItem(uir);
+        UpdateItemResult phoenixResult = phoenixDBClient.updateItem(uir);
+        Assert.assertEquals(dynamoResult.getAttributes(), phoenixResult.getAttributes());
 
         validateItem(tableName, key);
     }
