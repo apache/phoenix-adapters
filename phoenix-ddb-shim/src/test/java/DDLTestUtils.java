@@ -20,6 +20,8 @@ import org.junit.Assert;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -202,7 +204,7 @@ public class DDLTestUtils {
      */
     public static void assertCDCMetadata(PhoenixConnection pconn, TableDescription td,
                                          String streamType)
-            throws SQLException {
+            throws SQLException, ParseException {
         String tableName = td.getTableName();
         Assert.assertTrue(td.getLatestStreamArn().startsWith("phoenix-cdc-stream-"));
         Assert.assertTrue(td.getLatestStreamArn().contains(tableName));
@@ -218,7 +220,9 @@ public class DDLTestUtils {
             }
         }
         Assert.assertTrue(cdcIndexPresent);
-        Assert.assertEquals(String.valueOf(cdcIndex.getTimeStamp()), td.getLatestStreamLabel());
+        SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS zzz");
+        Date date = df.parse(td.getLatestStreamLabel());
+        Assert.assertEquals(String.valueOf(cdcIndex.getTimeStamp()), String.valueOf(date.getTime()));
         Assert.assertTrue(td.getLatestStreamArn().contains(String.valueOf(cdcIndex.getTimeStamp())));
     }
 

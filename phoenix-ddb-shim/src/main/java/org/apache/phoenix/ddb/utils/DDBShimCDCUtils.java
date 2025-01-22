@@ -5,6 +5,10 @@ import org.apache.phoenix.util.CDCUtil;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.TimeZone;
 
 import static org.apache.phoenix.jdbc.PhoenixDatabaseMetaData.SYSTEM_CDC_STREAM_STATUS_NAME;
 
@@ -34,9 +38,20 @@ public class DDBShimCDCUtils {
     }
 
     /**
+     * Return human-readable format for index creation timestamp as Stream Label.
+     */
+    public static String getStreamLabel(String streamName) {
+        String timestamp = getCDCIndexTimestampFromStreamName(streamName);
+        Date date = new Date(Long.parseLong(timestamp));
+        DateFormat format = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS zzz");
+        format.setTimeZone(TimeZone.getTimeZone("Etc/UTC"));
+        return format.format(date);
+    }
+
+    /**
      * Parse CDC index creation time from streamName.
      */
-    public static String getCDCIndexTimestampFromStreamName(String streamName) {
+    private static String getCDCIndexTimestampFromStreamName(String streamName) {
         // phoenix-cdc-stream-{tableName}-{cdc object name}-{cdc index timestamp}
         return streamName.substring(streamName.lastIndexOf("-")+1);
     }

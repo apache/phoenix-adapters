@@ -1,15 +1,19 @@
 package org.apache.phoenix.ddb.utils;
 
 import org.apache.phoenix.jdbc.PhoenixConnection;
-import org.apache.phoenix.jdbc.PhoenixResultSet;
+import org.apache.phoenix.jdbc.PhoenixDriver;
 import org.apache.phoenix.monitoring.MetricType;
 import org.apache.phoenix.query.QueryServices;
 import org.apache.phoenix.schema.PColumn;
 import org.apache.phoenix.schema.PTable;
 import org.apache.phoenix.schema.PTableKey;
+import org.apache.phoenix.thirdparty.com.google.common.base.Preconditions;
 import org.apache.phoenix.util.PhoenixRuntime;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
+import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -21,6 +25,41 @@ import java.util.Properties;
  * Helper methods for Phoenix based functionality.
  */
 public class PhoenixUtils {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(PhoenixUtils.class);
+    private static final String URL_PREFIX =
+            PhoenixRuntime.JDBC_PROTOCOL + PhoenixRuntime.JDBC_PROTOCOL_SEPARATOR;
+    private static final String URL_ZK_PREFIX =
+            PhoenixRuntime.JDBC_PROTOCOL_ZK + PhoenixRuntime.JDBC_PROTOCOL_SEPARATOR;
+    private static final String URL_MASTER_PREFIX =
+            PhoenixRuntime.JDBC_PROTOCOL_MASTER + PhoenixRuntime.JDBC_PROTOCOL_SEPARATOR;
+    private static final String URL_RPC_PREFIX =
+            PhoenixRuntime.JDBC_PROTOCOL_RPC + PhoenixRuntime.JDBC_PROTOCOL_SEPARATOR;
+
+    /**
+     * Check whether the connection url provided has the right format.
+     * @param connectionUrl
+     */
+    public static void checkConnectionURL(String connectionUrl) {
+        Preconditions.checkArgument(connectionUrl != null &&
+                        (connectionUrl.startsWith(URL_PREFIX)
+                                || connectionUrl.startsWith(URL_ZK_PREFIX)
+                                || connectionUrl.startsWith(URL_MASTER_PREFIX)
+                                || connectionUrl.startsWith(URL_RPC_PREFIX)),
+                "JDBC url " + connectionUrl + " does not have the correct prefix");
+    }
+
+    /**
+     * Register a Phoenix Driver.
+     */
+    public static void registerDriver() {
+        try {
+            DriverManager.registerDriver(PhoenixDriver.INSTANCE);
+        } catch (SQLException e) {
+            LOGGER.error("Phoenix Driver registration failed", e);
+            throw new RuntimeException(e);
+        }
+    }
 
     /**
      * Return the list of PK Columns for the given table.

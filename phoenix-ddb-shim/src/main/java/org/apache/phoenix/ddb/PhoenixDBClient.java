@@ -52,6 +52,7 @@ import org.apache.phoenix.ddb.service.PutItemService;
 import org.apache.phoenix.ddb.service.QueryService;
 import org.apache.phoenix.ddb.service.ScanService;
 import org.apache.phoenix.ddb.service.UpdateItemService;
+import org.apache.phoenix.ddb.utils.PhoenixUtils;
 import org.apache.phoenix.ddb.utils.TableDescriptorUtils;
 import org.apache.phoenix.jdbc.PhoenixDriver;
 import org.apache.phoenix.thirdparty.com.google.common.base.Preconditions;
@@ -71,29 +72,10 @@ public class PhoenixDBClient extends AbstractAmazonDynamoDB {
 
     private final String connectionUrl;
 
-    private static final String URL_PREFIX =
-            PhoenixRuntime.JDBC_PROTOCOL + PhoenixRuntime.JDBC_PROTOCOL_SEPARATOR;
-    private static final String URL_ZK_PREFIX =
-            PhoenixRuntime.JDBC_PROTOCOL_ZK + PhoenixRuntime.JDBC_PROTOCOL_SEPARATOR;
-    private static final String URL_MASTER_PREFIX =
-            PhoenixRuntime.JDBC_PROTOCOL_MASTER + PhoenixRuntime.JDBC_PROTOCOL_SEPARATOR;
-    private static final String URL_RPC_PREFIX =
-            PhoenixRuntime.JDBC_PROTOCOL_RPC + PhoenixRuntime.JDBC_PROTOCOL_SEPARATOR;
-
     public PhoenixDBClient(String connectionUrl) {
-        Preconditions.checkArgument(connectionUrl != null &&
-                        (connectionUrl.startsWith(URL_PREFIX)
-                                || connectionUrl.startsWith(URL_ZK_PREFIX)
-                                || connectionUrl.startsWith(URL_MASTER_PREFIX)
-                                || connectionUrl.startsWith(URL_RPC_PREFIX)),
-                "JDBC url " + connectionUrl + " does not have the correct prefix");
+        PhoenixUtils.checkConnectionURL(connectionUrl);
         this.connectionUrl = connectionUrl;
-        try {
-            DriverManager.registerDriver(PhoenixDriver.INSTANCE);
-        } catch (SQLException e) {
-            LOGGER.error("Phoenix Driver registration failed", e);
-            throw new RuntimeException(e);
-        }
+        PhoenixUtils.registerDriver();
     }
 
     /**

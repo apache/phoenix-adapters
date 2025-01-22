@@ -26,6 +26,8 @@ import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.client.builder.AwsClientBuilder;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDBStreams;
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDBStreamsClientBuilder;
 import com.amazonaws.services.dynamodbv2.local.main.ServerRunner;
 import com.amazonaws.services.dynamodbv2.local.server.DynamoDBProxyServer;
 import org.junit.Assert;
@@ -106,6 +108,17 @@ class LocalDynamoDB {
                         AwsBasicCredentials.create("dummykey", "dummysecret")))
                 .overrideConfiguration(
                         o -> o.addExecutionInterceptor(new VerifyUserAgentInterceptor()))
+                .build();
+    }
+
+    AmazonDynamoDBStreams createV1StreamsClient() {
+        String endpoint = String.format("http://localhost:%d", port);
+        return AmazonDynamoDBStreamsClientBuilder
+                .standard()
+                .withCredentials(new AWSStaticCredentialsProvider(
+                        new BasicAWSCredentials("dummykey", "dummysecret")))
+                .withEndpointConfiguration(new AwsClientBuilder.EndpointConfiguration(
+                        endpoint, "us-west-2"))
                 .build();
     }
 
