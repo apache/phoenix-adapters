@@ -3,6 +3,7 @@ package org.apache.phoenix.ddb.service;
 import com.amazonaws.services.dynamodbv2.model.DeleteItemRequest;
 import com.amazonaws.services.dynamodbv2.model.DeleteItemResult;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.phoenix.ddb.utils.CommonServiceUtils;
 import org.apache.phoenix.ddb.utils.DMLUtils;
 import org.apache.phoenix.ddb.utils.DQLUtils;
@@ -23,7 +24,12 @@ import java.util.Map;
 public class DeleteItemService {
     private static final Logger LOGGER = LoggerFactory.getLogger(DeleteItemService.class);
     private static final String DELETE_QUERY = "DELETE FROM %s WHERE %s = ? ";
-    private static final String CLAUSE_FOR_SORT_COL = "AND %s = ?";
+    private static final String DELETE_QUERY_WITH_SORT = "DELETE FROM %s WHERE %s = ? AND %s = ?";
+    private static final String DELETE_QUERY_NO_SORT_WITH_COND_EXPR =
+            "DELETE FROM %s WHERE %s = ? AND BSON_CONDITION_EXPRESSION(COL,'%s')";
+    private static final String DELETE_QUERY_SORT_WITH_COND_EXPR =
+            "DELETE FROM %s WHERE %s = ? AND %s = ? AND BSON_CONDITION_EXPRESSION(COL,'%s')";
+
 
     public static DeleteItemResult deleteItem(DeleteItemRequest request, String connectionUrl)  {
         DeleteItemResult result;
@@ -47,10 +53,13 @@ public class DeleteItemService {
         //build prepared statement and execute
         PreparedStatement stmt =
                 getPreparedStatement(connection, request, pkCols);
+
+        DMLUtils.setKeysOnStatement(stmt, pkCols, request.getKey());
+        LOGGER.info("Delete Query for DeleteItem: {}", stmt);
         Map<String, AttributeValue> returnAttrs
                 = DMLUtils.executeUpdate(stmt, request.getReturnValues(),
                 request.getReturnValuesOnConditionCheckFailure(),
-                request.getConditionExpression(), pkCols);
+                request.getConditionExpression(), pkCols, true);
         result.setAttributes(returnAttrs);
         return result;
     }
@@ -63,35 +72,37 @@ public class DeleteItemService {
                                                          List<PColumn> pkCols)
             throws SQLException{
         String tableName = request.getTableName();
+        String condExpr = request.getConditionExpression();
         String partitionKeyPKCol = pkCols.get(0).toString();
-        StringBuilder queryBuilder = new StringBuilder(String.format(DELETE_QUERY, tableName,
-                CommonServiceUtils.getEscapedArgument(partitionKeyPKCol)));
-        if(pkCols.size() > 1){
-            String sortKeyPKCol = pkCols.get(1).toString();
-            queryBuilder.append(String.format(CLAUSE_FOR_SORT_COL,
-                    CommonServiceUtils.getEscapedArgument(sortKeyPKCol)));
-        }
-        LOGGER.info("DELETE Query: " + queryBuilder);
-        PreparedStatement stmt = conn.prepareStatement(queryBuilder.toString());
-        setPreparedStatementValues(stmt, request, pkCols);
-        return stmt;
-    }
+        String sortKeyPKCol = null;
+        Map<String, String> exprAttrNames = request.getExpressionAttributeNames();
+        Map<String, AttributeValue> exprAttrVals = request.getExpressionAttributeValues();
+        PreparedStatement stmt;
 
-    /**
-     * Set all the values on the PreparedStatement:
-     * - 1 value for partitionKey,
-     * - 1 or 2 values for sortKey, if present
-     */
-    private static void setPreparedStatementValues(PreparedStatement stmt, DeleteItemRequest request,
-                                                   List<PColumn> pkCols)
-            throws SQLException {
-        String partitionKeyPKCol = pkCols.get(0).toString();
-        DQLUtils.setKeyValueOnStatement(stmt, 1,
-                request.getKey().get(partitionKeyPKCol), false);
-        if(pkCols.size() > 1){
-            String sortKeyPKCol = pkCols.get(1).toString();
-            DQLUtils.setKeyValueOnStatement(stmt, 2,
-                    request.getKey().get(sortKeyPKCol), false);
+        if (pkCols.size() > 1) {
+            sortKeyPKCol = pkCols.get(1).toString();
         }
+        if (!StringUtils.isEmpty(condExpr)) {
+            String bsonCondExpr = CommonServiceUtils
+                    .getBsonConditionExpression(condExpr, exprAttrNames, exprAttrVals);
+            if (sortKeyPKCol != null) {
+                stmt = conn.prepareStatement(String.format(DELETE_QUERY_SORT_WITH_COND_EXPR,
+                        tableName, CommonServiceUtils.getEscapedArgument(partitionKeyPKCol),
+                        CommonServiceUtils.getEscapedArgument(sortKeyPKCol), bsonCondExpr));
+            } else {
+                stmt = conn.prepareStatement(String.format(DELETE_QUERY_NO_SORT_WITH_COND_EXPR,
+                        tableName, CommonServiceUtils.getEscapedArgument(partitionKeyPKCol), bsonCondExpr));
+            }
+        } else {
+            if (sortKeyPKCol != null) {
+                stmt = conn.prepareStatement(String.format(DELETE_QUERY_WITH_SORT,
+                        tableName, CommonServiceUtils.getEscapedArgument(partitionKeyPKCol),
+                        CommonServiceUtils.getEscapedArgument(sortKeyPKCol)));
+            } else {
+                stmt = conn.prepareStatement(String.format(DELETE_QUERY,
+                        tableName, CommonServiceUtils.getEscapedArgument(partitionKeyPKCol)));
+            }
+        }
+        return stmt;
     }
 }

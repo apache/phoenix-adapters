@@ -61,7 +61,7 @@ public class DMLUtils {
     public static Map<String, AttributeValue> executeUpdate(PreparedStatement stmt,
                                                             String returnValue,
                                                             String returnValuesOnConditionCheckFailure,
-                                                            String condExpr, List<PColumn> pkCols)
+                                                            String condExpr, List<PColumn> pkCols, boolean isDelete)
             throws SQLException, ConditionalCheckFailedException {
         Map<String, AttributeValue> returnAttrs = null;
         if (!needReturnRow(returnValue, returnValuesOnConditionCheckFailure)) {
@@ -76,21 +76,22 @@ public class DMLUtils {
                 stmt.unwrap(PhoenixPreparedStatement.class).executeAtomicUpdateReturnRow();
         int returnStatus = resultPair.getFirst();
         ResultSet rs = resultPair.getSecond();
-        RawBsonDocument rawBsonDocument = (RawBsonDocument) rs.getObject(pkCols.size()+1);
-        if (returnStatus == 0) {
+        RawBsonDocument rawBsonDocument = rs == null ? null :
+                (RawBsonDocument) rs.getObject(pkCols.size()+1);
+        if ((returnStatus == 0  && !isDelete) || (isDelete && rawBsonDocument == null) ) {
             if (!StringUtils.isEmpty(condExpr)) {
                 ConditionalCheckFailedException conditionalCheckFailedException =
                         new ConditionalCheckFailedException(
                                 "Conditional request failed: " + condExpr);
                 if (ReturnValuesOnConditionCheckFailure.ALL_OLD.toString()
-                        .equals(returnValuesOnConditionCheckFailure)) {
+                        .equals(returnValuesOnConditionCheckFailure) && !isDelete) {
                     conditionalCheckFailedException.setItem(
                             BsonDocumentToDdbAttributes.getFullItem(rawBsonDocument));
                 }
                 throw conditionalCheckFailedException;
             }
         } else {
-            if (ReturnValue.ALL_NEW.toString().equals(returnValue)) {
+            if (ReturnValue.ALL_NEW.toString().equals(returnValue) || ReturnValue.ALL_OLD.toString().equals(returnValue)) {
                 returnAttrs = BsonDocumentToDdbAttributes.getFullItem(rawBsonDocument);
             }
         }

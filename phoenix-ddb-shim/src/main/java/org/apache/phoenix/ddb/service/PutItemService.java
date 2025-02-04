@@ -74,7 +74,7 @@ public class PutItemService {
         Map<String, AttributeValue> returnAttrs
                 = DMLUtils.executeUpdate(stmt, request.getReturnValues(),
                 request.getReturnValuesOnConditionCheckFailure(),
-                request.getConditionExpression(), pkCols);
+                request.getConditionExpression(), pkCols, false);
         result.setAttributes(returnAttrs);
         return result;
     }

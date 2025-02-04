@@ -1,5 +1,6 @@
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
+import com.amazonaws.services.dynamodbv2.model.ConditionalCheckFailedException;
 import com.amazonaws.services.dynamodbv2.model.DeleteItemRequest;
 import com.amazonaws.services.dynamodbv2.model.DeleteItemResult;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
@@ -32,6 +33,10 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.phoenix.query.BaseTest.setUpConfigForMiniCluster;
 
@@ -221,12 +226,234 @@ public class DeleteItemIT {
         }
 
     }
+
+    @Test(timeout = 120000)
+    public void testConditionalCheckSuccessWithReturnValue(){
+        final String tableName = testName.getMethodName().toUpperCase();
+        //create table
+        CreateTableRequest createTableRequest =
+                DDLTestUtils.getCreateTableRequest(tableName, "ForumName",
+                        ScalarAttributeType.S, "LastPostDateTime", ScalarAttributeType.S);
+        PhoenixDBClient phoenixDBClient = new PhoenixDBClient(url);
+        phoenixDBClient.createTable(createTableRequest);
+        amazonDynamoDB.createTable(createTableRequest);
+
+        //put item
+        PutItemRequest putItemRequest1 = new PutItemRequest(tableName, getItem5());
+        phoenixDBClient.putItem(putItemRequest1);
+        amazonDynamoDB.putItem(putItemRequest1);
+
+        //creating key to delete
+        Map<String, AttributeValue> key = new HashMap<>();
+        key.put("ForumName", new AttributeValue().withS("Amazon DynamoDB"));
+        key.put("LastPostDateTime", new AttributeValue().withS("201303201023"));
+
+
+        //deleting the item with that key and returning return value if deleted
+        DeleteItemRequest dI = new DeleteItemRequest(tableName, key);
+        dI.setConditionExpression("#1 < :condVal");
+        Map<String, String> exprAttrNames = new HashMap<>();
+        exprAttrNames.put("#1", "SubjectNumber");
+        dI.setExpressionAttributeNames(exprAttrNames);
+        Map<String, AttributeValue> exprAttrVal = new HashMap<>();
+        exprAttrVal.put(":condVal", new AttributeValue().withN("45"));
+        dI.setExpressionAttributeValues(exprAttrVal);
+        dI.setReturnValues(com.amazonaws.services.dynamodbv2.model.ReturnValue.ALL_OLD);
+
+        DeleteItemResult dynamoResult = amazonDynamoDB.deleteItem(dI);
+        DeleteItemResult phoenixResult = phoenixDBClient.deleteItem(dI);
+        Assert.assertEquals(dynamoResult, phoenixResult);
+
+        //trying to get the same key. we will see returned result is empty
+        GetItemRequest gI = new GetItemRequest(tableName, key);
+        GetItemResult dynamoResult2 = amazonDynamoDB.getItem(gI);
+        GetItemResult phoenixResult2 = phoenixDBClient.getItem(gI);
+        Assert.assertEquals(dynamoResult2.getItem(), phoenixResult2.getItem());
+
+    }
+
+    @Test(timeout = 120000)
+    public void testConditionalCheckFailureWithReturnValue(){
+        final String tableName = testName.getMethodName().toUpperCase();
+        //create table
+        CreateTableRequest createTableRequest =
+                DDLTestUtils.getCreateTableRequest(tableName, "ForumName",
+                        ScalarAttributeType.S, null, null);
+        PhoenixDBClient phoenixDBClient = new PhoenixDBClient(url);
+        phoenixDBClient.createTable(createTableRequest);
+        amazonDynamoDB.createTable(createTableRequest);
+
+        //put item
+        PutItemRequest putItemRequest1 = new PutItemRequest(tableName, getItem1());
+        phoenixDBClient.putItem(putItemRequest1);
+        amazonDynamoDB.putItem(putItemRequest1);
+
+        //creating key to delete
+        Map<String, AttributeValue> key = new HashMap<>();
+        key.put("ForumName", new AttributeValue().withS("Amazon RDS"));
+
+        //deleting the item with that key and returning no value because condExpr is false
+        DeleteItemRequest dI = new DeleteItemRequest(tableName, key);
+        dI.setConditionExpression("#1 < :condVal");
+        Map<String, String> exprAttrNames = new HashMap<>();
+        exprAttrNames.put("#1", "SubjectNumber");
+        dI.setExpressionAttributeNames(exprAttrNames);
+        Map<String, AttributeValue> exprAttrVal = new HashMap<>();
+        exprAttrVal.put(":condVal", new AttributeValue().withN("2"));
+        dI.setExpressionAttributeValues(exprAttrVal);
+        dI.setReturnValues(com.amazonaws.services.dynamodbv2.model.ReturnValue.ALL_OLD);
+
+        try {
+            amazonDynamoDB.deleteItem(dI);
+            Assert.fail("DeleteItem should throw exception when condition check fails.");
+        } catch (ConditionalCheckFailedException e) {
+            Assert.assertNull(e.getItem());
+        }
+        try {
+            phoenixDBClient.deleteItem(dI);
+            Assert.fail("DeleteItem should throw exception when condition check fails.");
+        } catch (ConditionalCheckFailedException e) {
+            Assert.assertNull(e.getItem());
+        }
+
+        //key was not deleted and is still there
+        GetItemRequest gI = new GetItemRequest(tableName, key);
+        GetItemResult dynamoResult2 = amazonDynamoDB.getItem(gI);
+        GetItemResult phoenixResult2 = phoenixDBClient.getItem(gI);
+        Assert.assertEquals(dynamoResult2.getItem(), phoenixResult2.getItem());
+
+    }
+    @Test(timeout = 120000)
+    public void testWithReturnValuesOnConditionCheckFailure() {
+        final String tableName = testName.getMethodName().toUpperCase();
+        //create table
+        CreateTableRequest createTableRequest =
+                DDLTestUtils.getCreateTableRequest(tableName, "ForumName",
+                        ScalarAttributeType.S, null, null);
+        PhoenixDBClient phoenixDBClient = new PhoenixDBClient(url);
+        phoenixDBClient.createTable(createTableRequest);
+        amazonDynamoDB.createTable(createTableRequest);
+
+        //put item
+        PutItemRequest putItemRequest1 = new PutItemRequest(tableName, getItem1());
+        phoenixDBClient.putItem(putItemRequest1);
+        amazonDynamoDB.putItem(putItemRequest1);
+
+        //creating key to delete and setting ReturnValuesOnConditionCheckFailure
+        Map<String, AttributeValue> key = new HashMap<>();
+        key.put("ForumName", new AttributeValue().withS("Amazon RDS"));
+
+        //deleting the item with that key
+        DeleteItemRequest dI = new DeleteItemRequest(tableName, key);
+        dI.setConditionExpression("#1 < :condVal");
+        Map<String, String> exprAttrNames = new HashMap<>();
+        exprAttrNames.put("#1", "SubjectNumber");
+        dI.setExpressionAttributeNames(exprAttrNames);
+        Map<String, AttributeValue> exprAttrVal = new HashMap<>();
+        exprAttrVal.put(":condVal", new AttributeValue().withN("5"));
+        dI.setExpressionAttributeValues(exprAttrVal);
+        dI.setReturnValuesOnConditionCheckFailure(com.amazonaws.services.dynamodbv2.model.ReturnValuesOnConditionCheckFailure.ALL_OLD);
+        try {
+            amazonDynamoDB.deleteItem(dI);
+            Assert.fail("Delete item should throw exception when condition check fails.");
+        } catch (ConditionalCheckFailedException e) {
+            //dynamodb returns item if condition expression fails and ReturnValuesOnConditionCheckFailure is set
+            Assert.assertNotNull(e.getItem());
+        }
+        try {
+            phoenixDBClient.deleteItem(dI);
+            Assert.fail("Delete item should throw exception when condition check fails.");
+        } catch (ConditionalCheckFailedException e) {
+            //phoenix returns null if condition expression fails and ReturnValuesOnConditionCheckFailure is set
+            Assert.assertNull(e.getItem());
+        }
+
+        //key was not deleted and is still there
+        GetItemRequest gI = new GetItemRequest(tableName, key);
+        GetItemResult dynamoResult2 = amazonDynamoDB.getItem(gI);
+        GetItemResult phoenixResult2 = phoenixDBClient.getItem(gI);
+        Assert.assertEquals(dynamoResult2.getItem(), phoenixResult2.getItem());
+    }
+
+    @Test(timeout = 120000)
+    public void testConcurrentConditionalUpdateWithReturnValues() {
+        final String tableName = testName.getMethodName().toUpperCase();
+        //create table
+        CreateTableRequest createTableRequest =
+                DDLTestUtils.getCreateTableRequest(tableName, "ForumName",
+                        ScalarAttributeType.S, null, null);
+        PhoenixDBClient phoenixDBClient = new PhoenixDBClient(url);
+        phoenixDBClient.createTable(createTableRequest);
+        amazonDynamoDB.createTable(createTableRequest);
+
+        //put item
+        PutItemRequest putItemRequest1 = new PutItemRequest(tableName, getItem1());
+        phoenixDBClient.putItem(putItemRequest1);
+        amazonDynamoDB.putItem(putItemRequest1);
+
+        ExecutorService executorService = Executors.newFixedThreadPool(5);
+        AtomicInteger updateCount = new AtomicInteger(0);
+        AtomicInteger errorCount = new AtomicInteger(0);
+
+        //creating key to delete and setting ReturnValuesOnConditionCheckFailure
+        Map<String, AttributeValue> key = new HashMap<>();
+        key.put("ForumName", new AttributeValue().withS("Amazon RDS"));
+
+        //deleting the item with that key
+        DeleteItemRequest dI = new DeleteItemRequest(tableName, key);
+        dI.setConditionExpression("#1 < :condVal");
+        Map<String, String> exprAttrNames = new HashMap<>();
+        exprAttrNames.put("#1", "SubjectNumber");
+        dI.setExpressionAttributeNames(exprAttrNames);
+        Map<String, AttributeValue> exprAttrVal = new HashMap<>();
+        exprAttrVal.put(":condVal", new AttributeValue().withN("45"));
+        dI.setExpressionAttributeValues(exprAttrVal);
+        dI.setReturnValues(com.amazonaws.services.dynamodbv2.model.ReturnValue.ALL_OLD);
+        for (int i = 0; i < 5; i++) {
+            executorService.submit(() -> {
+                try {
+                    amazonDynamoDB.deleteItem(dI);
+                } catch (ConditionalCheckFailedException e) {
+                    Assert.assertNull(e.getItem());
+                }
+                try {
+                    phoenixDBClient.deleteItem(dI);
+                    updateCount.incrementAndGet();
+                } catch (ConditionalCheckFailedException e) {
+                    Assert.assertNull(e.getItem());
+                    errorCount.incrementAndGet();
+                }
+            });
+        }
+
+        //key was deleted once and is not there and returned result is empty
+        GetItemRequest gI = new GetItemRequest(tableName, key);
+        GetItemResult dynamoResult2 = amazonDynamoDB.getItem(gI);
+        GetItemResult phoenixResult2 = phoenixDBClient.getItem(gI);
+        Assert.assertEquals(dynamoResult2.getItem(), phoenixResult2.getItem());
+
+        executorService.shutdown();
+        try {
+            boolean terminated = executorService.awaitTermination(30, TimeUnit.SECONDS);
+            if (terminated) {
+                Assert.assertEquals(1, updateCount.get());
+                Assert.assertEquals(4, errorCount.get());
+            } else {
+                Assert.fail("testConcurrentConditionalUpdateWithReturnValues: threads did not terminate.");
+            }
+        } catch (InterruptedException e) {
+            Assert.fail("testConcurrentConditionalUpdateWithReturnValues was interrupted.");
+        }
+    }
+
+
     private static Map<String, AttributeValue> getItem1() {
         Map<String, AttributeValue> item = new HashMap<>();
         item.put("ForumName", new AttributeValue().withS("Amazon RDS"));
         item.put("LastPostedBy", new AttributeValue().withS("brad@example.com"));
         item.put("LastPostDateTime", new AttributeValue().withS("201303201042"));
         item.put("Tags", new AttributeValue().withS(("Update")));
+        item.put("SubjectNumber", new AttributeValue().withN("35"));
         return item;
     }
     private static Map<String, AttributeValue> getItem5() {
