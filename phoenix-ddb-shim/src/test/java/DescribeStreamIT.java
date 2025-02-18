@@ -130,12 +130,9 @@ public class DescribeStreamIT {
         Assert.assertEquals(CDCUtil.CdcStreamStatus.ENABLING.getSerializedValue(), phoenixStreamDesc.getStreamStatus());
         Assert.assertNull(phoenixStreamDesc.getShards());
 
-        int i=0;
-        while (i < 10 && CDCUtil.CdcStreamStatus.ENABLING.getSerializedValue().equals(phoenixStreamDesc.getStreamStatus())) {
-            phoenixStreamDesc = phoenixDBStreamsClient.describeStream(phoenixRequest).getStreamDescription();
-            i++;
-            Thread.sleep(1000);
-        }
+        // wait for stream to be enabled
+        TestUtils.waitForStream(phoenixDBStreamsClient, phoenixStreamArn);
+        phoenixStreamDesc = phoenixDBStreamsClient.describeStream(phoenixRequest).getStreamDescription();
 
         // stream would be in ENABLED state and api should return shards
         Assert.assertEquals(CDCUtil.CdcStreamStatus.ENABLED.getSerializedValue(), phoenixStreamDesc.getStreamStatus());
@@ -152,7 +149,7 @@ public class DescribeStreamIT {
 
         // split table
         try (Connection connection = DriverManager.getConnection(url)) {
-            splitTable(connection, tableName, Bytes.toBytes("foo"));
+            TestUtils.splitTable(connection, tableName, Bytes.toBytes("foo"));
         }
 
         //local dynamodb does not support multiple shards so we will only verify phoenix here
@@ -180,23 +177,5 @@ public class DescribeStreamIT {
                 Assert.assertEquals(parentId, shard.getParentShardId());
             }
         }
-    }
-
-    private static void splitTable(Connection conn, String tableName, byte[] splitPoint) throws Exception {
-        ConnectionQueryServices services = conn.unwrap(PhoenixConnection.class).getQueryServices();
-        Configuration configuration = services.getConfiguration();
-        org.apache.hadoop.hbase.client.Connection hbaseConn
-                = ConnectionFactory.createConnection(configuration);
-        Admin admin = services.getAdmin();
-        RegionLocator regionLocator = hbaseConn.getRegionLocator(TableName.valueOf(tableName));
-        int nRegions = regionLocator.getAllRegionLocations().size();
-        admin.split(TableName.valueOf(tableName), splitPoint);
-        int retryCount = 0;
-        while (retryCount < 20
-                && regionLocator.getAllRegionLocations().size() == nRegions) {
-            Thread.sleep(5000);
-            retryCount++;
-        }
-        Assert.assertNotEquals(regionLocator.getAllRegionLocations().size(), nRegions);
     }
 }

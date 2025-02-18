@@ -102,6 +102,7 @@ public class BsonDocumentToDdbAttributes {
    */
   public static Map<String, AttributeValue> getFullItem(final BsonDocument bsonDocument) {
     Map<String, AttributeValue> attributesMap = new HashMap<>();
+    if (bsonDocument == null) return attributesMap;
     for (Map.Entry<String, BsonValue> entry : bsonDocument.entrySet()) {
       updateMapEntries(entry, attributesMap);
     }

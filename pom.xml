@@ -52,6 +52,7 @@
     <hadoop.version>3.3.6</hadoop.version>
     <mockito.version>4.11.0</mockito.version>
     <test.output.tofile>true</test.output.tofile>
+    <numForkedIT>1</numForkedIT>
   </properties>
 
   <build>
@@ -76,6 +77,39 @@
             </includes>
             <redirectTestOutputToFile>${test.output.tofile}</redirectTestOutputToFile>
           </configuration>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-failsafe-plugin</artifactId>
+          <!-- Common settings for all executions -->
+          <configuration>
+            <encoding>UTF-8</encoding>
+            <forkCount>${numForkedIT}</forkCount>
+            <runOrder>alphabetical</runOrder>
+            <redirectTestOutputToFile>${test.output.tofile}</redirectTestOutputToFile>
+            <forkedProcessExitTimeoutInSeconds>180</forkedProcessExitTimeoutInSeconds>
+            <shutdown>exit</shutdown>
+            <testSourceDirectory>${basedir}/src/test/java</testSourceDirectory>
+            <trimStackTrace>false</trimStackTrace>
+            <!-- https://www.orpiske.net/2021/04/test-woes-with-maven-failsafe-3-0-0-m5 -->
+            <useModulePath>false</useModulePath>
+            <forkNode implementation="org.apache.maven.plugin.surefire.extensions.SurefireForkNodeFactory"/>
+            <systemPropertyVariables>
+<!--              <java.io.tmpdir>${test.tmp.dir}</java.io.tmpdir>-->
+            </systemPropertyVariables>
+          </configuration>
+          <executions>
+            <execution>
+              <id>TestExecution</id>
+              <configuration>
+                <reuseForks>false</reuseForks>
+              </configuration>
+              <goals>
+                <goal>integration-test</goal>
+                <goal>verify</goal>
+              </goals>
+            </execution>
+          </executions>
         </plugin>
       </plugins>
     </pluginManagement>

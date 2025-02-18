@@ -3,11 +3,14 @@ package org.apache.phoenix.ddb;
 import com.amazonaws.services.dynamodbv2.AbstractAmazonDynamoDBStreams;
 import com.amazonaws.services.dynamodbv2.model.DescribeStreamRequest;
 import com.amazonaws.services.dynamodbv2.model.DescribeStreamResult;
+import com.amazonaws.services.dynamodbv2.model.GetRecordsRequest;
+import com.amazonaws.services.dynamodbv2.model.GetRecordsResult;
 import com.amazonaws.services.dynamodbv2.model.GetShardIteratorRequest;
 import com.amazonaws.services.dynamodbv2.model.GetShardIteratorResult;
 import com.amazonaws.services.dynamodbv2.model.ListStreamsRequest;
 import com.amazonaws.services.dynamodbv2.model.ListStreamsResult;
 import org.apache.phoenix.ddb.service.DescribeStreamService;
+import org.apache.phoenix.ddb.service.GetRecordsService;
 import org.apache.phoenix.ddb.service.ListStreamsService;
 import org.apache.phoenix.ddb.service.GetShardIteratorService;
 import org.apache.phoenix.ddb.utils.PhoenixUtils;
@@ -48,5 +51,12 @@ public class PhoenixDBStreamsClient extends AbstractAmazonDynamoDBStreams {
      */
     public GetShardIteratorResult getShardIterator(GetShardIteratorRequest request) {
         return GetShardIteratorService.getShardIterator(request, connectionUrl);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public GetRecordsResult getRecords(GetRecordsRequest request) {
+        return GetRecordsService.getRecords(request, connectionUrl);
     }
 }

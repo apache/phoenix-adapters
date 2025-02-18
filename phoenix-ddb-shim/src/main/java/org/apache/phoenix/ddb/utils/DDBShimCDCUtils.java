@@ -30,10 +30,13 @@ public class DDBShimCDCUtils {
     /**
      * Support these many different change records at the same timestamp with unique sequence number.
      */
-    public static final int MAX_NUM_CHANGES_AT_TIMESTAMP = 100000;
+    public static final int OFFSET_LENGTH = 5;
+    public static final int MAX_NUM_CHANGES_AT_TIMESTAMP = (int) Math.pow(10, OFFSET_LENGTH);
 
     // shardIterator-<tableName>-<cdcObject>-<streamType>-<partitionID>-<startSeqNum>
     public static String SHARD_ITERATOR_FORMAT = "shardIterator-%s-%s-%s-%s-%s";
+    public static String SHARD_ITERATOR_DELIM = "-";
+    public static String STREAM_NAME_DELIM = "-";
 
     private static final String STREAM_NAME_QUERY
             = "SELECT STREAM_NAME FROM " + SYSTEM_CDC_STREAM_STATUS_NAME
@@ -48,6 +51,10 @@ public class DDBShimCDCUtils {
     private static final String PARTITION_START_TIME_QUERY
             = "SELECT PARTITION_START_TIME FROM " + SYSTEM_CDC_STREAM_NAME
             + " WHERE TABLE_NAME = '%s' AND STREAM_NAME = '%s' AND PARTITION_ID = '%s'";
+
+    private static final String PARTITION_CLOSED_QUERY
+            = "SELECT PARTITION_END_TIME FROM " + SYSTEM_CDC_STREAM_NAME
+            + " WHERE TABLE_NAME = '%s' AND STREAM_NAME = '%s' AND  PARTITION_ID = '%s'";
 
     /**
      * Return the KeySchema for the given PTable.
@@ -104,7 +111,7 @@ public class DDBShimCDCUtils {
      */
     public static String getTableNameFromStreamName(String streamName) {
         // phoenix-cdc-stream-{tableName}-{cdc object name}-{cdc index timestamp}
-        String[] parts = streamName.split("-");
+        String[] parts = streamName.split(STREAM_NAME_DELIM);
         if (parts.length != 6) {
             throw new IllegalArgumentException("Stream Name format is not correct.");
         }
@@ -116,7 +123,7 @@ public class DDBShimCDCUtils {
      */
     public static String getCDCObjectNameFromStreamName(String streamName) {
         // phoenix-cdc-stream-{tableName}-{cdc object name}-{cdc index timestamp}
-        String[] parts = streamName.split("-");
+        String[] parts = streamName.split(STREAM_NAME_DELIM);
         if (parts.length != 6) {
             throw new IllegalArgumentException("Stream Name format is not correct.");
         }
@@ -128,7 +135,7 @@ public class DDBShimCDCUtils {
      */
     public static long getCDCIndexTimestampFromStreamName(String streamName) {
         // phoenix-cdc-stream-{tableName}-{cdc object name}-{cdc index timestamp}
-        return Long.parseLong(streamName.substring(streamName.lastIndexOf("-")+1));
+        return Long.parseLong(streamName.substring(streamName.lastIndexOf(STREAM_NAME_DELIM)+1));
     }
 
     /**
@@ -154,5 +161,28 @@ public class DDBShimCDCUtils {
         } else {
             throw new SQLException("Could not find partition for id: " + partitionId);
         }
+    }
+
+    /**
+     * Return true if a partition was closed after a split.
+     */
+    public static long getPartitionEndTime(Connection conn, PhoenixShardIterator pIter)
+            throws SQLException {
+        String streamName = getEnabledStreamName(conn, pIter.getTableName());
+        String query = String.format(PARTITION_CLOSED_QUERY, pIter.getTableName(), streamName, pIter.getPartitionId());
+        ResultSet rs = conn.createStatement().executeQuery(query);
+        if (rs.next()) {
+            return rs.getLong(1);
+        } else {
+            throw new SQLException("Could not find partition for id: " + pIter.getPartitionId());
+        }
+    }
+
+    /**
+     * Build a sequence number of the form <timestamp><offset>.
+     * offset should be 0-padded for OFFSET_LENGTH
+     */
+    public static String getSequenceNumber(long timestamp, int offset) {
+        return timestamp + String.format("%0" + OFFSET_LENGTH + "d", offset);
     }
 }

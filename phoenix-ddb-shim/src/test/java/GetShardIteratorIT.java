@@ -123,20 +123,11 @@ public class GetShardIteratorIT {
 
         String phoenixStreamArn = phoenixStreams.getStreams().get(0).getStreamArn();
         String dynamoStreamArn = dynamoStreams.getStreams().get(0).getStreamArn();
-        DescribeStreamRequest phoenixRequest = new DescribeStreamRequest().withStreamArn(phoenixStreamArn);
 
-        StreamDescription phoenixStreamDesc = phoenixDBStreamsClient.describeStream(phoenixRequest).getStreamDescription();
-
-        // stream would be in ENABLING state
-        Assert.assertEquals(CDCUtil.CdcStreamStatus.ENABLING.getSerializedValue(), phoenixStreamDesc.getStreamStatus());
-        Assert.assertNull(phoenixStreamDesc.getShards());
-
-        int i=0;
-        while (i < 20 && CDCUtil.CdcStreamStatus.ENABLING.getSerializedValue().equals(phoenixStreamDesc.getStreamStatus())) {
-            phoenixStreamDesc = phoenixDBStreamsClient.describeStream(phoenixRequest).getStreamDescription();
-            i++;
-            Thread.sleep(1000);
-        }
+        // wait for stream to be enabled
+        TestUtils.waitForStream(phoenixDBStreamsClient, phoenixStreamArn);
+        DescribeStreamRequest dsr = new DescribeStreamRequest().withStreamArn(phoenixStreamArn);
+        StreamDescription phoenixStreamDesc = phoenixDBStreamsClient.describeStream(dsr).getStreamDescription();
 
         // stream would be in ENABLED state and api should return shards
         Assert.assertEquals(CDCUtil.CdcStreamStatus.ENABLED.getSerializedValue(), phoenixStreamDesc.getStreamStatus());

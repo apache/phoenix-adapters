@@ -6,7 +6,6 @@ import com.amazonaws.services.dynamodbv2.model.QueryResult;
 import com.amazonaws.services.dynamodbv2.model.ScanResult;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.phoenix.ddb.bson.BsonDocumentToDdbAttributes;
-import org.apache.phoenix.query.QueryServices;
 import org.apache.phoenix.schema.PColumn;
 import org.bson.BsonDocument;
 import org.bson.RawBsonDocument;
@@ -39,23 +38,24 @@ public class DQLUtils {
         int count = 0;
         List<Map<String, AttributeValue>> items = new ArrayList<>();
         RawBsonDocument lastBsonDoc = null;
-        ResultSet rs  = stmt.executeQuery();
-        while (rs.next()) {
-            lastBsonDoc = (RawBsonDocument) rs.getObject(1);
-            Map<String, AttributeValue> item = BsonDocumentToDdbAttributes.getProjectedItem(
-                    lastBsonDoc, projectionAttributes);
-            items.add(item);
-            count++;
-        }
-        Map<String, AttributeValue> lastKey
-                = DQLUtils.getLastEvaluatedKey(lastBsonDoc, useIndex, tablePKCols, indexPKCols);
-        int countRowsScanned = (int) PhoenixUtils.getRowsScanned(rs);
-        if (isQuery) {
-            return new QueryResult().withItems(items).withCount(count)
-                    .withLastEvaluatedKey(lastKey).withScannedCount(countRowsScanned);
-        } else {
-            return new ScanResult().withItems(items).withCount(count)
-                    .withLastEvaluatedKey(lastKey).withScannedCount(countRowsScanned);
+        try (ResultSet rs  = stmt.executeQuery()) {
+            while (rs.next()) {
+                lastBsonDoc = (RawBsonDocument) rs.getObject(1);
+                Map<String, AttributeValue> item = BsonDocumentToDdbAttributes.getProjectedItem(
+                        lastBsonDoc, projectionAttributes);
+                items.add(item);
+                count++;
+            }
+            Map<String, AttributeValue> lastKey
+                    = DQLUtils.getKeyFromDoc(lastBsonDoc, useIndex, tablePKCols, indexPKCols);
+            int countRowsScanned = (int) PhoenixUtils.getRowsScanned(rs);
+            if (isQuery) {
+                return new QueryResult().withItems(items).withCount(count)
+                        .withLastEvaluatedKey(lastKey).withScannedCount(countRowsScanned);
+            } else {
+                return new ScanResult().withItems(items).withCount(count)
+                        .withLastEvaluatedKey(lastKey).withScannedCount(countRowsScanned);
+            }
         }
     }
 
@@ -63,10 +63,10 @@ public class DQLUtils {
      * Return the attribute value map with only the primary keys from the given bson document.
      * Return both data and index table keys when querying index table.
      */
-    public static Map<String, AttributeValue> getLastEvaluatedKey(BsonDocument lastBsonDoc,
-                                                                   boolean useIndex,
-                                                                   List<PColumn> tablePKCols,
-                                                                   List<PColumn> indexPKCols) {
+    public static Map<String, AttributeValue> getKeyFromDoc(BsonDocument lastBsonDoc,
+                                                            boolean useIndex,
+                                                            List<PColumn> tablePKCols,
+                                                            List<PColumn> indexPKCols) {
         if (lastBsonDoc == null) return null;
         List<String> keys = new ArrayList<>();
         for (PColumn pkCol : tablePKCols) {
