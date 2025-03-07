@@ -1,28 +1,21 @@
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDBStreams;
-import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
-import com.amazonaws.services.dynamodbv2.model.DescribeStreamRequest;
-import com.amazonaws.services.dynamodbv2.model.ListStreamsRequest;
-import com.amazonaws.services.dynamodbv2.model.ListStreamsResult;
-import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
-import com.amazonaws.services.dynamodbv2.model.Shard;
-import com.amazonaws.services.dynamodbv2.model.StreamDescription;
+import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
+import software.amazon.awssdk.services.dynamodb.model.CreateTableRequest;
+import software.amazon.awssdk.services.dynamodb.model.DescribeStreamRequest;
+import software.amazon.awssdk.services.dynamodb.model.ListStreamsRequest;
+import software.amazon.awssdk.services.dynamodb.model.ListStreamsResponse;
+import software.amazon.awssdk.services.dynamodb.model.ScalarAttributeType;
+import software.amazon.awssdk.services.dynamodb.model.Shard;
+import software.amazon.awssdk.services.dynamodb.model.StreamDescription;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
-import org.apache.hadoop.hbase.TableName;
-import org.apache.hadoop.hbase.client.Admin;
-import org.apache.hadoop.hbase.client.ConnectionFactory;
-import org.apache.hadoop.hbase.client.RegionLocator;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.phoenix.coprocessor.PhoenixMasterObserver;
-import org.apache.phoenix.ddb.PhoenixDBClient;
-import org.apache.phoenix.ddb.PhoenixDBStreamsClient;
+import org.apache.phoenix.ddb.PhoenixDBClientV2;
+import org.apache.phoenix.ddb.PhoenixDBStreamsClientV2;
 import org.apache.phoenix.end2end.ServerMetadataCacheTestImpl;
-import org.apache.phoenix.jdbc.PhoenixConnection;
 import org.apache.phoenix.jdbc.PhoenixDriver;
 import org.apache.phoenix.jdbc.PhoenixTestDriver;
-import org.apache.phoenix.query.ConnectionQueryServices;
 import org.apache.phoenix.query.QueryServices;
 import org.apache.phoenix.thirdparty.com.google.common.collect.Maps;
 import org.apache.phoenix.util.CDCUtil;
@@ -37,6 +30,8 @@ import org.junit.Test;
 import org.junit.rules.TestName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.services.dynamodb.model.StreamStatus;
+import software.amazon.awssdk.services.dynamodb.streams.DynamoDbStreamsClient;
 
 import java.io.IOException;
 import java.sql.Connection;
@@ -56,11 +51,11 @@ public class DescribeStreamIT {
     @Rule
     public final TestName testName = new TestName();
 
-    private final AmazonDynamoDB amazonDynamoDB =
-            LocalDynamoDbTestBase.localDynamoDb().createV1Client();
+    private final DynamoDbClient dynamoDbClient =
+            LocalDynamoDbTestBase.localDynamoDb().createV2Client();
 
-    private final AmazonDynamoDBStreams amazonDynamoDBStreams =
-            LocalDynamoDbTestBase.localDynamoDb().createV1StreamsClient();
+    private final DynamoDbStreamsClient dynamoDbStreamsClient =
+            LocalDynamoDbTestBase.localDynamoDb().createV2StreamsClient();
 
     private static String url;
 
@@ -107,45 +102,45 @@ public class DescribeStreamIT {
                 DDLTestUtils.getCreateTableRequest(tableName, "hashKey",
                         ScalarAttributeType.S, "sortKey", ScalarAttributeType.N);
 
-        DDLTestUtils.addStreamSpecToRequest(createTableRequest, "OLD_IMAGE");
+        createTableRequest = DDLTestUtils.addStreamSpecToRequest(createTableRequest, "OLD_IMAGE");
 
-        PhoenixDBClient phoenixDBClient = new PhoenixDBClient(url);
-        PhoenixDBStreamsClient phoenixDBStreamsClient = new PhoenixDBStreamsClient(url);
-        amazonDynamoDB.createTable(createTableRequest);
-        phoenixDBClient.createTable(createTableRequest);
+        PhoenixDBClientV2 phoenixDBClientV2 = new PhoenixDBClientV2(url);
+        PhoenixDBStreamsClientV2 phoenixDBStreamsClientV2 = new PhoenixDBStreamsClientV2(url);
+        dynamoDbClient.createTable(createTableRequest);
+        phoenixDBClientV2.createTable(createTableRequest);
 
-        ListStreamsRequest lsr = new ListStreamsRequest().withTableName(tableName);
-        ListStreamsResult phoenixStreams = phoenixDBStreamsClient.listStreams(lsr);
-        ListStreamsResult dynamoStreams = amazonDynamoDBStreams.listStreams(lsr);
-        Assert.assertEquals(dynamoStreams.getStreams().size(), phoenixStreams.getStreams().size());
-        Assert.assertEquals(1, phoenixStreams.getStreams().size());
+        ListStreamsRequest lsr = ListStreamsRequest.builder().tableName(tableName).build();
+        ListStreamsResponse phoenixStreams = phoenixDBStreamsClientV2.listStreams(lsr);
+        ListStreamsResponse dynamoStreams = dynamoDbStreamsClient.listStreams(lsr);
+        Assert.assertEquals(dynamoStreams.streams().size(), phoenixStreams.streams().size());
+        Assert.assertEquals(1, phoenixStreams.streams().size());
 
-        String phoenixStreamArn = phoenixStreams.getStreams().get(0).getStreamArn();
-        String dynamoStreamArn = dynamoStreams.getStreams().get(0).getStreamArn();
-        DescribeStreamRequest phoenixRequest = new DescribeStreamRequest().withStreamArn(phoenixStreamArn);
+        String phoenixStreamArn = phoenixStreams.streams().get(0).streamArn();
+        String dynamoStreamArn = dynamoStreams.streams().get(0).streamArn();
+        DescribeStreamRequest phoenixRequest = DescribeStreamRequest.builder().streamArn(phoenixStreamArn).build();
 
-        StreamDescription phoenixStreamDesc = phoenixDBStreamsClient.describeStream(phoenixRequest).getStreamDescription();
+        StreamDescription phoenixStreamDesc = phoenixDBStreamsClientV2.describeStream(phoenixRequest).streamDescription();
 
         // stream would be in ENABLING state
-        Assert.assertEquals(CDCUtil.CdcStreamStatus.ENABLING.getSerializedValue(), phoenixStreamDesc.getStreamStatus());
-        Assert.assertNull(phoenixStreamDesc.getShards());
+        Assert.assertEquals(StreamStatus.ENABLING, phoenixStreamDesc.streamStatus());
+        Assert.assertTrue(phoenixStreamDesc.shards().isEmpty());
 
         // wait for stream to be enabled
-        TestUtils.waitForStream(phoenixDBStreamsClient, phoenixStreamArn);
-        phoenixStreamDesc = phoenixDBStreamsClient.describeStream(phoenixRequest).getStreamDescription();
+        TestUtils.waitForStream(phoenixDBStreamsClientV2, phoenixStreamArn);
+        phoenixStreamDesc = phoenixDBStreamsClientV2.describeStream(phoenixRequest).streamDescription();
 
         // stream would be in ENABLED state and api should return shards
-        Assert.assertEquals(CDCUtil.CdcStreamStatus.ENABLED.getSerializedValue(), phoenixStreamDesc.getStreamStatus());
-        StreamDescription dynamoStreamDesc = amazonDynamoDBStreams.describeStream(
-                new DescribeStreamRequest().withStreamArn(dynamoStreamArn)).getStreamDescription();
+        Assert.assertEquals(StreamStatus.ENABLED, phoenixStreamDesc.streamStatus());
+        StreamDescription dynamoStreamDesc = dynamoDbStreamsClient.describeStream(
+                DescribeStreamRequest.builder().streamArn(dynamoStreamArn).build()).streamDescription();
         LOGGER.info("DescribeStream in Phoenix: " + phoenixStreamDesc);
         LOGGER.info("DescribeStream in DDB: " + dynamoStreamDesc);
-        Assert.assertNotNull(phoenixStreamDesc.getShards());
-        Assert.assertEquals(1, phoenixStreamDesc.getShards().size());
-        Assert.assertEquals(dynamoStreamDesc.getStreamViewType(), phoenixStreamDesc.getStreamViewType());
-        Assert.assertEquals(dynamoStreamDesc.getKeySchema(), phoenixStreamDesc.getKeySchema());
-        Assert.assertEquals(dynamoStreamDesc.getTableName(), phoenixStreamDesc.getTableName());
-        Assert.assertEquals(dynamoStreamDesc.getStreamStatus(), phoenixStreamDesc.getStreamStatus());
+        Assert.assertNotNull(phoenixStreamDesc.shards());
+        Assert.assertEquals(1, phoenixStreamDesc.shards().size());
+        Assert.assertEquals(dynamoStreamDesc.streamViewType(), phoenixStreamDesc.streamViewType());
+        Assert.assertEquals(dynamoStreamDesc.keySchema(), phoenixStreamDesc.keySchema());
+        Assert.assertEquals(dynamoStreamDesc.tableName(), phoenixStreamDesc.tableName());
+        Assert.assertEquals(dynamoStreamDesc.streamStatus(), phoenixStreamDesc.streamStatus());
 
         // split table
         try (Connection connection = DriverManager.getConnection(url)) {
@@ -153,28 +148,28 @@ public class DescribeStreamIT {
         }
 
         //local dynamodb does not support multiple shards so we will only verify phoenix here
-        phoenixStreamDesc = phoenixDBStreamsClient.describeStream(phoenixRequest).getStreamDescription();
+        phoenixStreamDesc = phoenixDBStreamsClientV2.describeStream(phoenixRequest).streamDescription();
         LOGGER.info("DescribeStream in Phoenix after Split: " + phoenixStreamDesc);
-        Assert.assertEquals(dynamoStreamDesc.getStreamViewType(), phoenixStreamDesc.getStreamViewType());
-        Assert.assertEquals(dynamoStreamDesc.getKeySchema(), phoenixStreamDesc.getKeySchema());
-        Assert.assertEquals(dynamoStreamDesc.getTableName(), phoenixStreamDesc.getTableName());
-        Assert.assertEquals(dynamoStreamDesc.getStreamStatus(), phoenixStreamDesc.getStreamStatus());
+        Assert.assertEquals(dynamoStreamDesc.streamViewType(), phoenixStreamDesc.streamViewType());
+        Assert.assertEquals(dynamoStreamDesc.keySchema(), phoenixStreamDesc.keySchema());
+        Assert.assertEquals(dynamoStreamDesc.tableName(), phoenixStreamDesc.tableName());
+        Assert.assertEquals(dynamoStreamDesc.streamStatus(), phoenixStreamDesc.streamStatus());
 
-        Assert.assertNotNull(phoenixStreamDesc.getShards());
-        Assert.assertEquals(3, phoenixStreamDesc.getShards().size());
+        Assert.assertNotNull(phoenixStreamDesc.shards());
+        Assert.assertEquals(3, phoenixStreamDesc.shards().size());
         String parentId = null;
-        for (Shard shard : phoenixStreamDesc.getShards()) {
-            Assert.assertNotNull(shard.getSequenceNumberRange());
-            Assert.assertTrue(shard.getSequenceNumberRange().getStartingSequenceNumber().endsWith("00000"));
+        for (Shard shard : phoenixStreamDesc.shards()) {
+            Assert.assertNotNull(shard.sequenceNumberRange());
+            Assert.assertTrue(shard.sequenceNumberRange().startingSequenceNumber().endsWith("00000"));
             // parent which split, should have end sequence number
-            if (shard.getParentShardId() == null) {
-                parentId = shard.getShardId();
-                Assert.assertTrue(shard.getSequenceNumberRange().getEndingSequenceNumber().endsWith("99999"));
+            if (shard.parentShardId() == null) {
+                parentId = shard.shardId();
+                Assert.assertTrue(shard.sequenceNumberRange().endingSequenceNumber().endsWith("99999"));
             }
         }
-        for (Shard shard : phoenixStreamDesc.getShards()) {
-            if (shard.getParentShardId() != null) {
-                Assert.assertEquals(parentId, shard.getParentShardId());
+        for (Shard shard : phoenixStreamDesc.shards()) {
+            if (shard.parentShardId() != null) {
+                Assert.assertEquals(parentId, shard.parentShardId());
             }
         }
     }

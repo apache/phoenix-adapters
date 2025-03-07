@@ -1,17 +1,18 @@
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
-import com.amazonaws.services.dynamodbv2.model.AttributeValue;
-import com.amazonaws.services.dynamodbv2.model.ConditionalCheckFailedException;
-import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
-import com.amazonaws.services.dynamodbv2.model.PutItemRequest;
-import com.amazonaws.services.dynamodbv2.model.QueryRequest;
-import com.amazonaws.services.dynamodbv2.model.QueryResult;
-import com.amazonaws.services.dynamodbv2.model.ReturnValuesOnConditionCheckFailure;
-import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
+import software.amazon.awssdk.core.SdkBytes;
+import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
+import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
+import software.amazon.awssdk.services.dynamodb.model.ConditionalCheckFailedException;
+import software.amazon.awssdk.services.dynamodb.model.CreateTableRequest;
+import software.amazon.awssdk.services.dynamodb.model.PutItemRequest;
+import software.amazon.awssdk.services.dynamodb.model.QueryRequest;
+import software.amazon.awssdk.services.dynamodb.model.QueryResponse;
+import software.amazon.awssdk.services.dynamodb.model.ReturnValuesOnConditionCheckFailure;
+import software.amazon.awssdk.services.dynamodb.model.ScalarAttributeType;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.apache.phoenix.ddb.PhoenixDBClient;
+import org.apache.phoenix.ddb.PhoenixDBClientV2;
 import org.apache.phoenix.ddb.bson.BsonDocumentToDdbAttributes;
 import org.apache.phoenix.end2end.ServerMetadataCacheTestImpl;
 import org.apache.phoenix.jdbc.PhoenixDriver;
@@ -42,8 +43,8 @@ import static org.apache.phoenix.query.BaseTest.setUpConfigForMiniCluster;
 public class ConditionalPutItemIT {
     private static final Logger LOGGER = LoggerFactory.getLogger(PutItemIT.class);
 
-    private final AmazonDynamoDB amazonDynamoDB =
-            LocalDynamoDbTestBase.localDynamoDb().createV1Client();
+    private final DynamoDbClient dynamoDbClient =
+            LocalDynamoDbTestBase.localDynamoDb().createV2Client();
 
     private static String url;
     private static HBaseTestingUtility utility = null;
@@ -89,47 +90,48 @@ public class ConditionalPutItemIT {
                         ScalarAttributeType.S, null, null);
 
         // add index on attr_1
-        DDLTestUtils.addIndexToRequest(true, createTableRequest, "G_IDX_" + tableName, "attr_1",
+        createTableRequest = DDLTestUtils.addIndexToRequest(true, createTableRequest, "G_IDX_" + tableName, "attr_1",
                 ScalarAttributeType.N, null, null);
-        PhoenixDBClient phoenixDBClient = new PhoenixDBClient(url);
-        phoenixDBClient.createTable(createTableRequest);
-        amazonDynamoDB.createTable(createTableRequest);
+        PhoenixDBClientV2 phoenixDBClientV2 = new PhoenixDBClientV2(url);
+        phoenixDBClientV2.createTable(createTableRequest);
+        dynamoDbClient.createTable(createTableRequest);
 
         // put (val1, 123)
         Map<String, AttributeValue> item1 = new HashMap<>();
-        item1.put("attr_0", new AttributeValue().withS("val1"));
-        item1.put("attr_1", new AttributeValue().withN("123"));
-        PutItemRequest item1PutRequest = new PutItemRequest(tableName, item1);
-        phoenixDBClient.putItem(item1PutRequest);
-        amazonDynamoDB.putItem(item1PutRequest);
+        item1.put("attr_0", AttributeValue.builder().s("val1").build());
+        item1.put("attr_1", AttributeValue.builder().n("123").build());
+        PutItemRequest item1PutRequest = PutItemRequest.builder().tableName(tableName).item(item1).build();
+        phoenixDBClientV2.putItem(item1PutRequest);
+        dynamoDbClient.putItem(item1PutRequest);
 
         // conditional put (val1, 999) if attr_1 > 200
         Map<String, AttributeValue> item2 = new HashMap<>();
-        item2.put("attr_0", new AttributeValue().withS("val1"));
-        item2.put("attr_1", new AttributeValue().withN("999"));
+        item2.put("attr_0", AttributeValue.builder().s("val1").build());
+        item2.put("attr_1", AttributeValue.builder().n("999").build());
         // request
-        PutItemRequest condPutRequest = new PutItemRequest(tableName, item2);
+        PutItemRequest.Builder condPutRequest = PutItemRequest.builder().tableName(tableName).item(item2);
         // expression
-        condPutRequest.setConditionExpression("#1 > :0");
+        condPutRequest.conditionExpression("#1 > :0");
         // expression names
         Map<String, String> exprAttrNames = new HashMap();
         exprAttrNames.put("#1", "attr_1");
-        condPutRequest.setExpressionAttributeNames(exprAttrNames);
+        condPutRequest.expressionAttributeNames(exprAttrNames);
         // expression values
         Map<String, AttributeValue> exprAttrVals = new HashMap();
-        exprAttrVals.put(":0", new AttributeValue().withN("200"));
-        condPutRequest.setExpressionAttributeValues(exprAttrVals);
+        exprAttrVals.put(":0", AttributeValue.builder().n("200").build());
+        condPutRequest.expressionAttributeValues(exprAttrVals);
 
+        Map<String, AttributeValue> dynamoExceptionItem = null;
         try {
-            phoenixDBClient.putItem(condPutRequest);
-            Assert.fail("PutItem should throw exception when condition check fails and return value is not set.");
+            dynamoDbClient.putItem(condPutRequest.build());
         } catch (ConditionalCheckFailedException e) {
-            Assert.assertNull(e.getItem());
+            dynamoExceptionItem = e.item();
         }
         try {
-            amazonDynamoDB.putItem(condPutRequest);
+            phoenixDBClientV2.putItem(condPutRequest.build());
+            Assert.fail("PutItem should throw exception when condition check fails and return value is not set.");
         } catch (ConditionalCheckFailedException e) {
-            Assert.assertNull(e.getItem());
+            Assert.assertEquals(dynamoExceptionItem, e.item());
         }
 
         //query from dynamo
@@ -145,50 +147,50 @@ public class ConditionalPutItemIT {
                 ScalarAttributeType.S, null, null);
 
         // add index on attr_1
-        DDLTestUtils.addIndexToRequest(true, createTableRequest, "G_IDX_" + tableName, "attr_1",
+        createTableRequest = DDLTestUtils.addIndexToRequest(true, createTableRequest, "G_IDX_" + tableName, "attr_1",
             ScalarAttributeType.N, null, null);
-        PhoenixDBClient phoenixDBClient = new PhoenixDBClient(url);
-        phoenixDBClient.createTable(createTableRequest);
-        amazonDynamoDB.createTable(createTableRequest);
+        PhoenixDBClientV2 phoenixDBClientV2 = new PhoenixDBClientV2(url);
+        phoenixDBClientV2.createTable(createTableRequest);
+        dynamoDbClient.createTable(createTableRequest);
 
         // put (val1, 123)
         Map<String, AttributeValue> item1 = new HashMap<>();
-        item1.put("attr_0", new AttributeValue().withS("val1"));
-        item1.put("attr_1", new AttributeValue().withN("123"));
-        PutItemRequest item1PutRequest = new PutItemRequest(tableName, item1);
-        phoenixDBClient.putItem(item1PutRequest);
-        amazonDynamoDB.putItem(item1PutRequest);
+        item1.put("attr_0", AttributeValue.builder().s("val1").build());
+        item1.put("attr_1", AttributeValue.builder().n("123").build());
+        PutItemRequest item1PutRequest = PutItemRequest.builder().tableName(tableName).item(item1).build();
+        phoenixDBClientV2.putItem(item1PutRequest);
+        dynamoDbClient.putItem(item1PutRequest);
 
         // conditional put (val1, 999) if attr_1 > 200
         Map<String, AttributeValue> item2 = new HashMap<>();
-        item2.put("attr_0", new AttributeValue().withS("val1"));
-        item2.put("attr_1", new AttributeValue().withN("999"));
+        item2.put("attr_0", AttributeValue.builder().s("val1").build());
+        item2.put("attr_1", AttributeValue.builder().n("999").build());
         // request
-        PutItemRequest condPutRequest = new PutItemRequest(tableName, item2);
+        PutItemRequest.Builder condPutRequest = PutItemRequest.builder().tableName(tableName).item(item2);
         // expression
-        condPutRequest.setConditionExpression("#1 > :0");
+        condPutRequest.conditionExpression("#1 > :0");
         // expression names
         Map<String, String> exprAttrNames = new HashMap<>();
         exprAttrNames.put("#1", "attr_1");
-        condPutRequest.setExpressionAttributeNames(exprAttrNames);
+        condPutRequest.expressionAttributeNames(exprAttrNames);
         // expression values
         Map<String, AttributeValue> exprAttrVals = new HashMap<>();
-        exprAttrVals.put(":0", new AttributeValue().withN("200"));
-        condPutRequest.setExpressionAttributeValues(exprAttrVals);
-        condPutRequest.setReturnValuesOnConditionCheckFailure(
+        exprAttrVals.put(":0", AttributeValue.builder().n("200").build());
+        condPutRequest.expressionAttributeValues(exprAttrVals);
+        condPutRequest.returnValuesOnConditionCheckFailure(
             ReturnValuesOnConditionCheckFailure.ALL_OLD);
 
         try {
-            phoenixDBClient.putItem(condPutRequest);
+            phoenixDBClientV2.putItem(condPutRequest.build());
             Assert.fail(
                 "PutItem should throw exception when condition check fails.");
         } catch (ConditionalCheckFailedException e) {
-            Assert.assertEquals(item1, e.getItem());
+            Assert.assertEquals(item1, e.item());
         }
         try {
-            amazonDynamoDB.putItem(condPutRequest);
+            dynamoDbClient.putItem(condPutRequest.build());
         } catch (ConditionalCheckFailedException e) {
-            Assert.assertEquals(item1, e.getItem());
+            Assert.assertEquals(item1, e.item());
         }
 
         verifyResult1(tableName, item1);
@@ -197,14 +199,14 @@ public class ConditionalPutItemIT {
     private void verifyResult1(String tableName, Map<String, AttributeValue> item1)
         throws SQLException {
         //query from dynamo
-        QueryRequest qr = new QueryRequest(tableName);
-        qr.setKeyConditionExpression("attr_0 = :v");
+        QueryRequest.Builder qr = QueryRequest.builder().tableName(tableName);
+        qr.keyConditionExpression("attr_0 = :v");
         Map<String, AttributeValue> exprAttrVal = new HashMap<>();
-        exprAttrVal.put(":v", new AttributeValue().withS("val1"));
-        qr.setExpressionAttributeValues(exprAttrVal);
-        QueryResult result = amazonDynamoDB.query(qr);
-        Assert.assertEquals(1, result.getItems().size());
-        Map<String, AttributeValue> dynamoItem = result.getItems().get(0);
+        exprAttrVal.put(":v", AttributeValue.builder().s("val1").build());
+        qr.expressionAttributeValues(exprAttrVal);
+        QueryResponse result = dynamoDbClient.query(qr.build());
+        Assert.assertEquals(1, result.items().size());
+        Map<String, AttributeValue> dynamoItem = result.items().get(0);
 
         // check phoenix row, there should be no update
         try (Connection connection = DriverManager.getConnection(url)) {
@@ -220,8 +222,8 @@ public class ConditionalPutItemIT {
             //check no update to index row [123, val1, (val1, 123)]
             rs = connection.createStatement().executeQuery("SELECT * FROM G_IDX_" + tableName);
             Assert.assertTrue(rs.next());
-            Assert.assertEquals(rs.getLong(1), Long.parseLong(item1.get("attr_1").getN()));
-            Assert.assertEquals(rs.getString(2), item1.get("attr_0").getS());
+            Assert.assertEquals(rs.getLong(1), Long.parseLong(item1.get("attr_1").n()));
+            Assert.assertEquals(rs.getString(2), item1.get("attr_0").s());
             Map<String, AttributeValue> indexRowItem =
                 BsonDocumentToDdbAttributes.getFullItem((BsonDocument) rs.getObject(3));
             Assert.assertEquals(indexRowItem, item1);
@@ -236,51 +238,51 @@ public class ConditionalPutItemIT {
         CreateTableRequest createTableRequest =
                 DDLTestUtils.getCreateTableRequest(tableName, "attr_0",
                         ScalarAttributeType.S, null, null);
-        PhoenixDBClient phoenixDBClient = new PhoenixDBClient(url);
-        phoenixDBClient.createTable(createTableRequest);
-        amazonDynamoDB.createTable(createTableRequest);
+        PhoenixDBClientV2 phoenixDBClientV2 = new PhoenixDBClientV2(url);
+        phoenixDBClientV2.createTable(createTableRequest);
+        dynamoDbClient.createTable(createTableRequest);
 
         // put (val1, 123)
         Map<String, AttributeValue> item1 = new HashMap<>();
-        item1.put("attr_0", new AttributeValue().withS("val1"));
-        item1.put("attr_1", new AttributeValue().withN("123"));
-        PutItemRequest item1PutRequest = new PutItemRequest(tableName, item1);
-        phoenixDBClient.putItem(item1PutRequest);
-        amazonDynamoDB.putItem(item1PutRequest);
+        item1.put("attr_0", AttributeValue.builder().s("val1").build());
+        item1.put("attr_1", AttributeValue.builder().n("123").build());
+        PutItemRequest item1PutRequest = PutItemRequest.builder().tableName(tableName).item(item1).build();
+        phoenixDBClientV2.putItem(item1PutRequest);
+        dynamoDbClient.putItem(item1PutRequest);
 
         // conditional put (val1, 999) if attr_1 != 200
         Map<String, AttributeValue> item2 = new HashMap<>();
-        item2.put("attr_0", new AttributeValue().withS("val1"));
-        item2.put("attr_1", new AttributeValue().withN("999"));
+        item2.put("attr_0", AttributeValue.builder().s("val1").build());
+        item2.put("attr_1", AttributeValue.builder().n("999").build());
         // request
-        PutItemRequest condPutRequest = new PutItemRequest(tableName, item2);
+        PutItemRequest.Builder condPutRequest = PutItemRequest.builder().tableName(tableName).item(item2);
         // expression
-        condPutRequest.setConditionExpression("#1 <> :0");
+        condPutRequest.conditionExpression("#1 <> :0");
         // expression names
         Map<String, String> exprAttrNames = new HashMap();
         exprAttrNames.put("#1", "attr_1");
-        condPutRequest.setExpressionAttributeNames(exprAttrNames);
+        condPutRequest.expressionAttributeNames(exprAttrNames);
         // expression values
         Map<String, AttributeValue> exprAttrVals = new HashMap();
-        exprAttrVals.put(":0", new AttributeValue().withN("200"));
-        condPutRequest.setExpressionAttributeValues(exprAttrVals);
+        exprAttrVals.put(":0", AttributeValue.builder().n("200").build());
+        condPutRequest.expressionAttributeValues(exprAttrVals);
 
         try {
-            phoenixDBClient.putItem(condPutRequest);
+            phoenixDBClientV2.putItem(condPutRequest.build());
         } catch (ConditionalCheckFailedException e) {
             Assert.fail("PutItem should not throw exception when condition check passes.");
         }
-        amazonDynamoDB.putItem(condPutRequest);
+        dynamoDbClient.putItem(condPutRequest.build());
 
         //query from dynamo
-        QueryRequest qr = new QueryRequest(tableName);
-        qr.setKeyConditionExpression("attr_0 = :v");
+        QueryRequest.Builder qr = QueryRequest.builder().tableName(tableName);
+        qr.keyConditionExpression("attr_0 = :v");
         Map<String, AttributeValue> exprAttrVal = new HashMap<>();
-        exprAttrVal.put(":v", new AttributeValue().withS("val1"));
-        qr.setExpressionAttributeValues(exprAttrVal);
-        QueryResult result = amazonDynamoDB.query(qr);
-        Assert.assertEquals(1, result.getItems().size());
-        Map<String, AttributeValue> dynamoItem = result.getItems().get(0);
+        exprAttrVal.put(":v", AttributeValue.builder().s("val1").build());
+        qr.expressionAttributeValues(exprAttrVal);
+        QueryResponse result = dynamoDbClient.query(qr.build());
+        Assert.assertEquals(1, result.items().size());
+        Map<String, AttributeValue> dynamoItem = result.items().get(0);
 
         // check phoenix row, there should be update to the row
         try (Connection connection = DriverManager.getConnection(url)) {
@@ -300,23 +302,23 @@ public class ConditionalPutItemIT {
         CreateTableRequest createTableRequest =
                 DDLTestUtils.getCreateTableRequest(tableName, "attr_0",
                         ScalarAttributeType.S, null, null);
-        PhoenixDBClient phoenixDBClient = new PhoenixDBClient(url);
-        phoenixDBClient.createTable(createTableRequest);
-        amazonDynamoDB.createTable(createTableRequest);
+        PhoenixDBClientV2 phoenixDBClientV2 = new PhoenixDBClientV2(url);
+        phoenixDBClientV2.createTable(createTableRequest);
+        dynamoDbClient.createTable(createTableRequest);
 
         //put item [str_val_0, item]
         Map<String, AttributeValue> item1 = DocumentDdbAttributesTest.getItem1();
-        PutItemRequest putItemRequest = new PutItemRequest(tableName, item1);
-        phoenixDBClient.putItem(putItemRequest);
-        amazonDynamoDB.putItem(putItemRequest);
+        PutItemRequest putItemRequest = PutItemRequest.builder().tableName(tableName).item(item1).build();
+        phoenixDBClientV2.putItem(putItemRequest);
+        dynamoDbClient.putItem(putItemRequest);
 
 
         //conditional put
         Map<String, AttributeValue> item2 = DocumentDdbAttributesTest.getItem2();
         // request
-        PutItemRequest condPutRequest = new PutItemRequest(tableName, item2);
+        PutItemRequest.Builder condPutRequest = PutItemRequest.builder().tableName(tableName).item(item2);
         // expression
-        condPutRequest.setConditionExpression("#0 = :0 AND #1 = :1 AND #2 = :2 AND #3 = :3 AND " +
+        condPutRequest.conditionExpression("#0 = :0 AND #1 = :1 AND #2 = :2 AND #3 = :3 AND " +
                 "attribute_not_exists(#4) AND attribute_not_exists(#5)");
         // expression names
         Map<String, String> exprAttrNames = new HashMap();
@@ -326,30 +328,31 @@ public class ConditionalPutItemIT {
         exprAttrNames.put("#3", "InPublication");
         exprAttrNames.put("#4", "NestedMap2");
         exprAttrNames.put("#5", "ISBN");
-        condPutRequest.setExpressionAttributeNames(exprAttrNames);
+        condPutRequest.expressionAttributeNames(exprAttrNames);
         // expression values
         Map<String, AttributeValue> exprAttrVals = new HashMap();
-        exprAttrVals.put(":0", new AttributeValue().withN("1295.03"));
-        exprAttrVals.put(":1", new AttributeValue().withB(ByteBuffer.wrap(Bytes.toBytes("Black"))));
-        exprAttrVals.put(":2", new AttributeValue().withS("Book 101 Title "));
-        exprAttrVals.put(":3", new AttributeValue().withBOOL(false));
-        condPutRequest.setExpressionAttributeValues(exprAttrVals);
+        exprAttrVals.put(":0", AttributeValue.builder().n("1295.03").build());
+        exprAttrVals.put(":1", AttributeValue.builder().b(SdkBytes.fromByteArray(Bytes.toBytes("Black"))).build());
+        exprAttrVals.put(":2", AttributeValue.builder().s("Book 101 Title ").build());
+        exprAttrVals.put(":3", AttributeValue.builder().bool(false).build());
+        condPutRequest.expressionAttributeValues(exprAttrVals);
 
+        Map<String, AttributeValue> dynamoExceptionItem = null;
         try {
-            phoenixDBClient.putItem(condPutRequest);
+            dynamoDbClient.putItem(condPutRequest.build());
             Assert.fail("PutItem should throw exception when condition check fails.");
         } catch (ConditionalCheckFailedException e) {
-            Assert.assertNull(e.getItem());
+            dynamoExceptionItem = e.item();
         }
         try {
-            amazonDynamoDB.putItem(condPutRequest);
+            phoenixDBClientV2.putItem(condPutRequest.build());
             Assert.fail("PutItem should throw exception when condition check fails.");
         } catch (ConditionalCheckFailedException e) {
-            Assert.assertNull(e.getItem());
+            Assert.assertEquals(dynamoExceptionItem, e.item());
         }
 
         //query from dynamo
-        verifyResult2(tableName, new AttributeValue().withS("str_val_0"), 2, item1);
+        verifyResult2(tableName, AttributeValue.builder().s("str_val_0").build(), 2, item1);
     }
 
     @Test(timeout = 120000)
@@ -359,22 +362,22 @@ public class ConditionalPutItemIT {
         CreateTableRequest createTableRequest =
             DDLTestUtils.getCreateTableRequest(tableName, "attr_0",
                 ScalarAttributeType.B, "pk2", ScalarAttributeType.B);
-        PhoenixDBClient phoenixDBClient = new PhoenixDBClient(url);
-        phoenixDBClient.createTable(createTableRequest);
-        amazonDynamoDB.createTable(createTableRequest);
+        PhoenixDBClientV2 phoenixDBClientV2 = new PhoenixDBClientV2(url);
+        phoenixDBClientV2.createTable(createTableRequest);
+        dynamoDbClient.createTable(createTableRequest);
 
         //put item [str_val_0, item]
         Map<String, AttributeValue> item1 = DocumentDdbAttributesTest.getItemWithBinary1();
-        PutItemRequest putItemRequest = new PutItemRequest(tableName, item1);
-        phoenixDBClient.putItem(putItemRequest);
-        amazonDynamoDB.putItem(putItemRequest);
+        PutItemRequest putItemRequest = PutItemRequest.builder().tableName(tableName).item(item1).build();
+        phoenixDBClientV2.putItem(putItemRequest);
+        dynamoDbClient.putItem(putItemRequest);
 
         //conditional put
         Map<String, AttributeValue> item2 = DocumentDdbAttributesTest.getItemWithBinary2();
         // request
-        PutItemRequest condPutRequest = new PutItemRequest(tableName, item2);
+        PutItemRequest.Builder condPutRequest = PutItemRequest.builder().tableName(tableName).item(item2);
         // expression
-        condPutRequest.setConditionExpression("#0 = :0 AND #1 = :1 AND #2 = :2 AND #3 = :3 AND " +
+        condPutRequest.conditionExpression("#0 = :0 AND #1 = :1 AND #2 = :2 AND #3 = :3 AND " +
             "attribute_not_exists(#4) AND attribute_not_exists(#5)");
         // expression names
         Map<String, String> exprAttrNames = new HashMap<>();
@@ -384,43 +387,44 @@ public class ConditionalPutItemIT {
         exprAttrNames.put("#3", "InPublication");
         exprAttrNames.put("#4", "NestedMap2");
         exprAttrNames.put("#5", "ISBN");
-        condPutRequest.setExpressionAttributeNames(exprAttrNames);
+        condPutRequest.expressionAttributeNames(exprAttrNames);
         // expression values
         Map<String, AttributeValue> exprAttrVals = new HashMap<>();
-        exprAttrVals.put(":0", new AttributeValue().withN("1295.03"));
-        exprAttrVals.put(":1", new AttributeValue().withB(ByteBuffer.wrap(Bytes.toBytes("Black"))));
-        exprAttrVals.put(":2", new AttributeValue().withS("Book 101 Title "));
-        exprAttrVals.put(":3", new AttributeValue().withBOOL(false));
-        condPutRequest.setExpressionAttributeValues(exprAttrVals);
+        exprAttrVals.put(":0", AttributeValue.builder().n("1295.03").build());
+        exprAttrVals.put(":1", AttributeValue.builder().b(SdkBytes.fromByteArray(Bytes.toBytes("Black"))).build());
+        exprAttrVals.put(":2", AttributeValue.builder().s("Book 101 Title ").build());
+        exprAttrVals.put(":3", AttributeValue.builder().bool(false).build());
+        condPutRequest.expressionAttributeValues(exprAttrVals);
 
+        Map<String, AttributeValue> dynamoExceptionItem = null;
         try {
-            amazonDynamoDB.putItem(condPutRequest);
+            dynamoDbClient.putItem(condPutRequest.build());
             Assert.fail("PutItem should throw exception when condition check fails.");
         } catch (ConditionalCheckFailedException e) {
-            Assert.assertNull(e.getItem());
+            dynamoExceptionItem = e.item();
         }
         try {
-            phoenixDBClient.putItem(condPutRequest);
+            phoenixDBClientV2.putItem(condPutRequest.build());
             Assert.fail("PutItem should throw exception when condition check fails.");
         } catch (ConditionalCheckFailedException e) {
-            Assert.assertNull(e.getItem());
+            Assert.assertEquals(dynamoExceptionItem, e.item());
         }
 
         verifyResult2(tableName,
-            new AttributeValue().withB(ByteBuffer.wrap(Bytes.toBytes("str_val_0"))), 3, item1);
+            AttributeValue.builder().b(SdkBytes.fromByteArray(Bytes.toBytes("str_val_0"))).build(), 3, item1);
     }
 
     private void verifyResult2(String tableName, AttributeValue str_val_0, int columnIndex,
         Map<String, AttributeValue> item1) throws SQLException {
         //query from dynamo
-        QueryRequest qr = new QueryRequest(tableName);
-        qr.setKeyConditionExpression("attr_0 = :val");
+        QueryRequest.Builder qr = QueryRequest.builder().tableName(tableName);
+        qr.keyConditionExpression("attr_0 = :val");
         Map<String, AttributeValue> exprAttrVal = new HashMap<>();
         exprAttrVal.put(":val", str_val_0);
-        qr.setExpressionAttributeValues(exprAttrVal);
-        QueryResult result = amazonDynamoDB.query(qr);
-        Assert.assertEquals(1, result.getItems().size());
-        Map<String, AttributeValue> dynamoItem = result.getItems().get(0);
+        qr.expressionAttributeValues(exprAttrVal);
+        QueryResponse result = dynamoDbClient.query(qr.build());
+        Assert.assertEquals(1, result.items().size());
+        Map<String, AttributeValue> dynamoItem = result.items().get(0);
 
         // check phoenix row, there should be no update to the row
         try (Connection connection = DriverManager.getConnection(url)) {
@@ -443,22 +447,22 @@ public class ConditionalPutItemIT {
         CreateTableRequest createTableRequest =
             DDLTestUtils.getCreateTableRequest(tableName, "attr_0",
                 ScalarAttributeType.B, "pk2", ScalarAttributeType.B);
-        PhoenixDBClient phoenixDBClient = new PhoenixDBClient(url);
-        phoenixDBClient.createTable(createTableRequest);
-        amazonDynamoDB.createTable(createTableRequest);
+        PhoenixDBClientV2 phoenixDBClientV2 = new PhoenixDBClientV2(url);
+        phoenixDBClientV2.createTable(createTableRequest);
+        dynamoDbClient.createTable(createTableRequest);
 
         //put item [str_val_0, item]
         Map<String, AttributeValue> item1 = DocumentDdbAttributesTest.getItemWithBinary1();
-        PutItemRequest putItemRequest = new PutItemRequest(tableName, item1);
-        phoenixDBClient.putItem(putItemRequest);
-        amazonDynamoDB.putItem(putItemRequest);
+        PutItemRequest putItemRequest = PutItemRequest.builder().tableName(tableName).item(item1).build();
+        phoenixDBClientV2.putItem(putItemRequest);
+        dynamoDbClient.putItem(putItemRequest);
 
         //conditional put
         Map<String, AttributeValue> item2 = DocumentDdbAttributesTest.getItemWithBinary2();
         // request
-        PutItemRequest condPutRequest = new PutItemRequest(tableName, item2);
+        PutItemRequest.Builder condPutRequest = PutItemRequest.builder().tableName(tableName).item(item2);
         // expression
-        condPutRequest.setConditionExpression("#0 = :0 AND #1 = :1 AND #2 = :2 AND #3 = :3 AND " +
+        condPutRequest.conditionExpression("#0 = :0 AND #1 = :1 AND #2 = :2 AND #3 = :3 AND " +
             "attribute_not_exists(#4) AND attribute_not_exists(#5)");
         // expression names
         Map<String, String> exprAttrNames = new HashMap<>();
@@ -468,34 +472,34 @@ public class ConditionalPutItemIT {
         exprAttrNames.put("#3", "InPublication");
         exprAttrNames.put("#4", "NestedMap2");
         exprAttrNames.put("#5", "ISBN");
-        condPutRequest.setExpressionAttributeNames(exprAttrNames);
+        condPutRequest.expressionAttributeNames(exprAttrNames);
         // expression values
         Map<String, AttributeValue> exprAttrVals = new HashMap<>();
-        exprAttrVals.put(":0", new AttributeValue().withN("1295.03"));
-        exprAttrVals.put(":1", new AttributeValue().withB(ByteBuffer.wrap(Bytes.toBytes("Black"))));
-        exprAttrVals.put(":2", new AttributeValue().withS("Book 101 Title "));
-        exprAttrVals.put(":3", new AttributeValue().withBOOL(false));
-        condPutRequest.setExpressionAttributeValues(exprAttrVals);
-        condPutRequest.setReturnValuesOnConditionCheckFailure(
+        exprAttrVals.put(":0", AttributeValue.builder().n("1295.03").build());
+        exprAttrVals.put(":1", AttributeValue.builder().b(SdkBytes.fromByteArray(Bytes.toBytes("Black"))).build());
+        exprAttrVals.put(":2", AttributeValue.builder().s("Book 101 Title ").build());
+        exprAttrVals.put(":3", AttributeValue.builder().bool(false).build());
+        condPutRequest.expressionAttributeValues(exprAttrVals);
+        condPutRequest.returnValuesOnConditionCheckFailure(
             ReturnValuesOnConditionCheckFailure.ALL_OLD);
 
         try {
-            amazonDynamoDB.putItem(condPutRequest);
+            dynamoDbClient.putItem(condPutRequest.build());
             Assert.fail("PutItem should throw exception when condition check fails.");
         } catch (ConditionalCheckFailedException e) {
             // TODO: uncomment when we have utility to compare sets
-            // Assert.assertEquals(item1, e.getItem());
+            // Assert.assertEquals(item1, e.item());
         }
         try {
-            phoenixDBClient.putItem(condPutRequest);
+            phoenixDBClientV2.putItem(condPutRequest.build());
             Assert.fail("PutItem should throw exception when condition check fails.");
         } catch (ConditionalCheckFailedException e) {
-            Assert.assertEquals(item1, e.getItem());
+            Assert.assertEquals(item1, e.item());
         }
 
         //query from dynamo
         verifyResult2(tableName,
-            new AttributeValue().withB(ByteBuffer.wrap(Bytes.toBytes("str_val_0"))), 3, item1);
+            AttributeValue.builder().b(SdkBytes.fromByteArray(Bytes.toBytes("str_val_0"))).build(), 3, item1);
     }
 
     @Test(timeout = 120000)
@@ -506,24 +510,24 @@ public class ConditionalPutItemIT {
                 DDLTestUtils.getCreateTableRequest(tableName, "attr_0",
                         ScalarAttributeType.S, null, null);
         // add index on Id2
-        DDLTestUtils.addIndexToRequest(true, createTableRequest, "G_IDX_" + tableName, "Id2",
+        createTableRequest = DDLTestUtils.addIndexToRequest(true, createTableRequest, "G_IDX_" + tableName, "Id2",
                 ScalarAttributeType.N, null, null);
-        PhoenixDBClient phoenixDBClient = new PhoenixDBClient(url);
-        phoenixDBClient.createTable(createTableRequest);
-        amazonDynamoDB.createTable(createTableRequest);
+        PhoenixDBClientV2 phoenixDBClientV2 = new PhoenixDBClientV2(url);
+        phoenixDBClientV2.createTable(createTableRequest);
+        dynamoDbClient.createTable(createTableRequest);
 
         //put item [str_val_0, item]
         Map<String, AttributeValue> item1 = DocumentDdbAttributesTest.getItem1();
-        PutItemRequest putItemRequest = new PutItemRequest(tableName, item1);
-        phoenixDBClient.putItem(putItemRequest);
-        amazonDynamoDB.putItem(putItemRequest);
+        PutItemRequest putItemRequest = PutItemRequest.builder().tableName(tableName).item(item1).build();
+        phoenixDBClientV2.putItem(putItemRequest);
+        dynamoDbClient.putItem(putItemRequest);
 
         //conditional put
         Map<String, AttributeValue> item2 = DocumentDdbAttributesTest.getItem2();
         // request
-        PutItemRequest condPutRequest = new PutItemRequest(tableName, item2);
+        PutItemRequest.Builder condPutRequest = PutItemRequest.builder().tableName(tableName).item(item2);
         // expression
-        condPutRequest.setConditionExpression("(#0 = :0) AND " +
+        condPutRequest.conditionExpression("(#0 = :0) AND " +
                 "(((attribute_not_exists(#1) AND attribute_not_exists(#2)) OR attribute_exists(#3)) " +
                 "OR (#4 = :1))");
         // expression names
@@ -533,29 +537,29 @@ public class ConditionalPutItemIT {
         exprAttrNames.put("#2", "attr_6");
         exprAttrNames.put("#3", "not_found");
         exprAttrNames.put("#4", "Id2");
-        condPutRequest.setExpressionAttributeNames(exprAttrNames);
+        condPutRequest.expressionAttributeNames(exprAttrNames);
         // expression values
         Map<String, AttributeValue> exprAttrVals = new HashMap();
-        exprAttrVals.put(":0", new AttributeValue().withN("1295.03"));
-        exprAttrVals.put(":1", new AttributeValue().withN("101.01"));
-        condPutRequest.setExpressionAttributeValues(exprAttrVals);
+        exprAttrVals.put(":0", AttributeValue.builder().n("1295.03").build());
+        exprAttrVals.put(":1", AttributeValue.builder().n("101.01").build());
+        condPutRequest.expressionAttributeValues(exprAttrVals);
 
         try {
-            phoenixDBClient.putItem(condPutRequest);
+            phoenixDBClientV2.putItem(condPutRequest.build());
         } catch (ConditionalCheckFailedException e) {
             Assert.fail("PutItem should not throw exception when condition check passes.");
         }
-        amazonDynamoDB.putItem(condPutRequest);
+        dynamoDbClient.putItem(condPutRequest.build());
 
         //query from dynamo
-        QueryRequest qr = new QueryRequest(tableName);
-        qr.setKeyConditionExpression("attr_0 = :val");
+        QueryRequest.Builder qr = QueryRequest.builder().tableName(tableName);
+        qr.keyConditionExpression("attr_0 = :val");
         Map<String, AttributeValue> exprAttrVal = new HashMap<>();
-        exprAttrVal.put(":val", new AttributeValue().withS("str_val_0"));
-        qr.setExpressionAttributeValues(exprAttrVal);
-        QueryResult result = amazonDynamoDB.query(qr);
-        Assert.assertEquals(1, result.getItems().size());
-        Map<String, AttributeValue> dynamoItem = result.getItems().get(0);
+        exprAttrVal.put(":val", AttributeValue.builder().s("str_val_0").build());
+        qr.expressionAttributeValues(exprAttrVal);
+        QueryResponse result = dynamoDbClient.query(qr.build());
+        Assert.assertEquals(1, result.items().size());
+        Map<String, AttributeValue> dynamoItem = result.items().get(0);
 
         // check phoenix row, there should be update to the row
         try (Connection connection = DriverManager.getConnection(url)) {
@@ -567,8 +571,8 @@ public class ConditionalPutItemIT {
             // check index row is updated (Id2, attr_0, COL)
             rs = connection.createStatement().executeQuery("SELECT * FROM G_IDX_" + tableName);
             Assert.assertTrue(rs.next());
-            Assert.assertEquals(rs.getDouble(1), Double.parseDouble(item2.get("Id2").getN()), 0.0);
-            Assert.assertEquals(rs.getString(2), item2.get("attr_0").getS());
+            Assert.assertEquals(rs.getDouble(1), Double.parseDouble(item2.get("Id2").n()), 0.0);
+            Assert.assertEquals(rs.getString(2), item2.get("attr_0").s());
             Map<String, AttributeValue> indexRowItem = BsonDocumentToDdbAttributes.getFullItem((BsonDocument) rs.getObject(3));
             Assert.assertEquals(indexRowItem, item2);
 

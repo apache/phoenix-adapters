@@ -21,8 +21,9 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 
-import com.amazonaws.services.dynamodbv2.model.DeleteTableResult;
-import com.amazonaws.services.dynamodbv2.model.TableDescription;
+import software.amazon.awssdk.services.dynamodb.model.DeleteTableRequest;
+import software.amazon.awssdk.services.dynamodb.model.DeleteTableResponse;
+import software.amazon.awssdk.services.dynamodb.model.TableDescription;
 
 import org.apache.phoenix.ddb.utils.TableDescriptorUtils;
 import org.slf4j.Logger;
@@ -32,12 +33,11 @@ import org.slf4j.LoggerFactory;
 public class DeleteTableService {
     private static final Logger LOGGER = LoggerFactory.getLogger(DeleteTableService.class);
 
-    public static DeleteTableResult deleteTable(final String tableName,
-                                                final String connectionUrl) {
-        DeleteTableResult result = new DeleteTableResult();
+    public static DeleteTableResponse deleteTable(DeleteTableRequest deleteTableRequest,
+                                                  final String connectionUrl) {
+        String tableName = deleteTableRequest.tableName();
         TableDescription
                 tableDescription = TableDescriptorUtils.getTableDescription(tableName, connectionUrl);
-        result.setTableDescription(tableDescription);
         String deleteTableDDL = "DROP TABLE " + tableName;
         LOGGER.info("Delete Table Query: " + deleteTableDDL);
 
@@ -47,7 +47,7 @@ public class DeleteTableService {
             throw new RuntimeException(e);
         }
 
-        return result;
+        return DeleteTableResponse.builder().tableDescription(tableDescription).build();
     }
 }
 

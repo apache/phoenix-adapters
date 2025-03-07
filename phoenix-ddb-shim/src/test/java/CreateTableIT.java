@@ -16,15 +16,15 @@
  * limitations under the License.
  */
 
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
-import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
-import com.amazonaws.services.dynamodbv2.model.CreateTableResult;
-import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
-import com.amazonaws.services.dynamodbv2.model.StreamSpecification;
+import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
+import software.amazon.awssdk.services.dynamodb.model.CreateTableRequest;
+import software.amazon.awssdk.services.dynamodb.model.CreateTableResponse;
+import software.amazon.awssdk.services.dynamodb.model.ScalarAttributeType;
+import software.amazon.awssdk.services.dynamodb.model.StreamSpecification;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
-import org.apache.phoenix.ddb.PhoenixDBClient;
+import org.apache.phoenix.ddb.PhoenixDBClientV2;
 import org.apache.phoenix.ddb.utils.PhoenixUtils;
 import org.apache.phoenix.end2end.ServerMetadataCacheTestImpl;
 import org.apache.phoenix.jdbc.PhoenixConnection;
@@ -36,7 +36,7 @@ import org.apache.phoenix.util.JacksonUtil;
 import org.apache.phoenix.util.PhoenixRuntime;
 import org.apache.phoenix.util.ServerUtil;
 
-import com.amazonaws.services.dynamodbv2.model.TableDescription;
+import software.amazon.awssdk.services.dynamodb.model.TableDescription;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -63,8 +63,8 @@ public class CreateTableIT {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CreateTableIT.class);
 
-    private final AmazonDynamoDB amazonDynamoDB =
-        LocalDynamoDbTestBase.localDynamoDb().createV1Client();
+    private final DynamoDbClient dynamoDbClient =
+        LocalDynamoDbTestBase.localDynamoDb().createV2Client();
 
     private static String url;
     private static HBaseTestingUtility utility = null;
@@ -110,25 +110,23 @@ public class CreateTableIT {
                 ScalarAttributeType.B, "PK2", ScalarAttributeType.S);
 
         // add global index
-        DDLTestUtils.addIndexToRequest(true, createTableRequest, "IDX1_" + tableName, "COL1",
+        createTableRequest = DDLTestUtils.addIndexToRequest(true, createTableRequest, "IDX1_" + tableName, "COL1",
             ScalarAttributeType.N, "COL2", ScalarAttributeType.B);
 
         // add local index
-        DDLTestUtils.addIndexToRequest(false, createTableRequest, "IDX2_" + tableName, "PK1",
+        createTableRequest = DDLTestUtils.addIndexToRequest(false, createTableRequest, "IDX2_" + tableName, "PK1",
             ScalarAttributeType.B, "LCOL2", ScalarAttributeType.S);
 
-        CreateTableResult createTableResult1 = amazonDynamoDB.createTable(createTableRequest);
+        CreateTableResponse CreateTableResponse1 = dynamoDbClient.createTable(createTableRequest);
 
-        PhoenixDBClient phoenixDBClient = new PhoenixDBClient(url);
-        CreateTableResult createTableResult2 = phoenixDBClient.createTable(createTableRequest);
+        PhoenixDBClientV2 phoenixDBClientV2 = new PhoenixDBClientV2(url);
+        CreateTableResponse CreateTableResponse2 = phoenixDBClientV2.createTable(createTableRequest);
 
-        LOGGER.info("Create Table response from DynamoDB: {}",
-            JacksonUtil.getObjectWriterPretty().writeValueAsString(createTableResult1));
-        LOGGER.info("Create Table response from Phoenix: {}",
-            JacksonUtil.getObjectWriterPretty().writeValueAsString(createTableResult2));
+        LOGGER.info("Create Table response from DynamoDB: {}", CreateTableResponse1.toString());
+        LOGGER.info("Create Table response from Phoenix: {}", CreateTableResponse2.toString());
 
-        TableDescription tableDescription1 = createTableResult1.getTableDescription();
-        TableDescription tableDescription2 = createTableResult2.getTableDescription();
+        TableDescription tableDescription1 = CreateTableResponse1.tableDescription();
+        TableDescription tableDescription2 = CreateTableResponse2.tableDescription();
         DDLTestUtils.assertTableDescriptions(tableDescription1, tableDescription2);
     }
 
@@ -142,21 +140,19 @@ public class CreateTableIT {
                 null, null);
 
         // add global index
-        DDLTestUtils.addIndexToRequest(true, createTableRequest, "G_IDX_" + tableName, "idx_key1",
+        createTableRequest = DDLTestUtils.addIndexToRequest(true, createTableRequest, "G_IDX_" + tableName, "idx_key1",
             ScalarAttributeType.B, null, null);
 
-        CreateTableResult createTableResult1 = amazonDynamoDB.createTable(createTableRequest);
+        CreateTableResponse CreateTableResponse1 = dynamoDbClient.createTable(createTableRequest);
 
-        PhoenixDBClient phoenixDBClient = new PhoenixDBClient(url);
-        CreateTableResult createTableResult2 = phoenixDBClient.createTable(createTableRequest);
+        PhoenixDBClientV2 phoenixDBClientV2 = new PhoenixDBClientV2(url);
+        CreateTableResponse CreateTableResponse2 = phoenixDBClientV2.createTable(createTableRequest);
 
-        LOGGER.info("Create Table response from DynamoDB: {}",
-            JacksonUtil.getObjectWriterPretty().writeValueAsString(createTableResult1));
-        LOGGER.info("Create Table response from Phoenix: {}",
-            JacksonUtil.getObjectWriterPretty().writeValueAsString(createTableResult2));
+        LOGGER.info("Create Table response from DynamoDB: {}", CreateTableResponse1.toString());
+        LOGGER.info("Create Table response from Phoenix: {}", CreateTableResponse2.toString());
 
-        TableDescription tableDescription1 = createTableResult1.getTableDescription();
-        TableDescription tableDescription2 = createTableResult2.getTableDescription();
+        TableDescription tableDescription1 = CreateTableResponse1.tableDescription();
+        TableDescription tableDescription2 = CreateTableResponse2.tableDescription();
         DDLTestUtils.assertTableDescriptions(tableDescription1, tableDescription2);
     }
 
@@ -168,21 +164,19 @@ public class CreateTableIT {
                 ScalarAttributeType.B, "SORT_KEY", ScalarAttributeType.N);
 
         // add local index
-        DDLTestUtils.addIndexToRequest(false, createTableRequest, "L_IDX", "PK1",
+        createTableRequest = DDLTestUtils.addIndexToRequest(false, createTableRequest, "L_IDX", "PK1",
                 ScalarAttributeType.B, "LCOL2", ScalarAttributeType.B);
 
-        CreateTableResult createTableResult1 = amazonDynamoDB.createTable(createTableRequest);
+        CreateTableResponse CreateTableResponse1 = dynamoDbClient.createTable(createTableRequest);
 
-        PhoenixDBClient phoenixDBClient = new PhoenixDBClient(url);
-        CreateTableResult createTableResult2 = phoenixDBClient.createTable(createTableRequest);
+        PhoenixDBClientV2 phoenixDBClientV2 = new PhoenixDBClientV2(url);
+        CreateTableResponse CreateTableResponse2 = phoenixDBClientV2.createTable(createTableRequest);
 
-        LOGGER.info("Create Table response from DynamoDB: {}",
-            JacksonUtil.getObjectWriterPretty().writeValueAsString(createTableResult1));
-        LOGGER.info("Create Table response from Phoenix: {}",
-            JacksonUtil.getObjectWriterPretty().writeValueAsString(createTableResult2));
+        LOGGER.info("Create Table response from DynamoDB: {}", CreateTableResponse1.toString());
+        LOGGER.info("Create Table response from Phoenix: {}", CreateTableResponse2.toString());
 
-        TableDescription tableDescription1 = createTableResult1.getTableDescription();
-        TableDescription tableDescription2 = createTableResult2.getTableDescription();
+        TableDescription tableDescription1 = CreateTableResponse1.tableDescription();
+        TableDescription tableDescription2 = CreateTableResponse2.tableDescription();
         DDLTestUtils.assertTableDescriptions(tableDescription1, tableDescription2);
     }
 
@@ -196,8 +190,8 @@ public class CreateTableIT {
                         ScalarAttributeType.B, "xYzwQt", ScalarAttributeType.N);
 
 
-        PhoenixDBClient phoenixDBClient = new PhoenixDBClient(url);
-        phoenixDBClient.createTable(createTableRequest);
+        PhoenixDBClientV2 phoenixDBClientV2 = new PhoenixDBClientV2(url);
+        phoenixDBClientV2.createTable(createTableRequest);
         try (Connection connection = DriverManager.getConnection(url)) {
             List<PColumn> pkCols = PhoenixUtils.getPKColumns(connection, tableName);
             Assert.assertEquals(2, pkCols.size());
@@ -215,8 +209,8 @@ public class CreateTableIT {
                         ScalarAttributeType.B, "UPPERCASE", ScalarAttributeType.N);
 
 
-        PhoenixDBClient phoenixDBClient = new PhoenixDBClient(url);
-        phoenixDBClient.createTable(createTableRequest);
+        PhoenixDBClientV2 phoenixDBClientV2 = new PhoenixDBClientV2(url);
+        phoenixDBClientV2.createTable(createTableRequest);
         try (Connection connection = DriverManager.getConnection(url)) {
             List<PColumn> pkCols = PhoenixUtils.getPKColumns(connection, tableName);
             Assert.assertEquals(2, pkCols.size());
@@ -233,13 +227,13 @@ public class CreateTableIT {
                 DDLTestUtils.getCreateTableRequest(tableName, "hashKey",
                         ScalarAttributeType.B, "sortKey", ScalarAttributeType.N);
 
-        DDLTestUtils.addStreamSpecToRequest(createTableRequest, "NEW_IMAGE");
+        createTableRequest = DDLTestUtils.addStreamSpecToRequest(createTableRequest, "NEW_IMAGE");
 
-        PhoenixDBClient phoenixDBClient = new PhoenixDBClient(url);
-        CreateTableResult createTableResult1 = amazonDynamoDB.createTable(createTableRequest);
-        CreateTableResult createTableResult2 = phoenixDBClient.createTable(createTableRequest);
-        TableDescription tableDescription1 = createTableResult1.getTableDescription();
-        TableDescription tableDescription2 = createTableResult2.getTableDescription();
+        PhoenixDBClientV2 phoenixDBClientV2 = new PhoenixDBClientV2(url);
+        CreateTableResponse CreateTableResponse1 = dynamoDbClient.createTable(createTableRequest);
+        CreateTableResponse CreateTableResponse2 = phoenixDBClientV2.createTable(createTableRequest);
+        TableDescription tableDescription1 = CreateTableResponse1.tableDescription();
+        TableDescription tableDescription2 = CreateTableResponse2.tableDescription();
         DDLTestUtils.assertTableDescriptions(tableDescription1, tableDescription2);
 
         try (Connection connection = DriverManager.getConnection(url)) {

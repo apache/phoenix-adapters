@@ -1,8 +1,8 @@
 package org.apache.phoenix.ddb.service;
 
-import com.amazonaws.services.dynamodbv2.model.AttributeValue;
-import com.amazonaws.services.dynamodbv2.model.QueryRequest;
-import com.amazonaws.services.dynamodbv2.model.QueryResult;
+import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
+import software.amazon.awssdk.services.dynamodb.model.QueryRequest;
+import software.amazon.awssdk.services.dynamodb.model.QueryResponse;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.phoenix.ddb.utils.CommonServiceUtils;
 import org.apache.phoenix.ddb.utils.DQLUtils;
@@ -28,9 +28,9 @@ public class QueryService {
 
     private static final int MAX_QUERY_LIMIT = 500;
 
-    public static QueryResult query(QueryRequest request, String connectionUrl)  {
-        String tableName = request.getTableName();
-        String indexName = request.getIndexName();
+    public static QueryResponse query(QueryRequest request, String connectionUrl)  {
+        String tableName = request.tableName();
+        String indexName = request.indexName();
         boolean useIndex = !StringUtils.isEmpty(indexName);
         List<PColumn> tablePKCols, indexPKCols = null;
         try (Connection connection = DriverManager.getConnection(connectionUrl,
@@ -44,7 +44,7 @@ public class QueryService {
             // build PreparedStatement and execute
             PreparedStatement stmt
                     = getPreparedStatement(connection, request, useIndex, tablePKCols, indexPKCols);
-            return (QueryResult) DQLUtils.executeStatementReturnResult(true, stmt,
+            return (QueryResponse) DQLUtils.executeStatementReturnResult(true, stmt,
                     getProjectionAttributes(request), useIndex, tablePKCols, indexPKCols);
         } catch (SQLException e) {
             throw new RuntimeException(e);
@@ -58,12 +58,12 @@ public class QueryService {
     public static PreparedStatement getPreparedStatement(Connection conn, QueryRequest request,
                           boolean useIndex, List<PColumn> tablePKCols, List<PColumn> indexPKCols)
             throws SQLException {
-        String tableName = request.getTableName();
-        String indexName = request.getIndexName();
+        String tableName = request.tableName();
+        String indexName = request.indexName();
 
-        Map<String, String> exprAttrNames = request.getExpressionAttributeNames();
-        Map<String, AttributeValue> exprAttrValues = request.getExpressionAttributeValues();
-        String keyCondExpr = request.getKeyConditionExpression();
+        Map<String, String> exprAttrNames = request.expressionAttributeNames();
+        Map<String, AttributeValue> exprAttrValues = request.expressionAttributeValues();
+        String keyCondExpr = request.keyConditionExpression();
 
         // build SQL query
         StringBuilder queryBuilder = StringUtils.isEmpty(indexName)
@@ -80,12 +80,12 @@ public class QueryService {
 
         // append all conditions for WHERE clause
         queryBuilder.append(keyConditions.getSQLWhereClause());
-        DQLUtils.addExclusiveStartKeyCondition(true, queryBuilder,
-                request.getExclusiveStartKey(), useIndex, partitionKeyPKCol, sortKeyPKCol);
+        DQLUtils.addExclusiveStartKeyCondition(true, false, queryBuilder,
+                request.exclusiveStartKey(), useIndex, partitionKeyPKCol, sortKeyPKCol);
         DQLUtils.addFilterCondition(true, queryBuilder,
-                request.getFilterExpression(), exprAttrNames, exprAttrValues);
+                request.filterExpression(), exprAttrNames, exprAttrValues);
         addScanIndexForwardCondition(queryBuilder, request, useIndex, sortKeyPKCol);
-        DQLUtils.addLimit(queryBuilder, request.getLimit(), MAX_QUERY_LIMIT);
+        DQLUtils.addLimit(queryBuilder, request.limit(), MAX_QUERY_LIMIT);
         LOGGER.info("SELECT Query: " + queryBuilder);
 
         // Set values on the PreparedStatement
@@ -101,7 +101,7 @@ public class QueryService {
      */
     private static void addScanIndexForwardCondition(StringBuilder queryBuilder,
                                  QueryRequest request, boolean useIndex, PColumn sortKeyPKCol) {
-        Boolean scanIndexForward = request.getScanIndexForward();
+        Boolean scanIndexForward = request.scanIndexForward();
         if (scanIndexForward != null && !scanIndexForward && sortKeyPKCol != null) {
             String name = sortKeyPKCol.getName().getString();
             name =  (useIndex)
@@ -122,8 +122,8 @@ public class QueryService {
                                                    boolean useIndex, PColumn sortKeyPKCol)
             throws SQLException {
         int index = 1;
-        Map<String, AttributeValue> exclusiveStartKey =  request.getExclusiveStartKey();
-        Map<String, AttributeValue> exprAttrVals =  request.getExpressionAttributeValues();
+        Map<String, AttributeValue> exclusiveStartKey =  request.exclusiveStartKey();
+        Map<String, AttributeValue> exprAttrVals =  request.expressionAttributeValues();
         AttributeValue partitionAttrVal = exprAttrVals.get(keyConditions.getPartitionValue());
         DQLUtils.setKeyValueOnStatement(stmt, index++, partitionAttrVal, false);
         if (keyConditions.hasSortKey()) {
@@ -139,7 +139,7 @@ public class QueryService {
                 }
             }
         }
-        if (exclusiveStartKey != null && sortKeyPKCol != null) {
+        if (exclusiveStartKey != null && !exclusiveStartKey.isEmpty() && sortKeyPKCol != null) {
             String name = sortKeyPKCol.getName().toString();
             name =  (useIndex) ? CommonServiceUtils.getKeyNameFromBsonValueFunc(name) : name;
             DQLUtils.setKeyValueOnStatement(stmt, index, exclusiveStartKey.get(name), false);
@@ -150,9 +150,9 @@ public class QueryService {
      * Return a list of attribute names to project.
      */
     private static List<String> getProjectionAttributes(QueryRequest request) {
-        List<String> attributesToGet = request.getAttributesToGet();
-        String projExpr = request.getProjectionExpression();
-        Map<String, String> exprAttrNames = request.getExpressionAttributeNames();
+        List<String> attributesToGet = request.attributesToGet();
+        String projExpr = request.projectionExpression();
+        Map<String, String> exprAttrNames = request.expressionAttributeNames();
         return DQLUtils.getProjectionAttributes(attributesToGet, projExpr, exprAttrNames);
     }
 }

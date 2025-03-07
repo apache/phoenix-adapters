@@ -1,23 +1,23 @@
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDBStreams;
-import com.amazonaws.services.dynamodbv2.model.BatchWriteItemRequest;
-import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
-import com.amazonaws.services.dynamodbv2.model.DeleteRequest;
-import com.amazonaws.services.dynamodbv2.model.DescribeStreamRequest;
-import com.amazonaws.services.dynamodbv2.model.ListStreamsRequest;
-import com.amazonaws.services.dynamodbv2.model.ListStreamsResult;
-import com.amazonaws.services.dynamodbv2.model.PutItemRequest;
-import com.amazonaws.services.dynamodbv2.model.PutRequest;
-import com.amazonaws.services.dynamodbv2.model.Record;
-import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
-import com.amazonaws.services.dynamodbv2.model.StreamDescription;
-import com.amazonaws.services.dynamodbv2.model.WriteRequest;
+import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
+import software.amazon.awssdk.services.dynamodb.streams.DynamoDbStreamsClient;
+import software.amazon.awssdk.services.dynamodb.model.BatchWriteItemRequest;
+import software.amazon.awssdk.services.dynamodb.model.CreateTableRequest;
+import software.amazon.awssdk.services.dynamodb.model.DeleteRequest;
+import software.amazon.awssdk.services.dynamodb.model.DescribeStreamRequest;
+import software.amazon.awssdk.services.dynamodb.model.ListStreamsRequest;
+import software.amazon.awssdk.services.dynamodb.model.ListStreamsResponse;
+import software.amazon.awssdk.services.dynamodb.model.PutItemRequest;
+import software.amazon.awssdk.services.dynamodb.model.PutRequest;
+import software.amazon.awssdk.services.dynamodb.model.Record;
+import software.amazon.awssdk.services.dynamodb.model.ScalarAttributeType;
+import software.amazon.awssdk.services.dynamodb.model.StreamDescription;
+import software.amazon.awssdk.services.dynamodb.model.WriteRequest;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.phoenix.coprocessor.PhoenixMasterObserver;
-import org.apache.phoenix.ddb.PhoenixDBClient;
-import org.apache.phoenix.ddb.PhoenixDBStreamsClient;
+import org.apache.phoenix.ddb.PhoenixDBClientV2;
+import org.apache.phoenix.ddb.PhoenixDBStreamsClientV2;
 import org.apache.phoenix.end2end.ServerMetadataCacheTestImpl;
 import org.apache.phoenix.jdbc.PhoenixDriver;
 import org.apache.phoenix.jdbc.PhoenixTestDriver;
@@ -45,7 +45,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static com.amazonaws.services.dynamodbv2.model.ShardIteratorType.TRIM_HORIZON;
+import static software.amazon.awssdk.services.dynamodb.model.ShardIteratorType.TRIM_HORIZON;
 import static org.apache.phoenix.query.BaseTest.setUpConfigForMiniCluster;
 
 /**
@@ -62,11 +62,11 @@ public class GetRecordsSequenceNumberIT extends GetRecordsBaseTest {
     @Rule
     public final TestName testName = new TestName();
 
-    private final AmazonDynamoDB amazonDynamoDB =
-            LocalDynamoDbTestBase.localDynamoDb().createV1Client();
+    private final DynamoDbClient dynamoDbClient =
+            LocalDynamoDbTestBase.localDynamoDb().createV2Client();
 
-    private final AmazonDynamoDBStreams amazonDynamoDBStreams =
-            LocalDynamoDbTestBase.localDynamoDb().createV1StreamsClient();
+    private final DynamoDbStreamsClient dynamoDbStreamsClient =
+            LocalDynamoDbTestBase.localDynamoDb().createV2StreamsClient();
 
     private static String url;
 
@@ -113,78 +113,78 @@ public class GetRecordsSequenceNumberIT extends GetRecordsBaseTest {
                 DDLTestUtils.getCreateTableRequest(tableName, "PK1",
                         ScalarAttributeType.S, "PK2", ScalarAttributeType.N);
 
-        DDLTestUtils.addStreamSpecToRequest(createTableRequest, "KEYS_ONLY");
-        PhoenixDBClient phoenixDBClient = new PhoenixDBClient(url);
-        phoenixDBClient.createTable(createTableRequest);
-        amazonDynamoDB.createTable(createTableRequest);
-        PhoenixDBStreamsClient phoenixDBStreamsClient = new PhoenixDBStreamsClient(url);
-        ListStreamsRequest lsr = new ListStreamsRequest().withTableName(tableName);
-        ListStreamsResult phoenixStreams = phoenixDBStreamsClient.listStreams(lsr);
-        String phoenixStreamArn = phoenixStreams.getStreams().get(0).getStreamArn();
-        String dynamoStreamArn = amazonDynamoDBStreams.listStreams(lsr).getStreams().get(0).getStreamArn();
-        TestUtils.waitForStream(phoenixDBStreamsClient, phoenixStreamArn);
+        createTableRequest = DDLTestUtils.addStreamSpecToRequest(createTableRequest, "KEYS_ONLY");
+        PhoenixDBClientV2 phoenixDBClientV2 = new PhoenixDBClientV2(url);
+        phoenixDBClientV2.createTable(createTableRequest);
+        dynamoDbClient.createTable(createTableRequest);
+        PhoenixDBStreamsClientV2 phoenixDBStreamsClientV2 = new PhoenixDBStreamsClientV2(url);
+        ListStreamsRequest lsr = ListStreamsRequest.builder().tableName(tableName).build();
+        ListStreamsResponse phoenixStreams = phoenixDBStreamsClientV2.listStreams(lsr);
+        String phoenixStreamArn = phoenixStreams.streams().get(0).streamArn();
+        String dynamoStreamArn = dynamoDbStreamsClient.listStreams(lsr).streams().get(0).streamArn();
+        TestUtils.waitForStream(phoenixDBStreamsClientV2, phoenixStreamArn);
 
         //put 2 items
-        PutItemRequest putItemRequest1 = new PutItemRequest(tableName, getItem1());
-        PutItemRequest putItemRequest2 = new PutItemRequest(tableName, getItem2());
-        phoenixDBClient.putItem(putItemRequest1);
-        phoenixDBClient.putItem(putItemRequest2);
-        amazonDynamoDB.putItem(putItemRequest1);
-        amazonDynamoDB.putItem(putItemRequest2);
+        PutItemRequest putItemRequest1 = PutItemRequest.builder().tableName(tableName).item(getItem1()).build();
+        PutItemRequest putItemRequest2 = PutItemRequest.builder().tableName(tableName).item(getItem2()).build();
+        phoenixDBClientV2.putItem(putItemRequest1);
+        phoenixDBClientV2.putItem(putItemRequest2);
+        dynamoDbClient.putItem(putItemRequest1);
+        dynamoDbClient.putItem(putItemRequest2);
 
         //put 3 items, delete 1 item using batch api
         Map<String, List<WriteRequest>> requestItems = new HashMap<>();
         List<WriteRequest> writeReqs = new ArrayList<>();
-        writeReqs.add(new WriteRequest(new PutRequest(getItem3())));
-        writeReqs.add(new WriteRequest(new PutRequest(getItem4())));
-        writeReqs.add(new WriteRequest(new PutRequest(getItem5())));
-        writeReqs.add(new WriteRequest(new DeleteRequest(getKey1())));
+        writeReqs.add(WriteRequest.builder().putRequest(PutRequest.builder().item((getItem3())).build()).build());
+        writeReqs.add(WriteRequest.builder().putRequest(PutRequest.builder().item((getItem4())).build()).build());
+        writeReqs.add(WriteRequest.builder().putRequest(PutRequest.builder().item((getItem5())).build()).build());
+        writeReqs.add(WriteRequest.builder().deleteRequest(DeleteRequest.builder().key((getKey1())).build()).build());
         requestItems.put(tableName, writeReqs);
-        BatchWriteItemRequest request = new BatchWriteItemRequest(requestItems);
-        phoenixDBClient.batchWriteItem(request);
-        amazonDynamoDB.batchWriteItem(request);
+        BatchWriteItemRequest request = BatchWriteItemRequest.builder().requestItems(requestItems).build();
+        phoenixDBClientV2.batchWriteItem(request);
+        dynamoDbClient.batchWriteItem(request);
 
         //put 1 item
-        PutItemRequest putItemRequest3 = new PutItemRequest(tableName, getItem6());
-        phoenixDBClient.putItem(putItemRequest3);
-        amazonDynamoDB.putItem(putItemRequest3);
+        PutItemRequest putItemRequest3 = PutItemRequest.builder().tableName(tableName).item(getItem6()).build();
+        phoenixDBClientV2.putItem(putItemRequest3);
+        dynamoDbClient.putItem(putItemRequest3);
 
         //get shard id
-        DescribeStreamRequest dsr = new DescribeStreamRequest().withStreamArn(phoenixStreamArn);
-        StreamDescription phoenixStreamDesc = phoenixDBStreamsClient.describeStream(dsr).getStreamDescription();
-        String shardId = phoenixStreamDesc.getShards().get(0).getShardId();
+        DescribeStreamRequest dsr = DescribeStreamRequest.builder().streamArn(phoenixStreamArn).build();
+        StreamDescription phoenixStreamDesc = phoenixDBStreamsClientV2.describeStream(dsr).streamDescription();
+        String shardId = phoenixStreamDesc.shards().get(0).shardId();
 
         // get all records and confirm sequence numbers are increasing and unique
-        List<Record> phoenixRecords = TestUtils.getRecordsFromShardWithLimit(phoenixDBStreamsClient,
-                phoenixStreamDesc.getStreamArn(), shardId, TRIM_HORIZON, null, null);
+        List<Record> phoenixRecords = TestUtils.getRecordsFromShardWithLimit(phoenixDBStreamsClientV2,
+                phoenixStreamDesc.streamArn(), shardId, TRIM_HORIZON, null, null);
         Assert.assertEquals(7, phoenixRecords.size());
         Set<String> seqNums = new HashSet<>();
-        seqNums.add(phoenixRecords.get(0).getDynamodb().getSequenceNumber());
+        seqNums.add(phoenixRecords.get(0).dynamodb().sequenceNumber());
         for (int i=1; i < phoenixRecords.size(); i++) {
-            String prevSeqNum = phoenixRecords.get(i-1).getDynamodb().getSequenceNumber();
-            String currSeqNum = phoenixRecords.get(i).getDynamodb().getSequenceNumber();
+            String prevSeqNum = phoenixRecords.get(i-1).dynamodb().sequenceNumber();
+            String currSeqNum = phoenixRecords.get(i).dynamodb().sequenceNumber();
             if (prevSeqNum.compareTo(currSeqNum) >= 0) {
                 Assert.fail("Sequence numbers should be monotonically increasing: " + prevSeqNum + " " + currSeqNum);
             }
-            seqNums.add(phoenixRecords.get(i).getDynamodb().getSequenceNumber());
+            seqNums.add(phoenixRecords.get(i).dynamodb().sequenceNumber());
         }
         Assert.assertEquals(7, seqNums.size());
 
         // get all records with different limits to test query offset logic
         for (int i=1; i<=7; i++) {
-            phoenixRecords = TestUtils.getRecordsFromShardWithLimit(phoenixDBStreamsClient,
-                    phoenixStreamDesc.getStreamArn(), shardId, TRIM_HORIZON, null, i);
+            phoenixRecords = TestUtils.getRecordsFromShardWithLimit(phoenixDBStreamsClientV2,
+                    phoenixStreamDesc.streamArn(), shardId, TRIM_HORIZON, null, i);
             Assert.assertEquals(7, phoenixRecords.size());
         }
 
         /**
          * Compare with Dynamo records
          */
-        dsr = new DescribeStreamRequest().withStreamArn(dynamoStreamArn);
-        StreamDescription dynamoStreamDesc = amazonDynamoDBStreams.describeStream(dsr).getStreamDescription();
-        shardId = dynamoStreamDesc.getShards().get(0).getShardId();
-        List<Record> dynamoRecords = TestUtils.getRecordsFromShardWithLimit(amazonDynamoDBStreams,
-                dynamoStreamDesc.getStreamArn(), shardId, TRIM_HORIZON, null, 10);
+        dsr = DescribeStreamRequest.builder().streamArn(dynamoStreamArn).build();
+        StreamDescription dynamoStreamDesc = dynamoDbStreamsClient.describeStream(dsr).streamDescription();
+        shardId = dynamoStreamDesc.shards().get(0).shardId();
+        List<Record> dynamoRecords = TestUtils.getRecordsFromShardWithLimit(dynamoDbStreamsClient,
+                dynamoStreamDesc.streamArn(), shardId, TRIM_HORIZON, null, 10);
         // records with same ts are returned in PK order in phoenix
         // ordering can be different in ddb, just compare number of change records
         Assert.assertEquals(dynamoRecords.size(), phoenixRecords.size());

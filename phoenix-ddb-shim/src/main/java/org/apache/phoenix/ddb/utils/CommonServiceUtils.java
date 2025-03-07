@@ -18,8 +18,8 @@
 
 package org.apache.phoenix.ddb.utils;
 
-import com.amazonaws.services.dynamodbv2.model.AttributeValue;
-import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
+import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
+import software.amazon.awssdk.services.dynamodb.model.ScalarAttributeType;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.phoenix.ddb.bson.DdbAttributesToBsonDocument;
@@ -35,7 +35,7 @@ import org.bson.BsonString;
 import java.util.Map;
 
 /**
- * Common utilities to be used by PhoenixDBClient APIs.
+ * Common utilities to be used by phoenixDBClientV2 APIs.
  */
 public class CommonServiceUtils {
 
@@ -100,6 +100,7 @@ public class CommonServiceUtils {
                                                        Map<String, String> exprAttrNames,
                                                        Map<String, AttributeValue> exprAttrVals) {
 
+        if (StringUtils.isEmpty(updateExpr)) return new BsonDocument();
         updateExpr = replaceExpressionAttributeNames(updateExpr, exprAttrNames);
         return UpdateExpressionDdbToBson
                 .getBsonDocumentForUpdateExpression(updateExpr,

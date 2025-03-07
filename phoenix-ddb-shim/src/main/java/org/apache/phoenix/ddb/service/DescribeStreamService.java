@@ -1,10 +1,10 @@
 package org.apache.phoenix.ddb.service;
 
-import com.amazonaws.services.dynamodbv2.model.DescribeStreamRequest;
-import com.amazonaws.services.dynamodbv2.model.DescribeStreamResult;
-import com.amazonaws.services.dynamodbv2.model.SequenceNumberRange;
-import com.amazonaws.services.dynamodbv2.model.Shard;
-import com.amazonaws.services.dynamodbv2.model.StreamDescription;
+import software.amazon.awssdk.services.dynamodb.model.DescribeStreamRequest;
+import software.amazon.awssdk.services.dynamodb.model.DescribeStreamResponse;
+import software.amazon.awssdk.services.dynamodb.model.SequenceNumberRange;
+import software.amazon.awssdk.services.dynamodb.model.Shard;
+import software.amazon.awssdk.services.dynamodb.model.StreamDescription;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.phoenix.ddb.utils.DDBShimCDCUtils;
 import org.apache.phoenix.jdbc.PhoenixConnection;
@@ -32,16 +32,18 @@ public class DescribeStreamService {
             = "SELECT PARTITION_ID, PARENT_PARTITION_ID, PARTITION_START_TIME, PARTITION_END_TIME FROM "
             + SYSTEM_CDC_STREAM_NAME + " WHERE TABLE_NAME = '%s' AND STREAM_NAME = '%s' ";
 
-    public static DescribeStreamResult describeStream(DescribeStreamRequest request, String connectionUrl) {
-        String streamName = request.getStreamArn();
-        String exclusiveStartShardId = request.getExclusiveStartShardId();
-        Integer limit = request.getLimit();
+    public static DescribeStreamResponse describeStream(DescribeStreamRequest request, String connectionUrl) {
+        String streamName = request.streamArn();
+        String exclusiveStartShardId = request.exclusiveStartShardId();
+        Integer limit = request.limit();
         String tableName = DDBShimCDCUtils.getTableNameFromStreamName(streamName);
-        StreamDescription streamDesc;
+        StreamDescription.Builder streamDesc;
         try (Connection conn = DriverManager.getConnection(connectionUrl)) {
             streamDesc = getStreamDescriptionObject(conn, tableName, streamName);
+            String streamStatus = DDBShimCDCUtils.getStreamStatus(conn, tableName, streamName);
+            streamDesc.streamStatus(streamStatus);
             // query partitions only if stream is ENABLED
-            if (CDCUtil.CdcStreamStatus.ENABLED.getSerializedValue().equals(streamDesc.getStreamStatus())) {
+            if (CDCUtil.CdcStreamStatus.ENABLED.getSerializedValue().equals(streamStatus)) {
                 StringBuilder sb = new StringBuilder(String.format(DESCRIBE_STREAM_QUERY, tableName, streamName));
                 if (!StringUtils.isEmpty(exclusiveStartShardId)) {
                     sb.append(" AND PARTITION_ID > ' ");
@@ -59,36 +61,35 @@ public class DescribeStreamService {
                 while (rs.next()) {
                     Shard shard = getShardMetadata(rs);
                     shards.add(shard);
-                    lastEvaluatedShardId = shard.getShardId();
+                    lastEvaluatedShardId = shard.shardId();
                 }
-                streamDesc.setShards(shards);
-                streamDesc.setLastEvaluatedShardId(lastEvaluatedShardId);
+                streamDesc.shards(shards);
+                streamDesc.lastEvaluatedShardId(lastEvaluatedShardId);
             }
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
-        return new DescribeStreamResult().withStreamDescription(streamDesc);
+        return DescribeStreamResponse.builder().streamDescription(streamDesc.build()).build();
     }
 
     /**
      * Return a StreamDescription object for the given tableName and streamName.
      * Populate all attributes except the list of the shards.
      */
-    private static StreamDescription getStreamDescriptionObject(Connection conn,
+    private static StreamDescription.Builder getStreamDescriptionObject(Connection conn,
                                                                 String tableName,
                                                                 String streamName)
             throws SQLException {
         PhoenixConnection pconn = conn.unwrap(PhoenixConnection.class);
         PTable table = pconn.getTable(tableName);
-        StreamDescription streamDesc = new StreamDescription();
-        streamDesc.setStreamArn(streamName);
-        streamDesc.setTableName(tableName);
+        StreamDescription.Builder streamDesc = StreamDescription.builder();
+        streamDesc.streamArn(streamName);
+        streamDesc.tableName(tableName);
         long creationTS = DDBShimCDCUtils.getCDCIndexTimestampFromStreamName(streamName);
-        streamDesc.setStreamLabel(DDBShimCDCUtils.getStreamLabel(creationTS));
-        streamDesc.setStreamViewType(table.getSchemaVersion());
-        streamDesc.setCreationRequestDateTime(new Date(creationTS));
-        streamDesc.setKeySchema(DDBShimCDCUtils.getKeySchema(table));
-        streamDesc.setStreamStatus(DDBShimCDCUtils.getStreamStatus(conn, tableName, streamName));
+        streamDesc.streamLabel(DDBShimCDCUtils.getStreamLabel(creationTS));
+        streamDesc.streamViewType(table.getSchemaVersion());
+        streamDesc.creationRequestDateTime(new Date(creationTS).toInstant());
+        streamDesc.keySchema(DDBShimCDCUtils.getKeySchema(table));
         return streamDesc;
     }
 
@@ -97,21 +98,21 @@ public class DescribeStreamService {
      */
     private static Shard getShardMetadata(ResultSet rs) throws SQLException {
         // rs --> id, parentId, startTime, endTime
-        Shard shard = new Shard();
+        Shard.Builder shard = Shard.builder();
         // shard id
-        shard.setShardId(rs.getString(1));
+        shard.shardId(rs.getString(1));
         // parent shard id
         if (rs.getString(2) != null) {
-            shard.setParentShardId(rs.getString(2));
+            shard.parentShardId(rs.getString(2));
         }
         // start sequence number
-        SequenceNumberRange seqNumRange = new SequenceNumberRange();
-        seqNumRange.setStartingSequenceNumber(String.valueOf(rs.getLong(3) * MAX_NUM_CHANGES_AT_TIMESTAMP));
+        SequenceNumberRange.Builder seqNumRange = SequenceNumberRange.builder();
+        seqNumRange.startingSequenceNumber(String.valueOf(rs.getLong(3) * MAX_NUM_CHANGES_AT_TIMESTAMP));
         // end sequence number
         if (rs.getLong(4) > 0) {
-            seqNumRange.setEndingSequenceNumber(String.valueOf(((rs.getLong(4)+1) * MAX_NUM_CHANGES_AT_TIMESTAMP) - 1));
+            seqNumRange.endingSequenceNumber(String.valueOf(((rs.getLong(4)+1) * MAX_NUM_CHANGES_AT_TIMESTAMP) - 1));
         }
-        shard.setSequenceNumberRange(seqNumRange);
-        return shard;
+        shard.sequenceNumberRange(seqNumRange.build());
+        return shard.build();
     }
 }

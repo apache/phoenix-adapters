@@ -1,19 +1,19 @@
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
-import com.amazonaws.services.dynamodbv2.model.AttributeValue;
-import com.amazonaws.services.dynamodbv2.model.BatchWriteItemRequest;
-import com.amazonaws.services.dynamodbv2.model.BatchWriteItemResult;
-import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
-import com.amazonaws.services.dynamodbv2.model.DeleteRequest;
-import com.amazonaws.services.dynamodbv2.model.PutItemRequest;
-import com.amazonaws.services.dynamodbv2.model.PutRequest;
-import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
-import com.amazonaws.services.dynamodbv2.model.ScanRequest;
-import com.amazonaws.services.dynamodbv2.model.ScanResult;
-import com.amazonaws.services.dynamodbv2.model.WriteRequest;
+import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
+import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
+import software.amazon.awssdk.services.dynamodb.model.BatchWriteItemRequest;
+import software.amazon.awssdk.services.dynamodb.model.BatchWriteItemResponse;
+import software.amazon.awssdk.services.dynamodb.model.CreateTableRequest;
+import software.amazon.awssdk.services.dynamodb.model.DeleteRequest;
+import software.amazon.awssdk.services.dynamodb.model.PutItemRequest;
+import software.amazon.awssdk.services.dynamodb.model.PutRequest;
+import software.amazon.awssdk.services.dynamodb.model.ScalarAttributeType;
+import software.amazon.awssdk.services.dynamodb.model.ScanRequest;
+import software.amazon.awssdk.services.dynamodb.model.ScanResponse;
+import software.amazon.awssdk.services.dynamodb.model.WriteRequest;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
-import org.apache.phoenix.ddb.PhoenixDBClient;
+import org.apache.phoenix.ddb.PhoenixDBClientV2;
 import org.apache.phoenix.end2end.ServerMetadataCacheTestImpl;
 import org.apache.phoenix.jdbc.PhoenixDriver;
 import org.apache.phoenix.util.PhoenixRuntime;
@@ -43,10 +43,10 @@ public class BatchWriteItemIT {
     private static HBaseTestingUtility utility = null;
     private static String tmpDir;
 
-    private final AmazonDynamoDB amazonDynamoDB =
-            LocalDynamoDbTestBase.localDynamoDb().createV1Client();
+    private final DynamoDbClient dynamoDbClient =
+            LocalDynamoDbTestBase.localDynamoDb().createV2Client();
 
-    private static PhoenixDBClient phoenixDBClient = null;
+    private static PhoenixDBClientV2 phoenixDBClientV2 = null;
 
     private static String url;
 
@@ -64,7 +64,7 @@ public class BatchWriteItemIT {
         utility.startMiniCluster();
         String zkQuorum = "localhost:" + utility.getZkCluster().getClientPort();
         url = PhoenixRuntime.JDBC_PROTOCOL + PhoenixRuntime.JDBC_PROTOCOL_SEPARATOR + zkQuorum;
-        phoenixDBClient = new PhoenixDBClient(url);
+        phoenixDBClientV2 = new PhoenixDBClientV2(url);
     }
 
     @AfterClass
@@ -89,16 +89,16 @@ public class BatchWriteItemIT {
         putItem(tableName, getItem1());
         putItem(tableName, getItem2());
         List<WriteRequest> writeReqs = new ArrayList<>();
-        writeReqs.add(new WriteRequest(new PutRequest(getItem3())));
-        writeReqs.add(new WriteRequest(new DeleteRequest(getKey(getItem1(), new String[]{"PK1", "PK2"}))));
-        writeReqs.add(new WriteRequest(new DeleteRequest(getKey(getItem2(), new String[]{"PK1", "PK2"}))));
+        writeReqs.add(WriteRequest.builder().putRequest(PutRequest.builder().item(getItem3()).build()).build());
+        writeReqs.add(WriteRequest.builder().deleteRequest(DeleteRequest.builder().key(getKey(getItem1(), new String[]{"PK1", "PK2"})).build()).build());
+        writeReqs.add(WriteRequest.builder().deleteRequest(DeleteRequest.builder().key(getKey(getItem2(), new String[]{"PK1", "PK2"})).build()).build());
         Map<String, List<WriteRequest>> requestItems = new HashMap<>();
         requestItems.put(tableName,  writeReqs);
-        BatchWriteItemRequest request = new BatchWriteItemRequest(requestItems);
+        BatchWriteItemRequest request = BatchWriteItemRequest.builder().requestItems(requestItems).build();;
 
-        BatchWriteItemResult dynamoResult = amazonDynamoDB.batchWriteItem(request);
-        BatchWriteItemResult phoenixResult = phoenixDBClient.batchWriteItem(request);
-        Assert.assertEquals(dynamoResult.getUnprocessedItems(), phoenixResult.getUnprocessedItems());
+        BatchWriteItemResponse dynamoResult = dynamoDbClient.batchWriteItem(request);
+        BatchWriteItemResponse phoenixResult = phoenixDBClientV2.batchWriteItem(request);
+        Assert.assertEquals(dynamoResult.unprocessedItems(), phoenixResult.unprocessedItems());
 
         validateTableScan(tableName);
     }
@@ -114,27 +114,27 @@ public class BatchWriteItemIT {
         //table1
         putItem(tableName1, getItem4());
         List<WriteRequest> writeReqs1 = new ArrayList<>();
-        writeReqs1.add(new WriteRequest(new PutRequest(getItem2())));
-        writeReqs1.add(new WriteRequest(new PutRequest(getItem3())));
-        writeReqs1.add(new WriteRequest(new DeleteRequest(getKey(getItem4(), new String[]{"PK1", "PK2"}))));
+        writeReqs1.add(WriteRequest.builder().putRequest(PutRequest.builder().item(getItem2()).build()).build());
+        writeReqs1.add(WriteRequest.builder().putRequest(PutRequest.builder().item(getItem3()).build()).build());
+        writeReqs1.add(WriteRequest.builder().deleteRequest(DeleteRequest.builder().key(getKey(getItem4(), new String[]{"PK1", "PK2"})).build()).build());
 
         //table2
         putItem(tableName2, getItem2());
         putItem(tableName2, getItem3());
         putItem(tableName2, getItem4());
         List<WriteRequest> writeReqs2 = new ArrayList<>();
-        writeReqs2.add(new WriteRequest(new PutRequest(getItem1())));
-        writeReqs2.add(new WriteRequest(new DeleteRequest(getKey(getItem2(), new String[]{"COL1", "COL2"}))));
-        writeReqs2.add(new WriteRequest(new DeleteRequest(getKey(getItem3(), new String[]{"COL1", "COL2"}))));
+        writeReqs2.add(WriteRequest.builder().putRequest(PutRequest.builder().item(getItem1()).build()).build());
+        writeReqs2.add(WriteRequest.builder().deleteRequest(DeleteRequest.builder().key(getKey(getItem2(), new String[]{"COL1", "COL2"})).build()).build());
+        writeReqs2.add(WriteRequest.builder().deleteRequest(DeleteRequest.builder().key(getKey(getItem3(), new String[]{"COL1", "COL2"})).build()).build());
 
         Map<String, List<WriteRequest>> requestItems = new HashMap<>();
         requestItems.put(tableName1,  writeReqs1);
         requestItems.put(tableName2,  writeReqs2);
-        BatchWriteItemRequest request = new BatchWriteItemRequest(requestItems);
+        BatchWriteItemRequest request = BatchWriteItemRequest.builder().requestItems(requestItems).build();;
 
-        BatchWriteItemResult dynamoResult = amazonDynamoDB.batchWriteItem(request);
-        BatchWriteItemResult phoenixResult = phoenixDBClient.batchWriteItem(request);
-        Assert.assertEquals(dynamoResult.getUnprocessedItems(), phoenixResult.getUnprocessedItems());
+        BatchWriteItemResponse dynamoResult = dynamoDbClient.batchWriteItem(request);
+        BatchWriteItemResponse phoenixResult = phoenixDBClientV2.batchWriteItem(request);
+        Assert.assertEquals(dynamoResult.unprocessedItems(), phoenixResult.unprocessedItems());
 
         validateTableScan(tableName1);
         validateTableScan(tableName2);
@@ -151,112 +151,112 @@ public class BatchWriteItemIT {
         //table1 - 25puts, 1 delete, 1 put
         List<WriteRequest> writeReqs1 = new ArrayList<>();
         for (int i=0; i<25; i++) {
-            writeReqs1.add(new WriteRequest(new PutRequest(getNewItem1(i))));
+            writeReqs1.add(WriteRequest.builder().putRequest(PutRequest.builder().item(getNewItem1(i)).build()).build());
         }
-        writeReqs1.add(new WriteRequest(new DeleteRequest(getKey(getItem4(), new String[]{"PK1", "PK2"}))));
-        writeReqs1.add(new WriteRequest(new PutRequest(getNewItem1(27))));
+        writeReqs1.add(WriteRequest.builder().deleteRequest(DeleteRequest.builder().key(getKey(getItem4(), new String[]{"PK1", "PK2"})).build()).build());
+        writeReqs1.add(WriteRequest.builder().putRequest(PutRequest.builder().item(getNewItem1(27)).build()).build());
 
         //table2 - 24 puts, 1 delete
         List<WriteRequest> writeReqs2 = new ArrayList<>();
         for (int i=0; i<24; i++) {
-            writeReqs2.add(new WriteRequest(new PutRequest(getNewItem2(i))));
+            writeReqs2.add(WriteRequest.builder().putRequest(PutRequest.builder().item(getNewItem2(i)).build()).build());
         }
-        writeReqs2.add(new WriteRequest(new DeleteRequest(getKey(getItem4(), new String[]{"COL1", "COL2"}))));
+        writeReqs2.add(WriteRequest.builder().deleteRequest(DeleteRequest.builder().key(getKey(getItem4(), new String[]{"COL1", "COL2"})).build()).build());
 
         Map<String, List<WriteRequest>> requestItems = new HashMap<>();
         requestItems.put(tableName1,  writeReqs1);
         requestItems.put(tableName2,  writeReqs2);
-        BatchWriteItemRequest request = new BatchWriteItemRequest(requestItems);
+        BatchWriteItemRequest request = BatchWriteItemRequest.builder().requestItems(requestItems).build();;
 
-        BatchWriteItemResult phoenixResult = phoenixDBClient.batchWriteItem(request);
-        Assert.assertTrue(phoenixResult.getUnprocessedItems().containsKey(tableName1));
-        Assert.assertFalse(phoenixResult.getUnprocessedItems().containsKey(tableName2));
-        Assert.assertEquals(2, phoenixResult.getUnprocessedItems().get(tableName1).size());
+        BatchWriteItemResponse phoenixResult = phoenixDBClientV2.batchWriteItem(request);
+        Assert.assertTrue(phoenixResult.unprocessedItems().containsKey(tableName1));
+        Assert.assertFalse(phoenixResult.unprocessedItems().containsKey(tableName2));
+        Assert.assertEquals(2, phoenixResult.unprocessedItems().get(tableName1).size());
 
-        request.setRequestItems(phoenixResult.getUnprocessedItems());
-        phoenixResult = phoenixDBClient.batchWriteItem(request);
-        Assert.assertTrue(phoenixResult.getUnprocessedItems().isEmpty());
+        request = request.toBuilder().requestItems(phoenixResult.unprocessedItems()).build();
+        phoenixResult = phoenixDBClientV2.batchWriteItem(request);
+        Assert.assertTrue(phoenixResult.unprocessedItems().isEmpty());
     }
 
     private void createTable1(String tableName) {
         CreateTableRequest createTableRequest =
                 DDLTestUtils.getCreateTableRequest(tableName, "PK1",
                         ScalarAttributeType.S, "PK2", ScalarAttributeType.N);
-        phoenixDBClient.createTable(createTableRequest);
-        amazonDynamoDB.createTable(createTableRequest);
+        phoenixDBClientV2.createTable(createTableRequest);
+        dynamoDbClient.createTable(createTableRequest);
     }
 
     private void createTable2(String tableName) {
         CreateTableRequest createTableRequest =
                 DDLTestUtils.getCreateTableRequest(tableName, "COL1",
                         ScalarAttributeType.N, "COL2", ScalarAttributeType.S);
-        phoenixDBClient.createTable(createTableRequest);
-        amazonDynamoDB.createTable(createTableRequest);
+        phoenixDBClientV2.createTable(createTableRequest);
+        dynamoDbClient.createTable(createTableRequest);
     }
 
     private void putItem(String tableName, Map<String, AttributeValue> item) {
-        PutItemRequest putItemRequest = new PutItemRequest(tableName, item);
-        phoenixDBClient.putItem(putItemRequest);
-        amazonDynamoDB.putItem(putItemRequest);
+        PutItemRequest putItemRequest = PutItemRequest.builder().tableName(tableName).item(item).build();
+        phoenixDBClientV2.putItem(putItemRequest);
+        dynamoDbClient.putItem(putItemRequest);
     }
 
     private void validateTableScan(String tableName) {
-        ScanRequest sr = new ScanRequest(tableName);
-        ScanResult phoenixResult = phoenixDBClient.scan(sr);
-        ScanResult dynamoResult = amazonDynamoDB.scan(sr);
-        Assert.assertEquals(dynamoResult.getCount(), phoenixResult.getCount());
-        Assert.assertTrue(dynamoResult.getItems().containsAll(phoenixResult.getItems()));
-        Assert.assertTrue(phoenixResult.getItems().containsAll(dynamoResult.getItems()));
+        ScanRequest sr = ScanRequest.builder().tableName(tableName).build();
+        ScanResponse phoenixResult = phoenixDBClientV2.scan(sr);
+        ScanResponse dynamoResult = dynamoDbClient.scan(sr);
+        Assert.assertEquals(dynamoResult.count(), phoenixResult.count());
+        Assert.assertTrue(dynamoResult.items().containsAll(phoenixResult.items()));
+        Assert.assertTrue(phoenixResult.items().containsAll(dynamoResult.items()));
     }
 
 
     private Map<String, AttributeValue> getItem1() {
         Map<String, AttributeValue> item = new HashMap<>();
-        item.put("PK1", new AttributeValue().withS("A"));
-        item.put("PK2", new AttributeValue().withN("1"));
-        item.put("COL1", new AttributeValue().withN("1"));
-        item.put("COL2", new AttributeValue().withS("Title1"));
+        item.put("PK1", AttributeValue.builder().s("A").build());
+        item.put("PK2", AttributeValue.builder().n("1").build());
+        item.put("COL1", AttributeValue.builder().n("1").build());
+        item.put("COL2", AttributeValue.builder().s("Title1").build());
         return item;
     }
 
     private Map<String, AttributeValue> getItem2() {
         Map<String, AttributeValue> item = new HashMap<>();
-        item.put("PK1", new AttributeValue().withS("B"));
-        item.put("PK2", new AttributeValue().withN("2"));
-        item.put("COL1", new AttributeValue().withN("3"));
-        item.put("COL2", new AttributeValue().withS("Title2"));
+        item.put("PK1", AttributeValue.builder().s("B").build());
+        item.put("PK2", AttributeValue.builder().n("2").build());
+        item.put("COL1", AttributeValue.builder().n("3").build());
+        item.put("COL2", AttributeValue.builder().s("Title2").build());
         return item;
     }
 
     private Map<String, AttributeValue> getItem3() {
         Map<String, AttributeValue> item = new HashMap<>();
-        item.put("PK1", new AttributeValue().withS("C"));
-        item.put("PK2", new AttributeValue().withN("3"));
-        item.put("COL1", new AttributeValue().withN("4"));
-        item.put("COL2", new AttributeValue().withS("Title3"));
+        item.put("PK1", AttributeValue.builder().s("C").build());
+        item.put("PK2", AttributeValue.builder().n("3").build());
+        item.put("COL1", AttributeValue.builder().n("4").build());
+        item.put("COL2", AttributeValue.builder().s("Title3").build());
         return item;
     }
 
     private Map<String, AttributeValue> getItem4() {
         Map<String, AttributeValue> item = new HashMap<>();
-        item.put("PK1", new AttributeValue().withS("D"));
-        item.put("PK2", new AttributeValue().withN("4"));
-        item.put("COL1", new AttributeValue().withN("5"));
-        item.put("COL2", new AttributeValue().withS("Title4"));
+        item.put("PK1", AttributeValue.builder().s("D").build());
+        item.put("PK2", AttributeValue.builder().n("4").build());
+        item.put("COL1", AttributeValue.builder().n("5").build());
+        item.put("COL2", AttributeValue.builder().s("Title4").build());
         return item;
     }
 
     private Map<String, AttributeValue> getNewItem1(int i) {
         Map<String, AttributeValue> item = getItem1();
-        Integer pk2 = Integer.parseInt(item.get("PK2").getN()) * i;
-        item.put("PK2",new AttributeValue().withN(pk2.toString()));
+        Integer pk2 = Integer.parseInt(item.get("PK2").n()) * i;
+        item.put("PK2",AttributeValue.builder().n(pk2.toString()).build());
         return item;
     }
 
     private Map<String, AttributeValue> getNewItem2(int i) {
         Map<String, AttributeValue> item = getItem2();
-        Integer pk2 = Integer.parseInt(item.get("COL1").getN()) * i;
-        item.put("PK2",new AttributeValue().withN(pk2.toString()));
+        Integer pk2 = Integer.parseInt(item.get("COL1").n()) * i;
+        item.put("PK2",AttributeValue.builder().n(pk2.toString()).build());
         return item;
     }
 

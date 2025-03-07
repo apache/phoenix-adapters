@@ -1,4 +1,4 @@
-import com.amazonaws.services.dynamodbv2.model.AttributeValue;
+import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -7,79 +7,79 @@ public class GetRecordsBaseTest {
 
     public static Map<String, AttributeValue> getItem1() {
         Map<String, AttributeValue> item = new HashMap<>();
-        item.put("PK1", new AttributeValue().withS("ABC"));
-        item.put("PK2", new AttributeValue().withN("3"));
-        item.put("Id1", new AttributeValue().withN("-5"));
-        item.put("Id2", new AttributeValue().withN("10.10"));
-        item.put("title", new AttributeValue().withS("Title1"));
+        item.put("PK1", AttributeValue.builder().s("ABC").build());
+        item.put("PK2", AttributeValue.builder().n("3").build());
+        item.put("Id1", AttributeValue.builder().n("-5").build());
+        item.put("Id2", AttributeValue.builder().n("10.10").build());
+        item.put("title", AttributeValue.builder().s("Title1").build());
         Map<String, AttributeValue> reviewMap1 = new HashMap<>();
-        reviewMap1.put("reviewer", new AttributeValue().withS("Alice"));
+        reviewMap1.put("reviewer", AttributeValue.builder().s("Alice").build());
         Map<String, AttributeValue> fiveStarMap = new HashMap<>();
-        fiveStarMap.put("FiveStar", new AttributeValue().withL(new AttributeValue().withM(reviewMap1)));
-        item.put("Reviews", new AttributeValue().withM(fiveStarMap));
-        item.put("A.B", new AttributeValue().withS("not nested field 1"));
+        fiveStarMap.put("FiveStar", AttributeValue.builder().l(AttributeValue.builder().m(reviewMap1).build()).build());
+        item.put("Reviews", AttributeValue.builder().m(fiveStarMap).build());
+        item.put("A.B", AttributeValue.builder().s("not nested field 1").build());
         return item;
     }
 
     public static Map<String, AttributeValue> getKey1() {
         Map<String, AttributeValue> item = new HashMap<>();
-        item.put("PK1", new AttributeValue().withS("ABC"));
-        item.put("PK2", new AttributeValue().withN("3"));
+        item.put("PK1", AttributeValue.builder().s("ABC").build());
+        item.put("PK2", AttributeValue.builder().n("3").build());
         return item;
     }
 
     public static Map<String, AttributeValue> getItem2() {
         Map<String, AttributeValue> item = new HashMap<>();
-        item.put("PK1", new AttributeValue().withS("XYZA"));
-        item.put("PK2", new AttributeValue().withN("4"));
-        item.put("Id1", new AttributeValue().withN("-5"));
-        item.put("Id2", new AttributeValue().withN("10"));
-        item.put("title", new AttributeValue().withS("Title1"));
+        item.put("PK1", AttributeValue.builder().s("XYZA").build());
+        item.put("PK2", AttributeValue.builder().n("4").build());
+        item.put("Id1", AttributeValue.builder().n("-5").build());
+        item.put("Id2", AttributeValue.builder().n("10").build());
+        item.put("title", AttributeValue.builder().s("Title1").build());
         Map<String, AttributeValue> reviewMap1 = new HashMap<>();
-        reviewMap1.put("reviewer", new AttributeValue().withS("Bob"));
+        reviewMap1.put("reviewer", AttributeValue.builder().s("Bob").build());
         Map<String, AttributeValue> fiveStarMap = new HashMap<>();
-        fiveStarMap.put("FiveStar", new AttributeValue().withL(new AttributeValue().withM(reviewMap1)));
-        item.put("Reviews", new AttributeValue().withM(fiveStarMap));
-        item.put("A.B", new AttributeValue().withS("not nested field 1"));
+        fiveStarMap.put("FiveStar", AttributeValue.builder().l(AttributeValue.builder().m(reviewMap1).build()).build());
+        item.put("Reviews", AttributeValue.builder().m(fiveStarMap).build());
+        item.put("A.B", AttributeValue.builder().s("not nested field 1").build());
         return item;
     }
 
     public static Map<String, AttributeValue> getKey2() {
         Map<String, AttributeValue> item = new HashMap<>();
-        item.put("PK1", new AttributeValue().withS("XYZA"));
-        item.put("PK2", new AttributeValue().withN("4"));
+        item.put("PK1", AttributeValue.builder().s("XYZA").build());
+        item.put("PK2", AttributeValue.builder().n("4").build());
         return item;
     }
 
     public static Map<String, AttributeValue> getItem3() {
         Map<String, AttributeValue> item = new HashMap<>();
-        item.put("PK1", new AttributeValue().withS("NEW"));
-        item.put("PK2", new AttributeValue().withN("42"));
-        item.put("Id1", new AttributeValue().withN("10"));
+        item.put("PK1", AttributeValue.builder().s("NEW").build());
+        item.put("PK2", AttributeValue.builder().n("42").build());
+        item.put("Id1", AttributeValue.builder().n("10").build());
         return item;
     }
 
     public static Map<String, AttributeValue> getItem4() {
         Map<String, AttributeValue> item = new HashMap<>();
-        item.put("PK1", new AttributeValue().withS("OOO"));
-        item.put("PK2", new AttributeValue().withN("4"));
-        item.put("Id1", new AttributeValue().withN("0"));
+        item.put("PK1", AttributeValue.builder().s("OOO").build());
+        item.put("PK2", AttributeValue.builder().n("4").build());
+        item.put("Id1", AttributeValue.builder().n("0").build());
         return item;
     }
 
     public static Map<String, AttributeValue> getItem5() {
         Map<String, AttributeValue> item = new HashMap<>();
-        item.put("PK1", new AttributeValue().withS("FOO"));
-        item.put("PK2", new AttributeValue().withN("-22"));
-        item.put("Id1", new AttributeValue().withN("100"));
+        item.put("PK1", AttributeValue.builder().s("FOO").build());
+        item.put("PK2", AttributeValue.builder().n("-22").build());
+        item.put("Id1", AttributeValue.builder().n("100").build());
         return item;
     }
 
     public static Map<String, AttributeValue> getItem6() {
         Map<String, AttributeValue> item = new HashMap<>();
-        item.put("PK1", new AttributeValue().withS("BAR"));
-        item.put("PK2", new AttributeValue().withN("-22"));
-        item.put("Id1", new AttributeValue().withN("100"));
+        item.put("PK1", AttributeValue.builder().s("BAR").build());
+        item.put("PK2", AttributeValue.builder().n("-22").build());
+        item.put("Id1", AttributeValue.builder().n("100").build());
         return item;
     }
 }

@@ -1,14 +1,14 @@
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
-import com.amazonaws.services.dynamodbv2.model.AttributeValue;
-import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
-import com.amazonaws.services.dynamodbv2.model.PutItemRequest;
-import com.amazonaws.services.dynamodbv2.model.QueryRequest;
-import com.amazonaws.services.dynamodbv2.model.QueryResult;
-import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
+import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
+import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
+import software.amazon.awssdk.services.dynamodb.model.CreateTableRequest;
+import software.amazon.awssdk.services.dynamodb.model.PutItemRequest;
+import software.amazon.awssdk.services.dynamodb.model.QueryRequest;
+import software.amazon.awssdk.services.dynamodb.model.QueryResponse;
+import software.amazon.awssdk.services.dynamodb.model.ScalarAttributeType;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
-import org.apache.phoenix.ddb.PhoenixDBClient;
+import org.apache.phoenix.ddb.PhoenixDBClientV2;
 import org.apache.phoenix.end2end.ServerMetadataCacheTestImpl;
 import org.apache.phoenix.jdbc.PhoenixDriver;
 import org.apache.phoenix.util.PhoenixRuntime;
@@ -40,8 +40,8 @@ public class QueryIndex1IT {
     private static HBaseTestingUtility utility = null;
     private static String tmpDir;
 
-    private final AmazonDynamoDB amazonDynamoDB =
-            LocalDynamoDbTestBase.localDynamoDb().createV1Client();
+    private final DynamoDbClient dynamoDbClient =
+            LocalDynamoDbTestBase.localDynamoDb().createV2Client();
 
     private static String url;
 
@@ -85,50 +85,50 @@ public class QueryIndex1IT {
                 DDLTestUtils.getCreateTableRequest(tableName, "attr_0",
                         ScalarAttributeType.S, null, null);
         // create index on IdS
-        DDLTestUtils.addIndexToRequest(true, createTableRequest, indexName, "IdS",
+        createTableRequest = DDLTestUtils.addIndexToRequest(true, createTableRequest, indexName, "IdS",
                 ScalarAttributeType.S, null, null);
-        PhoenixDBClient phoenixDBClient = new PhoenixDBClient(url);
-        phoenixDBClient.createTable(createTableRequest);
-        amazonDynamoDB.createTable(createTableRequest);
+        PhoenixDBClientV2 phoenixDBClientV2 = new PhoenixDBClientV2(url);
+        phoenixDBClientV2.createTable(createTableRequest);
+        dynamoDbClient.createTable(createTableRequest);
 
         //put items
-        PutItemRequest putItemRequest1 = new PutItemRequest(tableName, getItem1());
-        PutItemRequest putItemRequest2 = new PutItemRequest(tableName, getItem2());
-        PutItemRequest putItemRequest3 = new PutItemRequest(tableName, getItem3());
-        PutItemRequest putItemRequest4 = new PutItemRequest(tableName, getItem4());
-        phoenixDBClient.putItem(putItemRequest1);
-        phoenixDBClient.putItem(putItemRequest2);
-        phoenixDBClient.putItem(putItemRequest3);
-        phoenixDBClient.putItem(putItemRequest4);
-        amazonDynamoDB.putItem(putItemRequest1);
-        amazonDynamoDB.putItem(putItemRequest2);
-        amazonDynamoDB.putItem(putItemRequest3);
-        amazonDynamoDB.putItem(putItemRequest4);
+        PutItemRequest putItemRequest1 = PutItemRequest.builder().tableName(tableName).item(getItem1()).build();
+        PutItemRequest putItemRequest2 = PutItemRequest.builder().tableName(tableName).item(getItem2()).build();
+        PutItemRequest putItemRequest3 = PutItemRequest.builder().tableName(tableName).item(getItem3()).build();
+        PutItemRequest putItemRequest4 = PutItemRequest.builder().tableName(tableName).item(getItem4()).build();
+        phoenixDBClientV2.putItem(putItemRequest1);
+        phoenixDBClientV2.putItem(putItemRequest2);
+        phoenixDBClientV2.putItem(putItemRequest3);
+        phoenixDBClientV2.putItem(putItemRequest4);
+        dynamoDbClient.putItem(putItemRequest1);
+        dynamoDbClient.putItem(putItemRequest2);
+        dynamoDbClient.putItem(putItemRequest3);
+        dynamoDbClient.putItem(putItemRequest4);
 
         //query request using index
-        QueryRequest qr = new QueryRequest(tableName);
-        qr.setIndexName(indexName);
-        qr.setKeyConditionExpression("#0 = :v0");
+        QueryRequest.Builder qr = QueryRequest.builder().tableName(tableName);
+        qr.indexName(indexName);
+        qr.keyConditionExpression("#0 = :v0");
         Map<String, String> exprAttrNames = new HashMap<>();
         exprAttrNames.put("#0", "IdS");
-        qr.setExpressionAttributeNames(exprAttrNames);
+        qr.expressionAttributeNames(exprAttrNames);
         Map<String, AttributeValue> exprAttrVal = new HashMap<>();
-        exprAttrVal.put(":v0", new AttributeValue().withS("101.01"));
-        qr.setExpressionAttributeValues(exprAttrVal);
+        exprAttrVal.put(":v0", AttributeValue.builder().s("101.01").build());
+        qr.expressionAttributeValues(exprAttrVal);
 
         // query result
-        QueryResult phoenixResult = phoenixDBClient.query(qr);
-        QueryResult dynamoResult = amazonDynamoDB.query(qr);
-        Assert.assertEquals(dynamoResult.getCount(), phoenixResult.getCount());
-        Assert.assertEquals(dynamoResult.getItems().get(0), phoenixResult.getItems().get(0));
-        Assert.assertEquals(dynamoResult.getScannedCount(), phoenixResult.getScannedCount());
+        QueryResponse phoenixResult = phoenixDBClientV2.query(qr.build());
+        QueryResponse dynamoResult = dynamoDbClient.query(qr.build());
+        Assert.assertEquals(dynamoResult.count(), phoenixResult.count());
+        Assert.assertEquals(dynamoResult.items().get(0), phoenixResult.items().get(0));
+        Assert.assertEquals(dynamoResult.scannedCount(), phoenixResult.scannedCount());
 
         // check last evaluated key
-        Map<String, AttributeValue> lastKey = phoenixResult.getLastEvaluatedKey();
-        Assert.assertEquals("101.01", lastKey.get("IdS").getS());
+        Map<String, AttributeValue> lastKey = phoenixResult.lastEvaluatedKey();
+        Assert.assertEquals("101.01", lastKey.get("IdS").s());
 
         // explain plan
-        TestUtils.validateIndexUsed(qr, url);
+        TestUtils.validateIndexUsed(qr.build(), url);
     }
 
     @Test(timeout = 120000)
@@ -140,49 +140,49 @@ public class QueryIndex1IT {
                 DDLTestUtils.getCreateTableRequest(tableName, "attr_0",
                         ScalarAttributeType.S, "attr_1", ScalarAttributeType.N);
         // create index on IdS
-        DDLTestUtils.addIndexToRequest(true, createTableRequest, indexName, "IdS",
+        createTableRequest = DDLTestUtils.addIndexToRequest(true, createTableRequest, indexName, "IdS",
                 ScalarAttributeType.S, null, null);
-        PhoenixDBClient phoenixDBClient = new PhoenixDBClient(url);
-        phoenixDBClient.createTable(createTableRequest);
-        amazonDynamoDB.createTable(createTableRequest);
+        PhoenixDBClientV2 phoenixDBClientV2 = new PhoenixDBClientV2(url);
+        phoenixDBClientV2.createTable(createTableRequest);
+        dynamoDbClient.createTable(createTableRequest);
 
         //put items
-        PutItemRequest putItemRequest1 = new PutItemRequest(tableName, getItem1());
-        PutItemRequest putItemRequest2 = new PutItemRequest(tableName, getItem2());
-        PutItemRequest putItemRequest3 = new PutItemRequest(tableName, getItem3());
-        PutItemRequest putItemRequest4 = new PutItemRequest(tableName, getItem4());
-        phoenixDBClient.putItem(putItemRequest1);
-        phoenixDBClient.putItem(putItemRequest2);
-        phoenixDBClient.putItem(putItemRequest3);
-        phoenixDBClient.putItem(putItemRequest4);
-        amazonDynamoDB.putItem(putItemRequest1);
-        amazonDynamoDB.putItem(putItemRequest2);
-        amazonDynamoDB.putItem(putItemRequest3);
-        amazonDynamoDB.putItem(putItemRequest4);
+        PutItemRequest putItemRequest1 = PutItemRequest.builder().tableName(tableName).item(getItem1()).build();
+        PutItemRequest putItemRequest2 = PutItemRequest.builder().tableName(tableName).item(getItem2()).build();
+        PutItemRequest putItemRequest3 = PutItemRequest.builder().tableName(tableName).item(getItem3()).build();
+        PutItemRequest putItemRequest4 = PutItemRequest.builder().tableName(tableName).item(getItem4()).build();
+        phoenixDBClientV2.putItem(putItemRequest1);
+        phoenixDBClientV2.putItem(putItemRequest2);
+        phoenixDBClientV2.putItem(putItemRequest3);
+        phoenixDBClientV2.putItem(putItemRequest4);
+        dynamoDbClient.putItem(putItemRequest1);
+        dynamoDbClient.putItem(putItemRequest2);
+        dynamoDbClient.putItem(putItemRequest3);
+        dynamoDbClient.putItem(putItemRequest4);
 
         //query request using index
-        QueryRequest qr = new QueryRequest(tableName);
-        qr.setIndexName(indexName);
-        qr.setKeyConditionExpression("#0 = :v0");
+        QueryRequest.Builder qr = QueryRequest.builder().tableName(tableName);
+        qr.indexName(indexName);
+        qr.keyConditionExpression("#0 = :v0");
         Map<String, String> exprAttrNames = new HashMap<>();
         exprAttrNames.put("#0", "IdS");
-        qr.setExpressionAttributeNames(exprAttrNames);
+        qr.expressionAttributeNames(exprAttrNames);
         Map<String, AttributeValue> exprAttrVal = new HashMap<>();
-        exprAttrVal.put(":v0", new AttributeValue().withS("101.01"));
-        qr.setExpressionAttributeValues(exprAttrVal);
+        exprAttrVal.put(":v0", AttributeValue.builder().s("101.01").build());
+        qr.expressionAttributeValues(exprAttrVal);
 
         // query result
-        QueryResult phoenixResult = phoenixDBClient.query(qr);
-        QueryResult dynamoResult = amazonDynamoDB.query(qr);
-        Assert.assertEquals(dynamoResult.getCount(), phoenixResult.getCount());
-        Assert.assertEquals(dynamoResult.getItems().get(0), phoenixResult.getItems().get(0));
+        QueryResponse phoenixResult = phoenixDBClientV2.query(qr.build());
+        QueryResponse dynamoResult = dynamoDbClient.query(qr.build());
+        Assert.assertEquals(dynamoResult.count(), phoenixResult.count());
+        Assert.assertEquals(dynamoResult.items().get(0), phoenixResult.items().get(0));
 
         // check last evaluated key
-        Map<String, AttributeValue> lastKey = phoenixResult.getLastEvaluatedKey();
-        Assert.assertEquals("101.01", lastKey.get("IdS").getS());
+        Map<String, AttributeValue> lastKey = phoenixResult.lastEvaluatedKey();
+        Assert.assertEquals("101.01", lastKey.get("IdS").s());
 
         // explain plan
-        TestUtils.validateIndexUsed(qr, url);
+        TestUtils.validateIndexUsed(qr.build(), url);
     }
 
     @Test(timeout = 120000)
@@ -194,53 +194,53 @@ public class QueryIndex1IT {
                 DDLTestUtils.getCreateTableRequest(tableName, "attr_0",
                         ScalarAttributeType.S, null, null);
         // create index on IdS, n_attr_1
-        DDLTestUtils.addIndexToRequest(true, createTableRequest, indexName, "IdS",
+        createTableRequest = DDLTestUtils.addIndexToRequest(true, createTableRequest, indexName, "IdS",
                 ScalarAttributeType.S, "Id2", ScalarAttributeType.N);
-        PhoenixDBClient phoenixDBClient = new PhoenixDBClient(url);
-        phoenixDBClient.createTable(createTableRequest);
-        amazonDynamoDB.createTable(createTableRequest);
+        PhoenixDBClientV2 phoenixDBClientV2 = new PhoenixDBClientV2(url);
+        phoenixDBClientV2.createTable(createTableRequest);
+        dynamoDbClient.createTable(createTableRequest);
 
         //put items
-        PutItemRequest putItemRequest1 = new PutItemRequest(tableName, getItem1());
-        PutItemRequest putItemRequest2 = new PutItemRequest(tableName, getItem2());
-        PutItemRequest putItemRequest3 = new PutItemRequest(tableName, getItem3());
-        PutItemRequest putItemRequest4 = new PutItemRequest(tableName, getItem4());
-        phoenixDBClient.putItem(putItemRequest1);
-        phoenixDBClient.putItem(putItemRequest2);
-        phoenixDBClient.putItem(putItemRequest3);
-        phoenixDBClient.putItem(putItemRequest4);
-        amazonDynamoDB.putItem(putItemRequest1);
-        amazonDynamoDB.putItem(putItemRequest2);
-        amazonDynamoDB.putItem(putItemRequest3);
-        amazonDynamoDB.putItem(putItemRequest4);
+        PutItemRequest putItemRequest1 = PutItemRequest.builder().tableName(tableName).item(getItem1()).build();
+        PutItemRequest putItemRequest2 = PutItemRequest.builder().tableName(tableName).item(getItem2()).build();
+        PutItemRequest putItemRequest3 = PutItemRequest.builder().tableName(tableName).item(getItem3()).build();
+        PutItemRequest putItemRequest4 = PutItemRequest.builder().tableName(tableName).item(getItem4()).build();
+        phoenixDBClientV2.putItem(putItemRequest1);
+        phoenixDBClientV2.putItem(putItemRequest2);
+        phoenixDBClientV2.putItem(putItemRequest3);
+        phoenixDBClientV2.putItem(putItemRequest4);
+        dynamoDbClient.putItem(putItemRequest1);
+        dynamoDbClient.putItem(putItemRequest2);
+        dynamoDbClient.putItem(putItemRequest3);
+        dynamoDbClient.putItem(putItemRequest4);
 
         //query request using index
-        QueryRequest qr = new QueryRequest(tableName);
-        qr.setIndexName(indexName);
-        qr.setKeyConditionExpression("#0 = :v0 AND #1 < :v1");
+        QueryRequest.Builder qr = QueryRequest.builder().tableName(tableName);
+        qr.indexName(indexName);
+        qr.keyConditionExpression("#0 = :v0 AND #1 < :v1");
         Map<String, String> exprAttrNames = new HashMap<>();
         exprAttrNames.put("#0", "IdS");
         exprAttrNames.put("#1", "Id2");
-        qr.setExpressionAttributeNames(exprAttrNames);
+        qr.expressionAttributeNames(exprAttrNames);
         Map<String, AttributeValue> exprAttrVal = new HashMap<>();
-        exprAttrVal.put(":v0", new AttributeValue().withS("101.01"));
-        exprAttrVal.put(":v1", new AttributeValue().withN("2.1"));
-        qr.setExpressionAttributeValues(exprAttrVal);
+        exprAttrVal.put(":v0", AttributeValue.builder().s("101.01").build());
+        exprAttrVal.put(":v1", AttributeValue.builder().n("2.1").build());
+        qr.expressionAttributeValues(exprAttrVal);
 
         // query result
-        QueryResult phoenixResult = phoenixDBClient.query(qr);
-        QueryResult dynamoResult = amazonDynamoDB.query(qr);
-        Assert.assertEquals(dynamoResult.getCount(), phoenixResult.getCount());
-        Assert.assertEquals(dynamoResult.getItems().get(0), phoenixResult.getItems().get(0));
-        Assert.assertEquals(dynamoResult.getScannedCount(), phoenixResult.getScannedCount());
+        QueryResponse phoenixResult = phoenixDBClientV2.query(qr.build());
+        QueryResponse dynamoResult = dynamoDbClient.query(qr.build());
+        Assert.assertEquals(dynamoResult.count(), phoenixResult.count());
+        Assert.assertEquals(dynamoResult.items().get(0), phoenixResult.items().get(0));
+        Assert.assertEquals(dynamoResult.scannedCount(), phoenixResult.scannedCount());
 
         // check last evaluated key
-        Map<String, AttributeValue> lastKey = phoenixResult.getLastEvaluatedKey();
-        Assert.assertEquals("101.01", lastKey.get("IdS").getS());
-        Assert.assertEquals(1.1, Double.parseDouble(lastKey.get("Id2").getN()), 0);
+        Map<String, AttributeValue> lastKey = phoenixResult.lastEvaluatedKey();
+        Assert.assertEquals("101.01", lastKey.get("IdS").s());
+        Assert.assertEquals(1.1, Double.parseDouble(lastKey.get("Id2").n()), 0);
 
         // explain plan
-        TestUtils.validateIndexUsed(qr, url);
+        TestUtils.validateIndexUsed(qr.build(), url);
     }
 
     @Test(timeout = 120000)
@@ -252,52 +252,52 @@ public class QueryIndex1IT {
                 DDLTestUtils.getCreateTableRequest(tableName, "attr_0",
                         ScalarAttributeType.S, "attr_1", ScalarAttributeType.N);
         // create index on IdS, n_attr_1
-        DDLTestUtils.addIndexToRequest(true, createTableRequest, indexName, "IdS",
+        createTableRequest = DDLTestUtils.addIndexToRequest(true, createTableRequest, indexName, "IdS",
                 ScalarAttributeType.S, "Id2", ScalarAttributeType.N);
-        PhoenixDBClient phoenixDBClient = new PhoenixDBClient(url);
-        phoenixDBClient.createTable(createTableRequest);
-        amazonDynamoDB.createTable(createTableRequest);
+        PhoenixDBClientV2 phoenixDBClientV2 = new PhoenixDBClientV2(url);
+        phoenixDBClientV2.createTable(createTableRequest);
+        dynamoDbClient.createTable(createTableRequest);
 
         //put items
-        PutItemRequest putItemRequest1 = new PutItemRequest(tableName, getItem1());
-        PutItemRequest putItemRequest2 = new PutItemRequest(tableName, getItem2());
-        PutItemRequest putItemRequest3 = new PutItemRequest(tableName, getItem3());
-        PutItemRequest putItemRequest4 = new PutItemRequest(tableName, getItem4());
-        phoenixDBClient.putItem(putItemRequest1);
-        phoenixDBClient.putItem(putItemRequest2);
-        phoenixDBClient.putItem(putItemRequest3);
-        phoenixDBClient.putItem(putItemRequest4);
-        amazonDynamoDB.putItem(putItemRequest1);
-        amazonDynamoDB.putItem(putItemRequest2);
-        amazonDynamoDB.putItem(putItemRequest3);
-        amazonDynamoDB.putItem(putItemRequest4);
+        PutItemRequest putItemRequest1 = PutItemRequest.builder().tableName(tableName).item(getItem1()).build();
+        PutItemRequest putItemRequest2 = PutItemRequest.builder().tableName(tableName).item(getItem2()).build();
+        PutItemRequest putItemRequest3 = PutItemRequest.builder().tableName(tableName).item(getItem3()).build();
+        PutItemRequest putItemRequest4 = PutItemRequest.builder().tableName(tableName).item(getItem4()).build();
+        phoenixDBClientV2.putItem(putItemRequest1);
+        phoenixDBClientV2.putItem(putItemRequest2);
+        phoenixDBClientV2.putItem(putItemRequest3);
+        phoenixDBClientV2.putItem(putItemRequest4);
+        dynamoDbClient.putItem(putItemRequest1);
+        dynamoDbClient.putItem(putItemRequest2);
+        dynamoDbClient.putItem(putItemRequest3);
+        dynamoDbClient.putItem(putItemRequest4);
 
         //query request using index
-        QueryRequest qr = new QueryRequest(tableName);
-        qr.setIndexName(indexName);
-        qr.setKeyConditionExpression("#0 = :v0 AND #1 < :v1");
+        QueryRequest.Builder qr = QueryRequest.builder().tableName(tableName);
+        qr.indexName(indexName);
+        qr.keyConditionExpression("#0 = :v0 AND #1 < :v1");
         Map<String, String> exprAttrNames = new HashMap<>();
         exprAttrNames.put("#0", "IdS");
         exprAttrNames.put("#1", "Id2");
-        qr.setExpressionAttributeNames(exprAttrNames);
+        qr.expressionAttributeNames(exprAttrNames);
         Map<String, AttributeValue> exprAttrVal = new HashMap<>();
-        exprAttrVal.put(":v0", new AttributeValue().withS("101.01"));
-        exprAttrVal.put(":v1", new AttributeValue().withN("2.1"));
-        qr.setExpressionAttributeValues(exprAttrVal);
+        exprAttrVal.put(":v0", AttributeValue.builder().s("101.01").build());
+        exprAttrVal.put(":v1", AttributeValue.builder().n("2.1").build());
+        qr.expressionAttributeValues(exprAttrVal);
 
         // query result
-        QueryResult phoenixResult = phoenixDBClient.query(qr);
-        QueryResult dynamoResult = amazonDynamoDB.query(qr);
-        Assert.assertEquals(dynamoResult.getCount(), phoenixResult.getCount());
-        Assert.assertEquals(dynamoResult.getItems().get(0), phoenixResult.getItems().get(0));
+        QueryResponse phoenixResult = phoenixDBClientV2.query(qr.build());
+        QueryResponse dynamoResult = dynamoDbClient.query(qr.build());
+        Assert.assertEquals(dynamoResult.count(), phoenixResult.count());
+        Assert.assertEquals(dynamoResult.items().get(0), phoenixResult.items().get(0));
 
         // check last evaluated key
-        Map<String, AttributeValue> lastKey = phoenixResult.getLastEvaluatedKey();
-        Assert.assertEquals("101.01", lastKey.get("IdS").getS());
-        Assert.assertEquals(1.1, Double.parseDouble(lastKey.get("Id2").getN()), 0);
+        Map<String, AttributeValue> lastKey = phoenixResult.lastEvaluatedKey();
+        Assert.assertEquals("101.01", lastKey.get("IdS").s());
+        Assert.assertEquals(1.1, Double.parseDouble(lastKey.get("Id2").n()), 0);
 
         // explain plan
-        TestUtils.validateIndexUsed(qr, url);
+        TestUtils.validateIndexUsed(qr.build(), url);
     }
 
     @Test(timeout = 120000)
@@ -309,87 +309,87 @@ public class QueryIndex1IT {
                 DDLTestUtils.getCreateTableRequest(tableName, "attr_0",
                         ScalarAttributeType.S, "attr_1", ScalarAttributeType.N);
         // create index on attr_0, IdS
-        DDLTestUtils.addIndexToRequest(false, createTableRequest, indexName, "attr_0",
+        createTableRequest = DDLTestUtils.addIndexToRequest(false, createTableRequest, indexName, "attr_0",
                 ScalarAttributeType.S, "IdS", ScalarAttributeType.S);
-        PhoenixDBClient phoenixDBClient = new PhoenixDBClient(url);
-        phoenixDBClient.createTable(createTableRequest);
-        amazonDynamoDB.createTable(createTableRequest);
+        PhoenixDBClientV2 phoenixDBClientV2 = new PhoenixDBClientV2(url);
+        phoenixDBClientV2.createTable(createTableRequest);
+        dynamoDbClient.createTable(createTableRequest);
 
         //put items
-        PutItemRequest putItemRequest1 = new PutItemRequest(tableName, getItem1());
-        PutItemRequest putItemRequest2 = new PutItemRequest(tableName, getItem2());
-        PutItemRequest putItemRequest3 = new PutItemRequest(tableName, getItem3());
-        PutItemRequest putItemRequest4 = new PutItemRequest(tableName, getItem4());
-        phoenixDBClient.putItem(putItemRequest1);
-        phoenixDBClient.putItem(putItemRequest2);
-        phoenixDBClient.putItem(putItemRequest3);
-        phoenixDBClient.putItem(putItemRequest4);
-        amazonDynamoDB.putItem(putItemRequest1);
-        amazonDynamoDB.putItem(putItemRequest2);
-        amazonDynamoDB.putItem(putItemRequest3);
-        amazonDynamoDB.putItem(putItemRequest4);
+        PutItemRequest putItemRequest1 = PutItemRequest.builder().tableName(tableName).item(getItem1()).build();
+        PutItemRequest putItemRequest2 = PutItemRequest.builder().tableName(tableName).item(getItem2()).build();
+        PutItemRequest putItemRequest3 = PutItemRequest.builder().tableName(tableName).item(getItem3()).build();
+        PutItemRequest putItemRequest4 = PutItemRequest.builder().tableName(tableName).item(getItem4()).build();
+        phoenixDBClientV2.putItem(putItemRequest1);
+        phoenixDBClientV2.putItem(putItemRequest2);
+        phoenixDBClientV2.putItem(putItemRequest3);
+        phoenixDBClientV2.putItem(putItemRequest4);
+        dynamoDbClient.putItem(putItemRequest1);
+        dynamoDbClient.putItem(putItemRequest2);
+        dynamoDbClient.putItem(putItemRequest3);
+        dynamoDbClient.putItem(putItemRequest4);
 
         //query request using index
-        QueryRequest qr = new QueryRequest(tableName);
-        qr.setIndexName(indexName);
-        qr.setKeyConditionExpression("#0 = :v0 AND #1 < :v1");
+        QueryRequest.Builder qr = QueryRequest.builder().tableName(tableName);
+        qr.indexName(indexName);
+        qr.keyConditionExpression("#0 = :v0 AND #1 < :v1");
         Map<String, String> exprAttrNames = new HashMap<>();
         exprAttrNames.put("#0", "attr_0");
         exprAttrNames.put("#1", "IdS");
-        qr.setExpressionAttributeNames(exprAttrNames);
+        qr.expressionAttributeNames(exprAttrNames);
         Map<String, AttributeValue> exprAttrVal = new HashMap<>();
-        exprAttrVal.put(":v0", new AttributeValue().withS("str_val_1"));
-        exprAttrVal.put(":v1", new AttributeValue().withS("101.02"));
-        qr.setExpressionAttributeValues(exprAttrVal);
+        exprAttrVal.put(":v0", AttributeValue.builder().s("str_val_1").build());
+        exprAttrVal.put(":v1", AttributeValue.builder().s("101.02").build());
+        qr.expressionAttributeValues(exprAttrVal);
 
         // query result
-        QueryResult phoenixResult = phoenixDBClient.query(qr);
-        QueryResult dynamoResult = amazonDynamoDB.query(qr);
-        Assert.assertEquals(dynamoResult.getCount(), phoenixResult.getCount());
-        Assert.assertEquals(dynamoResult.getItems().get(0), phoenixResult.getItems().get(0));
+        QueryResponse phoenixResult = phoenixDBClientV2.query(qr.build());
+        QueryResponse dynamoResult = dynamoDbClient.query(qr.build());
+        Assert.assertEquals(dynamoResult.count(), phoenixResult.count());
+        Assert.assertEquals(dynamoResult.items().get(0), phoenixResult.items().get(0));
 
         // check last evaluated key
-        Map<String, AttributeValue> lastKey = phoenixResult.getLastEvaluatedKey();
-        Assert.assertEquals("str_val_1", lastKey.get("attr_0").getS());
-        Assert.assertEquals("101.01", lastKey.get("IdS").getS());
+        Map<String, AttributeValue> lastKey = phoenixResult.lastEvaluatedKey();
+        Assert.assertEquals("str_val_1", lastKey.get("attr_0").s());
+        Assert.assertEquals("101.01", lastKey.get("IdS").s());
 
         // explain plan
-        TestUtils.validateIndexUsed(qr, url);
+        TestUtils.validateIndexUsed(qr.build(), url);
     }
 
     private Map<String, AttributeValue> getItem1() {
         Map<String, AttributeValue> item = new HashMap<>();
-        item.put("attr_0", new AttributeValue().withS("str_val_1"));
-        item.put("attr_1", new AttributeValue().withN("11295.03"));
-        item.put("IdS", new AttributeValue().withS("101.01"));
-        item.put("Id2", new AttributeValue().withN("1.1"));
+        item.put("attr_0", AttributeValue.builder().s("str_val_1").build());
+        item.put("attr_1", AttributeValue.builder().n("11295.03").build());
+        item.put("IdS", AttributeValue.builder().s("101.01").build());
+        item.put("Id2", AttributeValue.builder().n("1.1").build());
         return item;
     }
 
     private Map<String, AttributeValue> getItem2() {
         Map<String, AttributeValue> item = new HashMap<>();
-        item.put("attr_0", new AttributeValue().withS("str_val_2"));
-        item.put("attr_1", new AttributeValue().withN("21295.03"));
-        item.put("IdS", new AttributeValue().withS("202.02"));
-        item.put("Id2", new AttributeValue().withN("2.2"));
+        item.put("attr_0", AttributeValue.builder().s("str_val_2").build());
+        item.put("attr_1", AttributeValue.builder().n("21295.03").build());
+        item.put("IdS", AttributeValue.builder().s("202.02").build());
+        item.put("Id2", AttributeValue.builder().n("2.2").build());
         return item;
     }
 
     private Map<String, AttributeValue> getItem3() {
         Map<String, AttributeValue> item = new HashMap<>();
-        item.put("attr_0", new AttributeValue().withS("str_val_3"));
-        item.put("attr_1", new AttributeValue().withN("31295.03"));
-        item.put("IdS", new AttributeValue().withS("303.03"));
-        item.put("Id2", new AttributeValue().withN("3.3"));
+        item.put("attr_0", AttributeValue.builder().s("str_val_3").build());
+        item.put("attr_1", AttributeValue.builder().n("31295.03").build());
+        item.put("IdS", AttributeValue.builder().s("303.03").build());
+        item.put("Id2", AttributeValue.builder().n("3.3").build());
         return item;
     }
 
     private Map<String, AttributeValue> getItem4() {
         Map<String, AttributeValue> item = new HashMap<>();
-        item.put("attr_0", new AttributeValue().withS("str_val_4"));
-        item.put("attr_1", new AttributeValue().withN("41295.03"));
-        item.put("IdS", new AttributeValue().withS("404.04"));
-        item.put("Id2", new AttributeValue().withN("4.4"));
+        item.put("attr_0", AttributeValue.builder().s("str_val_4").build());
+        item.put("attr_1", AttributeValue.builder().n("41295.03").build());
+        item.put("IdS", AttributeValue.builder().s("404.04").build());
+        item.put("Id2", AttributeValue.builder().n("4.4").build());
         return item;
     }
 }

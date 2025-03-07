@@ -1,7 +1,7 @@
 package org.apache.phoenix.ddb.utils;
 
-import com.amazonaws.services.dynamodbv2.model.KeySchemaElement;
-import com.amazonaws.services.dynamodbv2.model.KeyType;
+import software.amazon.awssdk.services.dynamodb.model.KeySchemaElement;
+import software.amazon.awssdk.services.dynamodb.model.KeyType;
 import org.apache.phoenix.jdbc.PhoenixConnection;
 import org.apache.phoenix.schema.PColumn;
 import org.apache.phoenix.schema.PTable;
@@ -62,9 +62,9 @@ public class DDBShimCDCUtils {
     public static List<KeySchemaElement> getKeySchema(PTable table) {
         List<KeySchemaElement> keySchema = new ArrayList<>();
         List<PColumn> pkCols = table.getPKColumns();
-        keySchema.add(new KeySchemaElement(pkCols.get(0).getName().getString(), KeyType.HASH));
+        keySchema.add(KeySchemaElement.builder().attributeName(pkCols.get(0).getName().getString()).keyType(KeyType.HASH).build());
         if (pkCols.size() == 2) {
-            keySchema.add(new KeySchemaElement(pkCols.get(1).getName().getString(), KeyType.RANGE));
+            keySchema.add(KeySchemaElement.builder().attributeName(pkCols.get(1).getName().getString()).keyType(KeyType.RANGE).build());
         }
         return keySchema;
     }

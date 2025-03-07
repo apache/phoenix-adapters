@@ -1,26 +1,26 @@
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDBStreams;
-import com.amazonaws.services.dynamodbv2.model.AttributeValue;
-import com.amazonaws.services.dynamodbv2.model.BatchWriteItemRequest;
-import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
-import com.amazonaws.services.dynamodbv2.model.DescribeStreamRequest;
-import com.amazonaws.services.dynamodbv2.model.GetRecordsRequest;
-import com.amazonaws.services.dynamodbv2.model.GetRecordsResult;
-import com.amazonaws.services.dynamodbv2.model.GetShardIteratorRequest;
-import com.amazonaws.services.dynamodbv2.model.ListStreamsRequest;
-import com.amazonaws.services.dynamodbv2.model.ListStreamsResult;
-import com.amazonaws.services.dynamodbv2.model.PutItemRequest;
-import com.amazonaws.services.dynamodbv2.model.PutRequest;
-import com.amazonaws.services.dynamodbv2.model.Record;
-import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
-import com.amazonaws.services.dynamodbv2.model.StreamDescription;
-import com.amazonaws.services.dynamodbv2.model.WriteRequest;
+import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
+import software.amazon.awssdk.services.dynamodb.streams.DynamoDbStreamsClient;
+import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
+import software.amazon.awssdk.services.dynamodb.model.BatchWriteItemRequest;
+import software.amazon.awssdk.services.dynamodb.model.CreateTableRequest;
+import software.amazon.awssdk.services.dynamodb.model.DescribeStreamRequest;
+import software.amazon.awssdk.services.dynamodb.model.GetRecordsRequest;
+import software.amazon.awssdk.services.dynamodb.model.GetRecordsResponse;
+import software.amazon.awssdk.services.dynamodb.model.GetShardIteratorRequest;
+import software.amazon.awssdk.services.dynamodb.model.ListStreamsRequest;
+import software.amazon.awssdk.services.dynamodb.model.ListStreamsResponse;
+import software.amazon.awssdk.services.dynamodb.model.PutItemRequest;
+import software.amazon.awssdk.services.dynamodb.model.PutRequest;
+import software.amazon.awssdk.services.dynamodb.model.Record;
+import software.amazon.awssdk.services.dynamodb.model.ScalarAttributeType;
+import software.amazon.awssdk.services.dynamodb.model.StreamDescription;
+import software.amazon.awssdk.services.dynamodb.model.WriteRequest;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.phoenix.coprocessor.PhoenixMasterObserver;
-import org.apache.phoenix.ddb.PhoenixDBClient;
-import org.apache.phoenix.ddb.PhoenixDBStreamsClient;
+import org.apache.phoenix.ddb.PhoenixDBClientV2;
+import org.apache.phoenix.ddb.PhoenixDBStreamsClientV2;
 import org.apache.phoenix.end2end.ServerMetadataCacheTestImpl;
 import org.apache.phoenix.jdbc.PhoenixDriver;
 import org.apache.phoenix.jdbc.PhoenixTestDriver;
@@ -58,7 +58,7 @@ import java.util.concurrent.Executors;
 import java.util.stream.IntStream;
 
 import static org.apache.phoenix.query.BaseTest.setUpConfigForMiniCluster;
-import static com.amazonaws.services.dynamodbv2.model.ShardIteratorType.LATEST;
+import static software.amazon.awssdk.services.dynamodb.model.ShardIteratorType.LATEST;
 
 @RunWith(Parameterized.class)
 public class GetRecordsMultipleProducers {
@@ -70,14 +70,14 @@ public class GetRecordsMultipleProducers {
     @Rule
     public final TestName testName = new TestName();
 
-    private static final AmazonDynamoDB amazonDynamoDB =
-            LocalDynamoDbTestBase.localDynamoDb().createV1Client();
+    private static final DynamoDbClient dynamoDbClient =
+            LocalDynamoDbTestBase.localDynamoDb().createV2Client();
 
-    private static final AmazonDynamoDBStreams amazonDynamoDBStreams =
-            LocalDynamoDbTestBase.localDynamoDb().createV1StreamsClient();
+    private static final DynamoDbStreamsClient dynamoDbStreamsClient =
+            LocalDynamoDbTestBase.localDynamoDb().createV2StreamsClient();
 
-    private static PhoenixDBClient phoenixDBClient = null;
-    private static PhoenixDBStreamsClient phoenixDBStreamsClient = null;
+    private static PhoenixDBClientV2 phoenixDBClientV2 = null;
+    private static PhoenixDBStreamsClientV2 phoenixDBStreamsClientV2 = null;
 
     private static String url;
 
@@ -151,20 +151,20 @@ public class GetRecordsMultipleProducers {
                         GetRecordsMultipleProducers.putRandomItems(tableName, numItemsPerThread, batchWriteProb))
         );
 
-        GetRecordsRequest grr = new GetRecordsRequest().withShardIterator(latestShardIterator).withLimit(limit);
+        GetRecordsRequest grr = GetRecordsRequest.builder().shardIterator(latestShardIterator).limit(limit).build();
         Set<Record> records = new HashSet<>();
-        GetRecordsResult result;
+        GetRecordsResponse result;
         do {
-            result = phoenixDBStreamsClient.getRecords(grr);
-            records.addAll(result.getRecords());
-            grr.setShardIterator(result.getNextShardIterator());
-            Thread.sleep(100);
-        } while (result.getNextShardIterator() != null && !result.getRecords().isEmpty());
+            Thread.sleep(100); //give some time before consuming
+            result = phoenixDBStreamsClientV2.getRecords(grr);
+            records.addAll(result.records());
+            grr = grr.toBuilder().shardIterator(result.nextShardIterator()).build();
+        } while (result.nextShardIterator() != null && !result.records().isEmpty());
         executorService.shutdown();
         Assert.assertEquals(threadCount * numItemsPerThread, records.size());
         Set<String> seqNums = new HashSet<>();
         for (Record r : records) {
-            seqNums.add(r.getDynamodb().getSequenceNumber());
+            seqNums.add(r.dynamodb().sequenceNumber());
         }
         Assert.assertEquals(threadCount * numItemsPerThread, seqNums.size());
     }
@@ -173,21 +173,22 @@ public class GetRecordsMultipleProducers {
         CreateTableRequest createTableRequest =
                 DDLTestUtils.getCreateTableRequest(tableName, "PK1",
                         ScalarAttributeType.S, "PK2", ScalarAttributeType.N);
-        DDLTestUtils.addStreamSpecToRequest(createTableRequest, "NEW_IMAGE");
-        phoenixDBClient = new PhoenixDBClient(url);
-        phoenixDBClient.createTable(createTableRequest);
-        phoenixDBStreamsClient = new PhoenixDBStreamsClient(url);
-        ListStreamsRequest lsr = new ListStreamsRequest().withTableName(tableName);
-        ListStreamsResult phoenixStreams = phoenixDBStreamsClient.listStreams(lsr);
-        String phoenixStreamArn = phoenixStreams.getStreams().get(0).getStreamArn();
-        TestUtils.waitForStream(phoenixDBStreamsClient, phoenixStreamArn);
-        DescribeStreamRequest dsr = new DescribeStreamRequest().withStreamArn(phoenixStreamArn);
-        StreamDescription phoenixStreamDesc = phoenixDBStreamsClient.describeStream(dsr).getStreamDescription();
-        GetShardIteratorRequest gsir = new GetShardIteratorRequest();
-        gsir.setStreamArn(phoenixStreamArn);
-        gsir.setShardId(phoenixStreamDesc.getShards().get(0).getShardId());
-        gsir.setShardIteratorType(LATEST);
-        return phoenixDBStreamsClient.getShardIterator(gsir).getShardIterator();
+        createTableRequest = DDLTestUtils.addStreamSpecToRequest(createTableRequest, "NEW_IMAGE");
+        phoenixDBClientV2 = new PhoenixDBClientV2(url);
+        phoenixDBClientV2.createTable(createTableRequest);
+        phoenixDBStreamsClientV2 = new PhoenixDBStreamsClientV2(url);
+        ListStreamsRequest lsr = ListStreamsRequest.builder().tableName(tableName).build();
+        ListStreamsResponse phoenixStreams = phoenixDBStreamsClientV2.listStreams(lsr);
+        String phoenixStreamArn = phoenixStreams.streams().get(0).streamArn();
+        TestUtils.waitForStream(phoenixDBStreamsClientV2, phoenixStreamArn);
+        DescribeStreamRequest dsr = DescribeStreamRequest.builder().streamArn(phoenixStreamArn).build();
+        StreamDescription phoenixStreamDesc = phoenixDBStreamsClientV2.describeStream(dsr).streamDescription();
+        GetShardIteratorRequest gsir = GetShardIteratorRequest.builder()
+                .streamArn(phoenixStreamArn)
+                .shardId(phoenixStreamDesc.shards().get(0).shardId())
+                .shardIteratorType(LATEST)
+                .build();
+        return phoenixDBStreamsClientV2.getShardIterator(gsir).shardIterator();
     }
 
     private static void putRandomItems(String tableName, int numItemsPerThread, double batchWriteProb) {
@@ -196,16 +197,16 @@ public class GetRecordsMultipleProducers {
             Map<String, List<WriteRequest>> requestItems = new HashMap<>();
             List<WriteRequest> writeReqs = new ArrayList<>();
             for (int i = 0; i< numItemsPerThread; i++) {
-                writeReqs.add(new WriteRequest(new PutRequest(buildRandomItem())));
+                writeReqs.add(WriteRequest.builder().putRequest(PutRequest.builder().item((buildRandomItem())).build()).build());
             }
             requestItems.put(tableName, writeReqs);
-            BatchWriteItemRequest request = new BatchWriteItemRequest(requestItems);
-            phoenixDBClient.batchWriteItem(request);
+            BatchWriteItemRequest request = BatchWriteItemRequest.builder().requestItems(requestItems).build();
+            phoenixDBClientV2.batchWriteItem(request);
         }
         else { // individual writes
             for (int i = 0; i< numItemsPerThread; i++) {
-                PutItemRequest request = new PutItemRequest().withTableName(tableName).withItem(buildRandomItem());
-                phoenixDBClient.putItem(request);
+                PutItemRequest request = PutItemRequest.builder().tableName(tableName).item(buildRandomItem()).build();
+                phoenixDBClientV2.putItem(request);
             }
         }
     }
@@ -216,9 +217,9 @@ public class GetRecordsMultipleProducers {
         String randomValue = UUID.randomUUID().toString();
 
         Map<String, AttributeValue> item = new HashMap<>();
-        item.put("PK1", new AttributeValue().withS(randomPk));
-        item.put("PK2", new AttributeValue().withN(String.valueOf(randomId)));
-        item.put("VAL", new AttributeValue().withS(randomValue));
+        item.put("PK1", AttributeValue.builder().s(randomPk).build());
+        item.put("PK2", AttributeValue.builder().n(String.valueOf(randomId)).build());
+        item.put("VAL", AttributeValue.builder().s(randomValue).build());
         return item;
     }
 }

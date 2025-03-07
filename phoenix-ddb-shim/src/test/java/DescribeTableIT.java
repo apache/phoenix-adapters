@@ -3,22 +3,19 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
-import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
-import com.amazonaws.services.dynamodbv2.model.CreateTableResult;
-import com.amazonaws.services.dynamodbv2.model.DescribeTableResult;
-import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
-import com.amazonaws.services.dynamodbv2.model.StreamSpecification;
+import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
+import software.amazon.awssdk.services.dynamodb.model.CreateTableRequest;
+import software.amazon.awssdk.services.dynamodb.model.DescribeTableRequest;
+import software.amazon.awssdk.services.dynamodb.model.DescribeTableResponse;
+import software.amazon.awssdk.services.dynamodb.model.ScalarAttributeType;
+import software.amazon.awssdk.services.dynamodb.model.StreamSpecification;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
-import org.apache.phoenix.ddb.PhoenixDBClient;
+import org.apache.phoenix.ddb.PhoenixDBClientV2;
 import org.apache.phoenix.end2end.ServerMetadataCacheTestImpl;
 import org.apache.phoenix.jdbc.PhoenixConnection;
 import org.apache.phoenix.jdbc.PhoenixDriver;
-import org.apache.phoenix.schema.PTable;
-import org.apache.phoenix.util.CDCUtil;
-import org.apache.phoenix.util.JacksonUtil;
 import org.apache.phoenix.util.PhoenixRuntime;
 import org.apache.phoenix.util.ServerUtil;
 
@@ -47,8 +44,8 @@ public class DescribeTableIT {
     @Rule
     public final TestName testName = new TestName();
 
-    private final AmazonDynamoDB amazonDynamoDB =
-            LocalDynamoDbTestBase.localDynamoDb().createV1Client();
+    private final DynamoDbClient dynamoDbClient =
+            LocalDynamoDbTestBase.localDynamoDb().createV2Client();
 
     private static String url;
 
@@ -88,27 +85,28 @@ public class DescribeTableIT {
                 "PK1", ScalarAttributeType.B, "PK2", ScalarAttributeType.S);
 
         // add global index
-        DDLTestUtils.addIndexToRequest(true, createTableRequest, "IDX1_" + tableName, "COL1",
+        createTableRequest = DDLTestUtils.addIndexToRequest(true, createTableRequest, "IDX1_" + tableName, "COL1",
                 ScalarAttributeType.N, "COL2", ScalarAttributeType.B);
 
         // add local index
-        DDLTestUtils.addIndexToRequest(false, createTableRequest, "IDX2_" + tableName, "PK1",
+        createTableRequest = DDLTestUtils.addIndexToRequest(false, createTableRequest, "IDX2_" + tableName, "PK1",
                 ScalarAttributeType.B, "LCOL2", ScalarAttributeType.S);
 
         // create table
-        amazonDynamoDB.createTable(createTableRequest);
-        PhoenixDBClient phoenixDBClient = new PhoenixDBClient(url);
-        phoenixDBClient.createTable(createTableRequest);
+        dynamoDbClient.createTable(createTableRequest);
+        PhoenixDBClientV2 phoenixDBClientV2 = new PhoenixDBClientV2(url);
+        phoenixDBClientV2.createTable(createTableRequest);
 
         // describe table
-        DescribeTableResult describeTableResult1 = amazonDynamoDB.describeTable(tableName);
-        DescribeTableResult describeTableResult2 = phoenixDBClient.describeTable(tableName);
-        LOGGER.info("Describe Table response from DynamoDB: {}",
-                JacksonUtil.getObjectWriterPretty().writeValueAsString(describeTableResult1));
-        LOGGER.info("Describe Table response from Phoenix: {}",
-                JacksonUtil.getObjectWriterPretty().writeValueAsString(describeTableResult2));
-        DDLTestUtils.assertTableDescriptions(describeTableResult1.getTable(),
-                describeTableResult2.getTable());
+        DescribeTableRequest dtr = DescribeTableRequest.builder().tableName(tableName).build();
+        DescribeTableResponse describeTableResult1 = dynamoDbClient.describeTable(dtr);
+        DescribeTableResponse describeTableResult2 = phoenixDBClientV2.describeTable(dtr);
+
+        LOGGER.info("Describe Table response from DynamoDB: {}", describeTableResult1.toString());
+        LOGGER.info("Describe Table response from Phoenix: {}", describeTableResult2.toString());
+
+        DDLTestUtils.assertTableDescriptions(describeTableResult1.table(),
+                describeTableResult2.table());
     }
 
     @Test(timeout = 120000)
@@ -119,24 +117,25 @@ public class DescribeTableIT {
                 DDLTestUtils.getCreateTableRequest(tableName, "hashKey",
                         ScalarAttributeType.B, "sortKey", ScalarAttributeType.N);
 
-        DDLTestUtils.addStreamSpecToRequest(createTableRequest, "OLD_IMAGE");
+        createTableRequest = DDLTestUtils.addStreamSpecToRequest(createTableRequest, "OLD_IMAGE");
 
-        PhoenixDBClient phoenixDBClient = new PhoenixDBClient(url);
-        amazonDynamoDB.createTable(createTableRequest);
-        phoenixDBClient.createTable(createTableRequest);
+        PhoenixDBClientV2 phoenixDBClientV2 = new PhoenixDBClientV2(url);
+        dynamoDbClient.createTable(createTableRequest);
+        phoenixDBClientV2.createTable(createTableRequest);
 
-        DescribeTableResult describeTableResult1 = amazonDynamoDB.describeTable(tableName);
-        DescribeTableResult describeTableResult2 = phoenixDBClient.describeTable(tableName);
-        DDLTestUtils.assertTableDescriptions(describeTableResult1.getTable(),
-                describeTableResult2.getTable());
+        DescribeTableRequest dtr = DescribeTableRequest.builder().tableName(tableName).build();
+        DescribeTableResponse describeTableResult1 = dynamoDbClient.describeTable(dtr);
+        DescribeTableResponse describeTableResult2 = phoenixDBClientV2.describeTable(dtr);
+        DDLTestUtils.assertTableDescriptions(describeTableResult1.table(),
+                describeTableResult2.table());
 
-        StreamSpecification streamSpec1 = describeTableResult1.getTable().getStreamSpecification();
-        StreamSpecification streamSpec2 = describeTableResult2.getTable().getStreamSpecification();
+        StreamSpecification streamSpec1 = describeTableResult1.table().streamSpecification();
+        StreamSpecification streamSpec2 = describeTableResult2.table().streamSpecification();
         Assert.assertEquals(streamSpec1, streamSpec2);
 
         try (Connection connection = DriverManager.getConnection(url)) {
             DDLTestUtils.assertCDCMetadata(connection.unwrap(PhoenixConnection.class),
-                    describeTableResult2.getTable(), "OLD_IMAGE");
+                    describeTableResult2.table(), "OLD_IMAGE");
         }
     }
 }

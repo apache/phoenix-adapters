@@ -24,9 +24,9 @@ import java.util.Optional;
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
 import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.client.builder.AwsClientBuilder;
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
+import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDBStreams;
+import software.amazon.awssdk.services.dynamodb.streams.DynamoDbStreamsClient;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBStreamsClientBuilder;
 import com.amazonaws.services.dynamodbv2.local.main.ServerRunner;
 import com.amazonaws.services.dynamodbv2.local.server.DynamoDBProxyServer;
@@ -39,6 +39,7 @@ import software.amazon.awssdk.core.interceptor.ExecutionInterceptor;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
+import software.amazon.awssdk.services.dynamodb.streams.DynamoDbStreamsClient;
 
 /**
  * Wrapper for a local DynamoDb server used in testing. Each instance of this class will find a
@@ -70,7 +71,7 @@ class LocalDynamoDB {
      *
      * @return A DynamoDbClient pointing to the local DynamoDb instance
      */
-    DynamoDbClient createClient() {
+    DynamoDbClient createV2Client() {
         String endpoint = String.format("http://localhost:%d", port);
         return DynamoDbClient.builder()
                 .endpointOverride(URI.create(endpoint))
@@ -78,47 +79,21 @@ class LocalDynamoDB {
                 .region(Region.US_EAST_1)
                 .credentialsProvider(StaticCredentialsProvider.create(
                         AwsBasicCredentials.create("dummykey", "dummysecret")))
-                .overrideConfiguration(
-                        o -> o.addExecutionInterceptor(new VerifyUserAgentInterceptor()))
                 .build();
     }
 
     /**
-     * Create a standard AWS v1 SDK client pointing to the local DynamoDb instance
+     * Create a standard AWS v2 SDK streams client pointing to the local DynamoDb instance
      *
-     * @return A DynamoDbClient pointing to the local DynamoDb instance
+     * @return A DynamoDbStreamsClient pointing to the local DynamoDb instance
      */
-    AmazonDynamoDB createV1Client() {
+    DynamoDbStreamsClient createV2StreamsClient() {
         String endpoint = String.format("http://localhost:%d", port);
-        return AmazonDynamoDBClientBuilder
-                .standard()
-                .withCredentials(new AWSStaticCredentialsProvider(
-                        new BasicAWSCredentials("dummykey", "dummysecret")))
-                .withEndpointConfiguration(new AwsClientBuilder.EndpointConfiguration(
-                        endpoint, "us-west-2"))
-                .build();
-    }
-
-    DynamoDbAsyncClient createAsyncClient() {
-        String endpoint = String.format("http://localhost:%d", port);
-        return DynamoDbAsyncClient.builder()
+        return DynamoDbStreamsClient.builder()
                 .endpointOverride(URI.create(endpoint))
                 .region(Region.US_EAST_1)
                 .credentialsProvider(StaticCredentialsProvider.create(
                         AwsBasicCredentials.create("dummykey", "dummysecret")))
-                .overrideConfiguration(
-                        o -> o.addExecutionInterceptor(new VerifyUserAgentInterceptor()))
-                .build();
-    }
-
-    AmazonDynamoDBStreams createV1StreamsClient() {
-        String endpoint = String.format("http://localhost:%d", port);
-        return AmazonDynamoDBStreamsClientBuilder
-                .standard()
-                .withCredentials(new AWSStaticCredentialsProvider(
-                        new BasicAWSCredentials("dummykey", "dummysecret")))
-                .withEndpointConfiguration(new AwsClientBuilder.EndpointConfiguration(
-                        endpoint, "us-west-2"))
                 .build();
     }
 
@@ -157,17 +132,6 @@ class LocalDynamoDB {
             throw (RuntimeException) e;
         }
         throw new RuntimeException(e);
-    }
-
-    private static class VerifyUserAgentInterceptor implements ExecutionInterceptor {
-
-        @Override
-        public void beforeTransmission(Context.BeforeTransmission context,
-                                       ExecutionAttributes executionAttributes) {
-            Optional<String> headers = context.httpRequest().firstMatchingHeader("User-agent");
-            Assert.assertTrue(headers.isPresent());
-            Assert.assertTrue(headers.get().contains("hll/ddb-enh"));
-        }
     }
 
 }

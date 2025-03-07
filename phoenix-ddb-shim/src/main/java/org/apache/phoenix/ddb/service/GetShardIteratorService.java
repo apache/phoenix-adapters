@@ -1,8 +1,8 @@
 package org.apache.phoenix.ddb.service;
 
-import com.amazonaws.services.dynamodbv2.model.GetShardIteratorRequest;
-import com.amazonaws.services.dynamodbv2.model.GetShardIteratorResult;
-import com.amazonaws.services.dynamodbv2.model.ShardIteratorType;
+import software.amazon.awssdk.services.dynamodb.model.GetShardIteratorRequest;
+import software.amazon.awssdk.services.dynamodb.model.GetShardIteratorResponse;
+import software.amazon.awssdk.services.dynamodb.model.ShardIteratorType;
 import org.apache.phoenix.ddb.utils.DDBShimCDCUtils;
 import org.apache.phoenix.util.EnvironmentEdgeManager;
 
@@ -14,30 +14,29 @@ import static org.apache.phoenix.ddb.utils.DDBShimCDCUtils.MAX_NUM_CHANGES_AT_TI
 import static org.apache.phoenix.ddb.utils.DDBShimCDCUtils.SHARD_ITERATOR_FORMAT;
 
 public class GetShardIteratorService {
-    public static GetShardIteratorResult getShardIterator(GetShardIteratorRequest request,
+    public static GetShardIteratorResponse getShardIterator(GetShardIteratorRequest request,
                                                           String connectionUrl) {
-        GetShardIteratorResult result = new GetShardIteratorResult();
+        GetShardIteratorResponse.Builder result = GetShardIteratorResponse.builder();
         try (Connection conn = DriverManager.getConnection(connectionUrl)) {
-            String streamArn = request.getStreamArn();
-            String shardId = request.getShardId();
+            String streamArn = request.streamArn();
+            String shardId = request.shardId();
             String tableName = DDBShimCDCUtils.getTableNameFromStreamName(streamArn);
             String cdcObj = DDBShimCDCUtils.getCDCObjectNameFromStreamName(streamArn);
             String startSeqNum = getStartingSequenceNumber(conn, tableName, streamArn, shardId,
-                    request.getSequenceNumber(), request.getShardIteratorType());
+                    request.sequenceNumber(), request.shardIteratorType());
             String streamType = DDBShimCDCUtils.getStreamType(conn, tableName);
-            result.setShardIterator(String.format(SHARD_ITERATOR_FORMAT, tableName,
+            result.shardIterator(String.format(SHARD_ITERATOR_FORMAT, tableName,
                     cdcObj, streamType, shardId, startSeqNum));
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
-        return result;
+        return result.build();
     }
 
     private static String getStartingSequenceNumber(Connection conn, String tableName,
                                                     String streamName, String shardId,
-                                                    String seqNum, String shardIteratorType)
+                                                    String seqNum, ShardIteratorType type)
             throws SQLException {
-        ShardIteratorType type = ShardIteratorType.fromValue(shardIteratorType);
         String startSeqNum = null;
         switch (type) {
             case AT_SEQUENCE_NUMBER :

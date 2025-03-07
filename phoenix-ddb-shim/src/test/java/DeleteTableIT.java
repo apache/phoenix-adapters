@@ -2,23 +2,22 @@ import java.io.IOException;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
-import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
-import com.amazonaws.services.dynamodbv2.model.CreateTableResult;
-import com.amazonaws.services.dynamodbv2.model.DeleteTableRequest;
-import com.amazonaws.services.dynamodbv2.model.DeleteTableResult;
-import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
+import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
+import software.amazon.awssdk.services.dynamodb.model.CreateTableRequest;
+import software.amazon.awssdk.services.dynamodb.model.CreateTableResponse;
+import software.amazon.awssdk.services.dynamodb.model.DeleteTableRequest;
+import software.amazon.awssdk.services.dynamodb.model.DeleteTableResponse;
+import software.amazon.awssdk.services.dynamodb.model.ScalarAttributeType;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
-import org.apache.phoenix.ddb.PhoenixDBClient;
+import org.apache.phoenix.ddb.PhoenixDBClientV2;
 import org.apache.phoenix.end2end.ServerMetadataCacheTestImpl;
 import org.apache.phoenix.jdbc.PhoenixDriver;
-import org.apache.phoenix.util.JacksonUtil;
 import org.apache.phoenix.util.PhoenixRuntime;
 import org.apache.phoenix.util.ServerUtil;
 
-import com.amazonaws.services.dynamodbv2.model.TableDescription;
+import software.amazon.awssdk.services.dynamodb.model.TableDescription;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Rule;
@@ -38,8 +37,8 @@ public class DeleteTableIT {
     @Rule
     public final TestName testName = new TestName();
 
-    private final AmazonDynamoDB amazonDynamoDB =
-            LocalDynamoDbTestBase.localDynamoDb().createV1Client();
+    private final DynamoDbClient dynamoDbClient =
+            LocalDynamoDbTestBase.localDynamoDb().createV2Client();
 
     private static String url;
 
@@ -79,67 +78,26 @@ public class DeleteTableIT {
                 DDLTestUtils.getCreateTableRequest(tableName, "PK1",
                         ScalarAttributeType.B, "PK2", ScalarAttributeType.S);
         //creating table for aws
-        CreateTableResult createTableResult1 = amazonDynamoDB.createTable(createTableRequest);
+        dynamoDbClient.createTable(createTableRequest);
         //creating table for phoenix
-        PhoenixDBClient phoenixDBClient = new PhoenixDBClient(url);
-        CreateTableResult createTableResult2 = phoenixDBClient.createTable(createTableRequest);
-
-        LOGGER.info("Create Table response from DynamoDB: {}",
-                JacksonUtil.getObjectWriterPretty().writeValueAsString(createTableResult1));
-        LOGGER.info("Create Table response from Phoenix: {}",
-                JacksonUtil.getObjectWriterPretty().writeValueAsString(createTableResult2));
+        PhoenixDBClientV2 phoenixDBClientV2 = new PhoenixDBClientV2(url);
+        phoenixDBClientV2.createTable(createTableRequest);
 
         //delete table request
-        DeleteTableRequest deleteTableRequest = new DeleteTableRequest(tableName);
+        DeleteTableRequest deleteTableRequest = DeleteTableRequest.builder().tableName(tableName).build();
 
         //delete table for aws
-        DeleteTableResult deleteTableResult1 = amazonDynamoDB.deleteTable(deleteTableRequest);
+        DeleteTableResponse DeleteTableResponse1 = dynamoDbClient.deleteTable(deleteTableRequest);
         //delete table for phoenix
-        DeleteTableResult deleteTableResult2 = phoenixDBClient.deleteTable(deleteTableRequest);
+        DeleteTableResponse DeleteTableResponse2 = phoenixDBClientV2.deleteTable(deleteTableRequest);
 
-        LOGGER.info("Delete Table response from DynamoDB: {}",
-                JacksonUtil.getObjectWriterPretty().writeValueAsString(deleteTableResult1));
-        LOGGER.info("Delete Table response from Phoenix: {}",
-                JacksonUtil.getObjectWriterPretty().writeValueAsString(deleteTableResult2));
+        LOGGER.info("Delete Table response from DynamoDB: {}", DeleteTableResponse1.toString());
+        LOGGER.info("Delete Table response from Phoenix: {}", DeleteTableResponse2.toString());
 
-        TableDescription tableDescription1 = deleteTableResult1.getTableDescription();
-        TableDescription tableDescription2 = deleteTableResult2.getTableDescription();
+        TableDescription tableDescription1 = DeleteTableResponse1.tableDescription();
+        TableDescription tableDescription2 = DeleteTableResponse2.tableDescription();
         DDLTestUtils.assertTableDescriptions(tableDescription1, tableDescription2);
 
     }
-
-    @Test(timeout = 120000)
-    public void deleteTableTestWithStringName() throws Exception {
-        final String tableName = testName.getMethodName().toUpperCase();
-        // create table request
-        CreateTableRequest createTableRequest =
-                DDLTestUtils.getCreateTableRequest(tableName, "PK1",
-                        ScalarAttributeType.B, "PK2", ScalarAttributeType.S);
-        //creating table for aws
-        CreateTableResult createTableResult1 = amazonDynamoDB.createTable(createTableRequest);
-        //creating table for phoenix
-        PhoenixDBClient phoenixDBClient = new PhoenixDBClient(url);
-        CreateTableResult createTableResult2 = phoenixDBClient.createTable(createTableRequest);
-
-        LOGGER.info("Create Table response from DynamoDB: {}",
-                JacksonUtil.getObjectWriterPretty().writeValueAsString(createTableResult1));
-        LOGGER.info("Create Table response from Phoenix: {}",
-                JacksonUtil.getObjectWriterPretty().writeValueAsString(createTableResult2));
-
-        //delete table for aws
-        DeleteTableResult deleteTableResult1 = amazonDynamoDB.deleteTable(tableName);
-        //delete table for phoenix
-        DeleteTableResult deleteTableResult2 = phoenixDBClient.deleteTable(tableName);
-
-        LOGGER.info("Delete Table response from DynamoDB: {}",
-                JacksonUtil.getObjectWriterPretty().writeValueAsString(deleteTableResult1));
-        LOGGER.info("Delete Table response from Phoenix: {}",
-                JacksonUtil.getObjectWriterPretty().writeValueAsString(deleteTableResult2));
-
-        TableDescription tableDescription1 = deleteTableResult1.getTableDescription();
-        TableDescription tableDescription2 = deleteTableResult2.getTableDescription();
-        DDLTestUtils.assertTableDescriptions(tableDescription1, tableDescription2);
-    }
-
 }
 

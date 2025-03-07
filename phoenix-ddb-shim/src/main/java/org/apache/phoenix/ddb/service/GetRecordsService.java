@@ -1,9 +1,9 @@
 package org.apache.phoenix.ddb.service;
 
-import com.amazonaws.services.dynamodbv2.model.GetRecordsRequest;
-import com.amazonaws.services.dynamodbv2.model.GetRecordsResult;
-import com.amazonaws.services.dynamodbv2.model.Record;
-import com.amazonaws.services.dynamodbv2.model.StreamRecord;
+import software.amazon.awssdk.services.dynamodb.model.GetRecordsRequest;
+import software.amazon.awssdk.services.dynamodb.model.GetRecordsResponse;
+import software.amazon.awssdk.services.dynamodb.model.Record;
+import software.amazon.awssdk.services.dynamodb.model.StreamRecord;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.apache.phoenix.ddb.bson.BsonDocumentToDdbAttributes;
 import org.apache.phoenix.ddb.bson.CDCBsonUtil;
@@ -25,9 +25,9 @@ import java.util.Date;
 import java.util.List;
 import java.util.ArrayList;
 
-import static com.amazonaws.services.dynamodbv2.model.OperationType.INSERT;
-import static com.amazonaws.services.dynamodbv2.model.OperationType.MODIFY;
-import static com.amazonaws.services.dynamodbv2.model.OperationType.REMOVE;
+import static software.amazon.awssdk.services.dynamodb.model.OperationType.INSERT;
+import static software.amazon.awssdk.services.dynamodb.model.OperationType.MODIFY;
+import static software.amazon.awssdk.services.dynamodb.model.OperationType.REMOVE;
 
 public class GetRecordsService {
 
@@ -50,9 +50,9 @@ public class GetRecordsService {
      * 2. Query 1 more than the limit set on the request. Even if the partition has split, do not
      * return null for nextShardIterator if there are more records to return.
      */
-    public static GetRecordsResult getRecords(GetRecordsRequest request, String connectionUrl) {
+    public static GetRecordsResponse getRecords(GetRecordsRequest request, String connectionUrl) {
         PhoenixShardIterator pIter
-                = new PhoenixShardIterator(request.getShardIterator());
+                = new PhoenixShardIterator(request.shardIterator());
         List<Record> records = new ArrayList<>();
         long lastTs = pIter.getTimestamp();
         int lastOffset = pIter.getOffset() - 1;
@@ -61,8 +61,8 @@ public class GetRecordsService {
         Record record;
         try (Connection conn = DriverManager.getConnection(connectionUrl)) {
             List<PColumn> pkCols = PhoenixUtils.getPKColumns(conn, pIter.getTableName());
-            int limit = (request.getLimit() != null && request.getLimit() > 0)
-                    ? Math.min(request.getLimit(), MAX_GET_RECORDS_LIMIT)
+            int limit = (request.limit() != null && request.limit() > 0)
+                    ? Math.min(request.limit(), MAX_GET_RECORDS_LIMIT)
                     : MAX_GET_RECORDS_LIMIT;
             // fetch an extra row in case we need to decide later whether partition is closed
             // and if there are more rows to be returned
@@ -70,7 +70,6 @@ public class GetRecordsService {
             ResultSet rs = ps.executeQuery();
             int count = 0;
             while (count < limit && rs.next()) {
-                record = getStreamRecord(rs, pIter.getStreamType(), pkCols);
                 long ts = rs.getDate(1).getTime();
                 if (ts == lastTs) {
                     // change at same timestamp as previous one, increment offset
@@ -79,7 +78,8 @@ public class GetRecordsService {
                     lastTs = ts;
                     lastOffset=0;
                 }
-                record.getDynamodb().setSequenceNumber(DDBShimCDCUtils.getSequenceNumber(lastTs, lastOffset));
+                record = getStreamRecord(rs, pIter.getStreamType(), pkCols,
+                        DDBShimCDCUtils.getSequenceNumber(lastTs, lastOffset));
                 records.add(record);
                 count++;
             }
@@ -99,10 +99,10 @@ public class GetRecordsService {
         pIter.setNewSeqNum(lastTs, lastOffset+1);
 
         // if partition has closed and we returned all records, set nextShardIterator to null
-        return new GetRecordsResult()
-                .withRecords(records)
-                .withNextShardIterator((partitionEndTime > 0 && !hasMore)
-                        ? null : pIter.toString());
+        return GetRecordsResponse.builder()
+                .records(records)
+                .nextShardIterator((partitionEndTime > 0 && !hasMore)
+                        ? null : pIter.toString()).build();
     }
 
     /**
@@ -134,13 +134,14 @@ public class GetRecordsService {
      * Build a Record object using a ResultSet cursor from a CDC query.
      * rs --> timestamp, pk1, (pk2), cdcJson
      */
-    private static Record getStreamRecord(ResultSet rs, String streamType, List<PColumn> pkCols)
-            throws SQLException, JsonProcessingException {
-        StreamRecord streamRecord = new StreamRecord().withStreamViewType(streamType);
+    private static Record getStreamRecord(ResultSet rs, String streamType, List<PColumn> pkCols,
+                                          String seqNum) throws SQLException, JsonProcessingException {
+        StreamRecord.Builder streamRecord
+                = StreamRecord.builder().streamViewType(streamType).sequenceNumber(seqNum);
 
         // creation DateTime
         long timestamp = rs.getDate(1).getTime();
-        streamRecord.setApproximateCreationDateTime(new Date(timestamp));
+        streamRecord.approximateCreationDateTime(new Date(timestamp).toInstant());
 
         //images
         String cdcJson = rs.getString(pkCols.size() + 2);
@@ -148,32 +149,32 @@ public class GetRecordsService {
         switch (streamType) {
             case OLD_IMAGE:
                 if (imagesBsonDoc[0] != null)
-                    streamRecord.setOldImage(BsonDocumentToDdbAttributes.getFullItem(imagesBsonDoc[0]));
+                    streamRecord.oldImage(BsonDocumentToDdbAttributes.getFullItem(imagesBsonDoc[0]));
                 break;
             case NEW_IMAGE:
                 if (imagesBsonDoc[1] != null)
-                    streamRecord.setNewImage(BsonDocumentToDdbAttributes.getFullItem(imagesBsonDoc[1]));
+                    streamRecord.newImage(BsonDocumentToDdbAttributes.getFullItem(imagesBsonDoc[1]));
                 break;
             case NEW_AND_OLD_IMAGES:
                 if (imagesBsonDoc[0] != null)
-                    streamRecord.setOldImage(BsonDocumentToDdbAttributes.getFullItem(imagesBsonDoc[0]));
+                    streamRecord.oldImage(BsonDocumentToDdbAttributes.getFullItem(imagesBsonDoc[0]));
                 if (imagesBsonDoc[1] != null)
-                    streamRecord.setNewImage(BsonDocumentToDdbAttributes.getFullItem(imagesBsonDoc[1]));
+                    streamRecord.newImage(BsonDocumentToDdbAttributes.getFullItem(imagesBsonDoc[1]));
                 break;
         }
         //always set keys
         RawBsonDocument image = (imagesBsonDoc[0] != null) ? imagesBsonDoc[0] : imagesBsonDoc[1];
-        streamRecord.setKeys(DQLUtils.getKeyFromDoc(image, false, pkCols, null));
+        streamRecord.keys(DQLUtils.getKeyFromDoc(image, false, pkCols, null));
 
         // Record Name
-        Record record = new Record().withDynamodb(streamRecord);
+        Record.Builder record = Record.builder().dynamodb(streamRecord.build());
         if (imagesBsonDoc[0] == null) {
-            record.setEventName(INSERT);
+            record.eventName(INSERT);
         } else if (imagesBsonDoc[1] == null) {
-            record.setEventName(REMOVE);
+            record.eventName(REMOVE);
         } else {
-            record.setEventName(MODIFY);
+            record.eventName(MODIFY);
         }
-        return record;
+        return record.build();
     }
 }

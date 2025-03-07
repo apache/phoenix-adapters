@@ -1,8 +1,8 @@
 package org.apache.phoenix.ddb.service;
 
-import com.amazonaws.services.dynamodbv2.model.AttributeValue;
-import com.amazonaws.services.dynamodbv2.model.GetItemResult;
-import com.amazonaws.services.dynamodbv2.model.GetItemRequest;
+import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
+import software.amazon.awssdk.services.dynamodb.model.GetItemResponse;
+import software.amazon.awssdk.services.dynamodb.model.GetItemRequest;
 import org.apache.phoenix.ddb.bson.BsonDocumentToDdbAttributes;
 import org.apache.phoenix.ddb.utils.CommonServiceUtils;
 import org.apache.phoenix.ddb.utils.DQLUtils;
@@ -27,8 +27,8 @@ public class GetItemService {
     private static final String CLAUSE_FOR_SORT_COL = "AND %s = ?";
 
 
-    public static GetItemResult getItem(GetItemRequest request, String connectionUrl)  {
-        String tableName = request.getTableName();
+    public static GetItemResponse getItem(GetItemRequest request, String connectionUrl)  {
+        String tableName = request.tableName();
         List<PColumn> tablePKCols = null;
         try (Connection connection = DriverManager.getConnection(connectionUrl)) {
             // get PKs from phoenix
@@ -50,7 +50,7 @@ public class GetItemService {
     public static PreparedStatement getPreparedStatement(Connection conn, GetItemRequest request,
                                                          List<PColumn> tablePKCols)
             throws SQLException{
-        String tableName = request.getTableName();
+        String tableName = request.tableName();
         String partitionKeyPKCol = tablePKCols.get(0).toString();
 
         StringBuilder queryBuilder = new StringBuilder(String.format(SELECT_QUERY, tableName,
@@ -76,37 +76,37 @@ public class GetItemService {
             throws SQLException {
         String partitionKeyPKCol = tablePKCols.get(0).toString();
         DQLUtils.setKeyValueOnStatement(stmt, 1,
-                request.getKey().get(partitionKeyPKCol), false);
+                request.key().get(partitionKeyPKCol), false);
         if(tablePKCols.size() > 1){
             String sortKeyPKCol = tablePKCols.get(1).toString();
             DQLUtils.setKeyValueOnStatement(stmt, 2,
-                    request.getKey().get(sortKeyPKCol), false);
+                    request.key().get(sortKeyPKCol), false);
         }
     }
 
     /**
      * Execute the given PreparedStatement, collect the returned item with projected attributes
-     * and return GetItemResult.
+     * and return GetItemResponse.
      */
-    private static GetItemResult executeQuery(PreparedStatement stmt, GetItemRequest request)
+    private static GetItemResponse executeQuery(PreparedStatement stmt, GetItemRequest request)
             throws SQLException{
-        GetItemResult finalResult = new GetItemResult();
+        GetItemResponse.Builder finalResult = GetItemResponse.builder();
         ResultSet rs  = stmt.executeQuery();
         if(rs.next()) {
             Map<String, AttributeValue> item = BsonDocumentToDdbAttributes.getProjectedItem(
                     (RawBsonDocument) rs.getObject(1), getProjectionAttributes(request));
-            return finalResult.withItem(item);
+            return finalResult.item(item).build();
         }
-        return finalResult;
+        return finalResult.build();
     }
 
     /**
      * Return a list of attribute names to project.
      */
     private static List<String> getProjectionAttributes(GetItemRequest request) {
-        List<String> attributesToGet = request.getAttributesToGet();
-        String projExpr = request.getProjectionExpression();
-        Map<String, String> exprAttrNames = request.getExpressionAttributeNames();
+        List<String> attributesToGet = request.attributesToGet();
+        String projExpr = request.projectionExpression();
+        Map<String, String> exprAttrNames = request.expressionAttributeNames();
         return DQLUtils.getProjectionAttributes(attributesToGet, projExpr, exprAttrNames);
     }
 }

@@ -20,7 +20,8 @@ import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.amazonaws.services.dynamodbv2.model.AttributeValue;
+import software.amazon.awssdk.core.SdkBytes;
+import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import org.bson.BsonDocument;
 import org.bson.RawBsonDocument;
 import org.junit.Assert;
@@ -167,38 +168,38 @@ public class UpdateExpressionConversionTest {
 
   private static BsonDocument getComparisonValuesMap() {
     Map<String, AttributeValue> attributeMap = new HashMap<>();
-    attributeMap.put(":newTitle", new AttributeValue().withS("Cycle_1234_new"));
-    attributeMap.put(":newId", new AttributeValue().withS("12345"));
-    attributeMap.put(":newIdNeg", new AttributeValue().withN("-12345"));
-    attributeMap.put(":ColorList", new AttributeValue().withL(
-        new AttributeValue().withS("Black"),
-        new AttributeValue().withB(ByteBuffer.wrap(Bytes.toBytes("White"))),
-        new AttributeValue().withS("Silver")
-    ));
+    attributeMap.put(":newTitle", AttributeValue.builder().s("Cycle_1234_new").build());
+    attributeMap.put(":newId", AttributeValue.builder().s("12345").build());
+    attributeMap.put(":newIdNeg", AttributeValue.builder().n("-12345").build());
+    attributeMap.put(":ColorList", AttributeValue.builder().l(
+        AttributeValue.builder().s("Black").build(),
+        AttributeValue.builder().b(SdkBytes.fromByteArray(Bytes.toBytes("White"))).build(),
+        AttributeValue.builder().s("Silver").build()
+    ).build());
     attributeMap.put(":Id1",
-        new AttributeValue().withB(ByteBuffer.wrap(Bytes.toBytes("ID_101"))));
-    attributeMap.put(":NList001", new AttributeValue().withN("12.22"));
-    attributeMap.put(":NList003", new AttributeValue().withNULL(true));
-    attributeMap.put(":NList004", new AttributeValue().withBOOL(true));
-    attributeMap.put(":attr5_0", new AttributeValue().withN("10"));
-    attributeMap.put(":NList1_0", new AttributeValue().withSS("Updated_set_01", "Updated_set_02"));
-    attributeMap.put(":NestedList1_ISBN", new AttributeValue().withS("111-1111111122"));
-    attributeMap.put(":NestedList12_00", new AttributeValue().withSS("xyz01234", "abc01234"));
-    attributeMap.put(":NestedList12_01", new AttributeValue().withBS(
-        ByteBuffer.wrap(Bytes.toBytes("val03")),
-        ByteBuffer.wrap(Bytes.toBytes("val04"))
-    ));
-    attributeMap.put(":AddedPics", new AttributeValue().withSS(
+        AttributeValue.builder().b(SdkBytes.fromByteArray(Bytes.toBytes("ID_101"))).build());
+    attributeMap.put(":NList001", AttributeValue.builder().n("12.22").build());
+    attributeMap.put(":NList003", AttributeValue.builder().nul(true).build());
+    attributeMap.put(":NList004", AttributeValue.builder().bool(true).build());
+    attributeMap.put(":attr5_0", AttributeValue.builder().n("10").build());
+    attributeMap.put(":NList1_0", AttributeValue.builder().ss("Updated_set_01", "Updated_set_02").build());
+    attributeMap.put(":NestedList1_ISBN", AttributeValue.builder().s("111-1111111122").build());
+    attributeMap.put(":NestedList12_00", AttributeValue.builder().ss("xyz01234", "abc01234").build());
+    attributeMap.put(":NestedList12_01", AttributeValue.builder().bs(
+        SdkBytes.fromByteArray(Bytes.toBytes("val03")),
+        SdkBytes.fromByteArray(Bytes.toBytes("val04"))
+    ).build());
+    attributeMap.put(":AddedPics", AttributeValue.builder().ss(
         "1235@_rear.jpg",
-        "xyz5@_rear.jpg"));
-    attributeMap.put(":PictureBinarySet01", new AttributeValue().withBS(
-        ByteBuffer.wrap(Bytes.toBytes("123_rear.jpg")),
-        ByteBuffer.wrap(Bytes.toBytes("xyz_front.jpg")),
-        ByteBuffer.wrap(Bytes.toBytes("xyz_front.jpg_no"))
-    ));
-    attributeMap.put(":NSet01", new AttributeValue().withNS("-6830.5555", "-48695"));
-    attributeMap.put(":NestedList1TitleSet01", new AttributeValue().withSS("Book 1010 Title",
-        "Book 1011 Title"));
+        "xyz5@_rear.jpg").build());
+    attributeMap.put(":PictureBinarySet01", AttributeValue.builder().bs(
+        SdkBytes.fromByteArray(Bytes.toBytes("123_rear.jpg")),
+        SdkBytes.fromByteArray(Bytes.toBytes("xyz_front.jpg")),
+        SdkBytes.fromByteArray(Bytes.toBytes("xyz_front.jpg_no"))
+    ).build());
+    attributeMap.put(":NSet01", AttributeValue.builder().ns("-6830.5555", "-48695").build());
+    attributeMap.put(":NestedList1TitleSet01", AttributeValue.builder().ss("Book 1010 Title",
+        "Book 1011 Title").build());
     return DdbAttributesToBsonDocument.getRawBsonDocument(attributeMap);
   }
 

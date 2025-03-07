@@ -1,13 +1,14 @@
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDBStreams;
-import com.amazonaws.services.dynamodbv2.model.DescribeStreamRequest;
-import com.amazonaws.services.dynamodbv2.model.GetRecordsRequest;
-import com.amazonaws.services.dynamodbv2.model.GetRecordsResult;
-import com.amazonaws.services.dynamodbv2.model.GetShardIteratorRequest;
-import com.amazonaws.services.dynamodbv2.model.QueryRequest;
-import com.amazonaws.services.dynamodbv2.model.Record;
-import com.amazonaws.services.dynamodbv2.model.ScanRequest;
-import com.amazonaws.services.dynamodbv2.model.ShardIteratorType;
-import com.amazonaws.services.dynamodbv2.model.StreamDescription;
+import software.amazon.awssdk.services.dynamodb.model.StreamStatus;
+import software.amazon.awssdk.services.dynamodb.streams.DynamoDbStreamsClient;
+import software.amazon.awssdk.services.dynamodb.model.DescribeStreamRequest;
+import software.amazon.awssdk.services.dynamodb.model.GetRecordsRequest;
+import software.amazon.awssdk.services.dynamodb.model.GetRecordsResponse;
+import software.amazon.awssdk.services.dynamodb.model.GetShardIteratorRequest;
+import software.amazon.awssdk.services.dynamodb.model.QueryRequest;
+import software.amazon.awssdk.services.dynamodb.model.Record;
+import software.amazon.awssdk.services.dynamodb.model.ScanRequest;
+import software.amazon.awssdk.services.dynamodb.model.ShardIteratorType;
+import software.amazon.awssdk.services.dynamodb.model.StreamDescription;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Admin;
@@ -15,7 +16,7 @@ import org.apache.hadoop.hbase.client.ConnectionFactory;
 import org.apache.hadoop.hbase.client.RegionLocator;
 import org.apache.phoenix.compile.ExplainPlan;
 import org.apache.phoenix.compile.ExplainPlanAttributes;
-import org.apache.phoenix.ddb.PhoenixDBStreamsClient;
+import org.apache.phoenix.ddb.PhoenixDBStreamsClientV2;
 import org.apache.phoenix.ddb.service.QueryService;
 import org.apache.phoenix.ddb.service.ScanService;
 import org.apache.phoenix.ddb.utils.PhoenixUtils;
@@ -39,8 +40,8 @@ public class TestUtils {
      * Verify index is used for a SQL query formed using a QueryRequest.
      */
     public static void validateIndexUsed(QueryRequest qr, String url) throws SQLException {
-        String tableName = qr.getTableName();
-        String indexName = qr.getIndexName();
+        String tableName = qr.tableName();
+        String indexName = qr.indexName();
         List<PColumn> tablePKCols, indexPKCols;
         try (Connection connection = DriverManager.getConnection(url)) {
             tablePKCols = PhoenixUtils.getPKColumns(connection, tableName);
@@ -56,8 +57,8 @@ public class TestUtils {
      * Verify index is used for a SQL query formed using a ScanRequest.
      */
     public static void validateIndexUsed(ScanRequest sr, String url) throws SQLException {
-        String tableName = sr.getTableName();
-        String indexName = sr.getIndexName();
+        String tableName = sr.tableName();
+        String indexName = sr.indexName();
         List<PColumn> tablePKCols, indexPKCols;
         try (Connection connection = DriverManager.getConnection(url)) {
             tablePKCols = PhoenixUtils.getPKColumns(connection, tableName);
@@ -72,19 +73,19 @@ public class TestUtils {
     /**
      * Wait for stream to get ENABLED.
      */
-    public static void waitForStream(PhoenixDBStreamsClient client, String streamArn) throws InterruptedException {
-        DescribeStreamRequest dsr = new DescribeStreamRequest().withStreamArn(streamArn);
-        StreamDescription phoenixStreamDesc = client.describeStream(dsr).getStreamDescription();
+    public static void waitForStream(PhoenixDBStreamsClientV2 client, String streamArn) throws InterruptedException {
+        DescribeStreamRequest dsr = DescribeStreamRequest.builder().streamArn(streamArn).build();
+        StreamDescription phoenixStreamDesc = client.describeStream(dsr).streamDescription();
         int i=0;
-        while (i < 20 && CDCUtil.CdcStreamStatus.ENABLING.getSerializedValue().equals(phoenixStreamDesc.getStreamStatus())) {
-            phoenixStreamDesc = client.describeStream(dsr).getStreamDescription();
-            if (CDCUtil.CdcStreamStatus.ENABLED.getSerializedValue().equals(phoenixStreamDesc.getStreamStatus())) {
+        while (i < 20 && StreamStatus.ENABLING == phoenixStreamDesc.streamStatus()) {
+            phoenixStreamDesc = client.describeStream(dsr).streamDescription();
+            if (StreamStatus.ENABLED == phoenixStreamDesc.streamStatus()) {
                 break;
             }
             i++;
             Thread.sleep(1000);
         }
-        Assert.assertEquals(CDCUtil.CdcStreamStatus.ENABLED.getSerializedValue(), phoenixStreamDesc.getStreamStatus());
+        Assert.assertEquals(StreamStatus.ENABLED, phoenixStreamDesc.streamStatus());
     }
 
     /**
@@ -95,13 +96,13 @@ public class TestUtils {
         for (int i = 0; i<dynamoRecords.size(); i++) {
             Record dr = dynamoRecords.get(i);
             Record pr = phoenixRecords.get(i);
-            Assert.assertEquals(dr.getEventName(), pr.getEventName());
-            Assert.assertNotNull(dr.getDynamodb());
-            Assert.assertNotNull(pr.getDynamodb());
-            Assert.assertEquals(dr.getDynamodb().getStreamViewType(), pr.getDynamodb().getStreamViewType());
-            Assert.assertEquals(dr.getDynamodb().getKeys(), pr.getDynamodb().getKeys());
-            Assert.assertEquals(dr.getDynamodb().getOldImage(), pr.getDynamodb().getOldImage());
-            Assert.assertEquals(dr.getDynamodb().getNewImage(), pr.getDynamodb().getNewImage());
+            Assert.assertEquals(dr.eventName(), pr.eventName());
+            Assert.assertNotNull(dr.dynamodb());
+            Assert.assertNotNull(pr.dynamodb());
+            Assert.assertEquals(dr.dynamodb().streamViewType(), pr.dynamodb().streamViewType());
+            Assert.assertEquals(dr.dynamodb().keys(), pr.dynamodb().keys());
+            Assert.assertEquals(dr.dynamodb().oldImage(), pr.dynamodb().oldImage());
+            Assert.assertEquals(dr.dynamodb().newImage(), pr.dynamodb().newImage());
         }
     }
 
@@ -129,26 +130,27 @@ public class TestUtils {
     /**
      * Return all records from a shard of a stream using TRIM_HORIZON.
      */
-    public static List<Record> getRecordsFromShardWithLimit(AmazonDynamoDBStreams client,
+    public static List<Record> getRecordsFromShardWithLimit(DynamoDbStreamsClient client,
                                                             String streamArn, String shardId,
                                                             ShardIteratorType iterType, String seqNum,
                                                             Integer limit) {
-        GetShardIteratorRequest gsir = new GetShardIteratorRequest();
-        gsir.setStreamArn(streamArn);
-        gsir.setShardId(shardId);
-        gsir.setShardIteratorType(iterType);
-        gsir.setSequenceNumber(seqNum);
-        String shardIter = client.getShardIterator(gsir).getShardIterator();
+        GetShardIteratorRequest gsir
+                = GetShardIteratorRequest.builder()
+                .streamArn(streamArn)
+                .shardId(shardId)
+                .shardIteratorType(iterType)
+                .sequenceNumber(seqNum).build();
+        String shardIter = client.getShardIterator(gsir).shardIterator();
 
         // get records
-        GetRecordsRequest grr = new GetRecordsRequest().withShardIterator(shardIter).withLimit(limit);
+        GetRecordsRequest grr = GetRecordsRequest.builder().shardIterator(shardIter).limit(limit).build();
         List<Record> records = new ArrayList<>();
-        GetRecordsResult result;
+        GetRecordsResponse result;
         do {
             result = client.getRecords(grr);
-            records.addAll(result.getRecords());
-            grr.setShardIterator(result.getNextShardIterator());
-        } while (result.getNextShardIterator() != null && !result.getRecords().isEmpty());
+            records.addAll(result.records());
+            grr = grr.toBuilder().shardIterator(result.nextShardIterator()).build();
+        } while (result.nextShardIterator() != null && !result.records().isEmpty());
         return records;
     }
 }

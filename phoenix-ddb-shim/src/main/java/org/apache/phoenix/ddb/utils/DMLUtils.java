@@ -1,9 +1,9 @@
 package org.apache.phoenix.ddb.utils;
 
-import com.amazonaws.services.dynamodbv2.model.AttributeValue;
-import com.amazonaws.services.dynamodbv2.model.ConditionalCheckFailedException;
-import com.amazonaws.services.dynamodbv2.model.ReturnValue;
-import com.amazonaws.services.dynamodbv2.model.ReturnValuesOnConditionCheckFailure;
+import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
+import software.amazon.awssdk.services.dynamodb.model.ConditionalCheckFailedException;
+import software.amazon.awssdk.services.dynamodb.model.ReturnValue;
+import software.amazon.awssdk.services.dynamodb.model.ReturnValuesOnConditionCheckFailure;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.hbase.util.Pair;
 import org.apache.phoenix.ddb.bson.BsonDocumentToDdbAttributes;
@@ -33,13 +33,13 @@ public class DMLUtils {
             String colName = pkCol.getName().toString();
             PDataType type = pkCol.getDataType();
             if (type.equals(PDouble.INSTANCE)) {
-                Double value = Double.parseDouble(item.get(colName).getN());
+                Double value = Double.parseDouble(item.get(colName).n());
                 stmt.setDouble(i+1, value);
             } else if (type.equals(PVarchar.INSTANCE)) {
-                String value = item.get(colName).getS();
+                String value = item.get(colName).s();
                 stmt.setString(i+1, value);
             } else if (type.equals(PVarbinaryEncoded.INSTANCE)) {
-                byte[] b = item.get(colName).getB().array();
+                byte[] b = item.get(colName).b().asByteArray();
                 stmt.setBytes(i+1, b);
             } else {
                 throw new IllegalArgumentException("Primary Key column type "
@@ -59,15 +59,16 @@ public class DMLUtils {
      * TODO: ALL_OLD when condition succeeds
      */
     public static Map<String, AttributeValue> executeUpdate(PreparedStatement stmt,
-                                                            String returnValue,
-                                                            String returnValuesOnConditionCheckFailure,
+                                                            ReturnValue returnValue,
+                                                            ReturnValuesOnConditionCheckFailure returnValuesOnConditionCheckFailure,
                                                             String condExpr, List<PColumn> pkCols, boolean isDelete)
             throws SQLException, ConditionalCheckFailedException {
         Map<String, AttributeValue> returnAttrs = null;
         if (!needReturnRow(returnValue, returnValuesOnConditionCheckFailure)) {
             int returnStatus = stmt.executeUpdate();
             if (returnStatus == 0 && !StringUtils.isEmpty(condExpr)) {
-                throw new ConditionalCheckFailedException("Conditional request failed: " + condExpr);
+                throw ConditionalCheckFailedException.builder().message(
+                        "Conditional request failed: " + condExpr).build();
             }
             return null;
         }
@@ -80,18 +81,17 @@ public class DMLUtils {
                 (RawBsonDocument) rs.getObject(pkCols.size()+1);
         if ((returnStatus == 0  && !isDelete) || (isDelete && rawBsonDocument == null) ) {
             if (!StringUtils.isEmpty(condExpr)) {
-                ConditionalCheckFailedException conditionalCheckFailedException =
-                        new ConditionalCheckFailedException(
+                ConditionalCheckFailedException.Builder conditionalCheckFailedException =
+                        ConditionalCheckFailedException.builder().message(
                                 "Conditional request failed: " + condExpr);
-                if (ReturnValuesOnConditionCheckFailure.ALL_OLD.toString()
-                        .equals(returnValuesOnConditionCheckFailure) && !isDelete) {
-                    conditionalCheckFailedException.setItem(
+                if (returnValuesOnConditionCheckFailure == ReturnValuesOnConditionCheckFailure.ALL_OLD && !isDelete) {
+                    conditionalCheckFailedException.item(
                             BsonDocumentToDdbAttributes.getFullItem(rawBsonDocument));
                 }
-                throw conditionalCheckFailedException;
+                throw conditionalCheckFailedException.build();
             }
         } else {
-            if (ReturnValue.ALL_NEW.toString().equals(returnValue) || ReturnValue.ALL_OLD.toString().equals(returnValue)) {
+            if (returnValue == ReturnValue.ALL_NEW || returnValue == ReturnValue.ALL_OLD) {
                 returnAttrs = BsonDocumentToDdbAttributes.getFullItem(rawBsonDocument);
             }
         }
@@ -104,11 +104,10 @@ public class DMLUtils {
      * OR
      * returnValuesOnConditionCheckFailure is not empty/null and not NONE
      */
-    private static boolean needReturnRow(String returnValue,
-                                      String returnValuesOnConditionCheckFailure) {
-        return (!StringUtils.isEmpty(returnValue)
-                    && !ReturnValue.NONE.toString().equals(returnValue))
-                || (!StringUtils.isEmpty(returnValuesOnConditionCheckFailure)
-                        && !ReturnValuesOnConditionCheckFailure.NONE.toString().equals(returnValuesOnConditionCheckFailure));
+    private static boolean needReturnRow(ReturnValue returnValue,
+                                         ReturnValuesOnConditionCheckFailure returnValuesOnConditionCheckFailure) {
+        return (returnValue != null && returnValue != ReturnValue.NONE)
+                || (returnValuesOnConditionCheckFailure != null
+                        && returnValuesOnConditionCheckFailure != ReturnValuesOnConditionCheckFailure.NONE);
     }
 }

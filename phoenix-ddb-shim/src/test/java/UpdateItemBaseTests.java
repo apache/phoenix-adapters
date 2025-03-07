@@ -1,16 +1,16 @@
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
-import com.amazonaws.services.dynamodbv2.model.AttributeValue;
-import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
-import com.amazonaws.services.dynamodbv2.model.GetItemRequest;
-import com.amazonaws.services.dynamodbv2.model.GetItemResult;
-import com.amazonaws.services.dynamodbv2.model.PutItemRequest;
-import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
-import com.amazonaws.services.dynamodbv2.model.UpdateItemRequest;
-import com.amazonaws.services.dynamodbv2.model.UpdateItemResult;
+import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
+import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
+import software.amazon.awssdk.services.dynamodb.model.CreateTableRequest;
+import software.amazon.awssdk.services.dynamodb.model.GetItemRequest;
+import software.amazon.awssdk.services.dynamodb.model.GetItemResponse;
+import software.amazon.awssdk.services.dynamodb.model.PutItemRequest;
+import software.amazon.awssdk.services.dynamodb.model.ScalarAttributeType;
+import software.amazon.awssdk.services.dynamodb.model.UpdateItemRequest;
+import software.amazon.awssdk.services.dynamodb.model.UpdateItemResponse;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
-import org.apache.phoenix.ddb.PhoenixDBClient;
+import org.apache.phoenix.ddb.PhoenixDBClientV2;
 import org.apache.phoenix.end2end.ServerMetadataCacheTestImpl;
 import org.apache.phoenix.jdbc.PhoenixDriver;
 import org.apache.phoenix.util.PhoenixRuntime;
@@ -35,7 +35,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
-import static com.amazonaws.services.dynamodbv2.model.ReturnValue.ALL_NEW;
+import static software.amazon.awssdk.services.dynamodb.model.ReturnValue.ALL_NEW;
 import static org.apache.phoenix.query.BaseTest.setUpConfigForMiniCluster;
 
 /**
@@ -54,10 +54,10 @@ public class UpdateItemBaseTests {
     private static HBaseTestingUtility utility = null;
     private static String tmpDir;
 
-    protected static PhoenixDBClient phoenixDBClient = null;
+    protected static PhoenixDBClientV2 phoenixDBClientV2 = null;
 
-    protected final AmazonDynamoDB amazonDynamoDB =
-            LocalDynamoDbTestBase.localDynamoDb().createV1Client();
+    protected final DynamoDbClient dynamoDbClient =
+            LocalDynamoDbTestBase.localDynamoDb().createV2Client();
 
     private static String url;
 
@@ -77,7 +77,7 @@ public class UpdateItemBaseTests {
         utility.startMiniCluster();
         String zkQuorum = "localhost:" + utility.getZkCluster().getClientPort();
         url = PhoenixRuntime.JDBC_PROTOCOL + PhoenixRuntime.JDBC_PROTOCOL_SEPARATOR + zkQuorum;
-        phoenixDBClient = new PhoenixDBClient(url);
+        phoenixDBClientV2 = new PhoenixDBClientV2(url);
     }
 
     @AfterClass
@@ -116,20 +116,20 @@ public class UpdateItemBaseTests {
 
         // update item
         Map<String, AttributeValue> key = getKey();
-        UpdateItemRequest uir = new UpdateItemRequest().withTableName(tableName).withKey(key);
-        uir.setUpdateExpression("SET #1 = :v1, #2 = #2 + :v2, #3 = #3 - :v3");
+        UpdateItemRequest.Builder uir = UpdateItemRequest.builder().tableName(tableName).key(key);
+        uir.updateExpression("SET #1 = :v1, #2 = #2 + :v2, #3 = #3 - :v3");
         Map<String, String> exprAttrNames = new HashMap<>();
         exprAttrNames.put("#1", "COL2");
         exprAttrNames.put("#2", "COL1");
         exprAttrNames.put("#3", "COL4");
-        uir.setExpressionAttributeNames(exprAttrNames);
+        uir.expressionAttributeNames(exprAttrNames);
         Map<String, AttributeValue> exprAttrVal = new HashMap<>();
-        exprAttrVal.put(":v1", new AttributeValue().withS("TiTlE2"));
-        exprAttrVal.put(":v2", new AttributeValue().withN("3.2"));
-        exprAttrVal.put(":v3", new AttributeValue().withN("89.34"));
-        uir.setExpressionAttributeValues(exprAttrVal);
-        amazonDynamoDB.updateItem(uir);
-        phoenixDBClient.updateItem(uir);
+        exprAttrVal.put(":v1", AttributeValue.builder().s("TiTlE2").build());
+        exprAttrVal.put(":v2", AttributeValue.builder().n("3.2").build());
+        exprAttrVal.put(":v3", AttributeValue.builder().n("89.34").build());
+        uir.expressionAttributeValues(exprAttrVal);
+        dynamoDbClient.updateItem(uir.build());
+        phoenixDBClientV2.updateItem(uir.build());
 
         validateItem(tableName, key);
     }
@@ -144,15 +144,15 @@ public class UpdateItemBaseTests {
 
         // update item
         Map<String, AttributeValue> key = getKey();
-        UpdateItemRequest uir = new UpdateItemRequest().withTableName(tableName).withKey(key);
-        uir.setUpdateExpression("REMOVE #1.#2[0], #3");
+        UpdateItemRequest.Builder uir = UpdateItemRequest.builder().tableName(tableName).key(key);
+        uir.updateExpression("REMOVE #1.#2[0], #3");
         Map<String, String> exprAttrNames = new HashMap<>();
         exprAttrNames.put("#1", "Reviews");
         exprAttrNames.put("#2", "FiveStar");
         exprAttrNames.put("#3", "COL1");
-        uir.setExpressionAttributeNames(exprAttrNames);
-        amazonDynamoDB.updateItem(uir);
-        phoenixDBClient.updateItem(uir);
+        uir.expressionAttributeNames(exprAttrNames);
+        dynamoDbClient.updateItem(uir.build());
+        phoenixDBClientV2.updateItem(uir.build());
 
         validateItem(tableName, key);
     }
@@ -173,20 +173,20 @@ public class UpdateItemBaseTests {
 
         // update item
         Map<String, AttributeValue> key = getKey();
-        UpdateItemRequest uir = new UpdateItemRequest().withTableName(tableName).withKey(key);
-        uir.setUpdateExpression("ADD #2 :v2, #3 :v3, #4 :v4");
+        UpdateItemRequest.Builder uir = UpdateItemRequest.builder().tableName(tableName).key(key);
+        uir.updateExpression("ADD #2 :v2, #3 :v3, #4 :v4");
         Map<String, String> exprAttrNames = new HashMap<>();
         exprAttrNames.put("#2", "COL1");
         exprAttrNames.put("#3", "COL4");
         exprAttrNames.put("#4", "TopLevelSet");
-        uir.setExpressionAttributeNames(exprAttrNames);
+        uir.expressionAttributeNames(exprAttrNames);
         Map<String, AttributeValue> exprAttrVal = new HashMap<>();
-        exprAttrVal.put(":v2", new AttributeValue().withN("-3.2"));
-        exprAttrVal.put(":v3", new AttributeValue().withN("89.21"));
-        exprAttrVal.put(":v4", new AttributeValue().withSS("setMember2"));
-        uir.setExpressionAttributeValues(exprAttrVal);
-        amazonDynamoDB.updateItem(uir);
-        phoenixDBClient.updateItem(uir);
+        exprAttrVal.put(":v2", AttributeValue.builder().n("-3.2").build());
+        exprAttrVal.put(":v3", AttributeValue.builder().n("89.21").build());
+        exprAttrVal.put(":v4", AttributeValue.builder().ss("setMember2").build());
+        uir.expressionAttributeValues(exprAttrVal);
+        dynamoDbClient.updateItem(uir.build());
+        phoenixDBClientV2.updateItem(uir.build());
 
         validateItem(tableName, key);
     }
@@ -202,16 +202,16 @@ public class UpdateItemBaseTests {
 
         // update item
         Map<String, AttributeValue> key = getKey();
-        UpdateItemRequest uir = new UpdateItemRequest().withTableName(tableName).withKey(key);
-        uir.setUpdateExpression("DELETE #4 :v4");
+        UpdateItemRequest.Builder uir = UpdateItemRequest.builder().tableName(tableName).key(key);
+        uir.updateExpression("DELETE #4 :v4");
         Map<String, String> exprAttrNames = new HashMap<>();
         exprAttrNames.put("#4", "TopLevelSet");
-        uir.setExpressionAttributeNames(exprAttrNames);
+        uir.expressionAttributeNames(exprAttrNames);
         Map<String, AttributeValue> exprAttrVal = new HashMap<>();
-        exprAttrVal.put(":v4", new AttributeValue().withSS("setMember1", "setMember2"));
-        uir.setExpressionAttributeValues(exprAttrVal);
-        amazonDynamoDB.updateItem(uir);
-        phoenixDBClient.updateItem(uir);
+        exprAttrVal.put(":v4", AttributeValue.builder().ss("setMember1", "setMember2").build());
+        uir.expressionAttributeValues(exprAttrVal);
+        dynamoDbClient.updateItem(uir.build());
+        phoenixDBClientV2.updateItem(uir.build());
 
         validateItem(tableName, key);
     }
@@ -223,20 +223,20 @@ public class UpdateItemBaseTests {
 
         // update item
         Map<String, AttributeValue> key = getKey();
-        UpdateItemRequest uir = new UpdateItemRequest().withTableName(tableName).withKey(key);
-        uir.setUpdateExpression("SET #1 = :v1, #2 = #2 + :v2 DELETE #4 :v4 ");
+        UpdateItemRequest.Builder uir = UpdateItemRequest.builder().tableName(tableName).key(key);
+        uir.updateExpression("SET #1 = :v1, #2 = #2 + :v2 DELETE #4 :v4 ");
         Map<String, String> exprAttrNames = new HashMap<>();
         exprAttrNames.put("#1", "COL2");
         exprAttrNames.put("#2", "COL1");
         exprAttrNames.put("#4", "TopLevelSet");
-        uir.setExpressionAttributeNames(exprAttrNames);
+        uir.expressionAttributeNames(exprAttrNames);
         Map<String, AttributeValue> exprAttrVal = new HashMap<>();
-        exprAttrVal.put(":v1", new AttributeValue().withS("TiTlE2"));
-        exprAttrVal.put(":v2", new AttributeValue().withN("3.2"));
-        exprAttrVal.put(":v4", new AttributeValue().withSS("setMember1"));
-        uir.setExpressionAttributeValues(exprAttrVal);
-        amazonDynamoDB.updateItem(uir);
-        phoenixDBClient.updateItem(uir);
+        exprAttrVal.put(":v1", AttributeValue.builder().s("TiTlE2").build());
+        exprAttrVal.put(":v2", AttributeValue.builder().n("3.2").build());
+        exprAttrVal.put(":v4", AttributeValue.builder().ss("setMember1").build());
+        uir.expressionAttributeValues(exprAttrVal);
+        dynamoDbClient.updateItem(uir.build());
+        phoenixDBClientV2.updateItem(uir.build());
 
         validateItem(tableName, key);
     }
@@ -248,21 +248,21 @@ public class UpdateItemBaseTests {
 
         // update item
         Map<String, AttributeValue> key = getKey();
-        UpdateItemRequest uir = new UpdateItemRequest().withTableName(tableName).withKey(key);
-        uir.setUpdateExpression("REMOVE #3, #1.#2[0] ADD #4 :v4, #5 :v5");
+        UpdateItemRequest.Builder uir = UpdateItemRequest.builder().tableName(tableName).key(key);
+        uir.updateExpression("REMOVE #3, #1.#2[0] ADD #4 :v4, #5 :v5");
         Map<String, String> exprAttrNames = new HashMap<>();
         exprAttrNames.put("#1", "Reviews");
         exprAttrNames.put("#2", "FiveStar");
         exprAttrNames.put("#3", "COL1");
         exprAttrNames.put("#4", "TopLevelSet");
         exprAttrNames.put("#5", "COL4");
-        uir.setExpressionAttributeNames(exprAttrNames);
+        uir.expressionAttributeNames(exprAttrNames);
         Map<String, AttributeValue> exprAttrVal = new HashMap<>();
-        exprAttrVal.put(":v5", new AttributeValue().withN("-3.2"));
-        exprAttrVal.put(":v4", new AttributeValue().withSS("setMember2"));
-        uir.setExpressionAttributeValues(exprAttrVal);
-        amazonDynamoDB.updateItem(uir);
-        phoenixDBClient.updateItem(uir);
+        exprAttrVal.put(":v5", AttributeValue.builder().n("-3.2").build());
+        exprAttrVal.put(":v4", AttributeValue.builder().ss("setMember2").build());
+        uir.expressionAttributeValues(exprAttrVal);
+        dynamoDbClient.updateItem(uir.build());
+        phoenixDBClientV2.updateItem(uir.build());
 
         validateItem(tableName, key);
     }
@@ -274,23 +274,23 @@ public class UpdateItemBaseTests {
 
         // update item
         Map<String, AttributeValue> key = getKey();
-        UpdateItemRequest uir = new UpdateItemRequest().withTableName(tableName).withKey(key);
-        uir.setUpdateExpression("ADD #1 :v1, #2 :v2 SET #3 = :v3, #4 = #4 - :v4 REMOVE #5");
+        UpdateItemRequest.Builder uir = UpdateItemRequest.builder().tableName(tableName).key(key);
+        uir.updateExpression("ADD #1 :v1, #2 :v2 SET #3 = :v3, #4 = #4 - :v4 REMOVE #5");
         Map<String, String> exprAttrNames = new HashMap<>();
         exprAttrNames.put("#1", "COL1");
         exprAttrNames.put("#2", "TopLevelSet");
         exprAttrNames.put("#3", "COL2");
         exprAttrNames.put("#4", "COL4");
         exprAttrNames.put("#5", "COL3");
-        uir.setExpressionAttributeNames(exprAttrNames);
+        uir.expressionAttributeNames(exprAttrNames);
         Map<String, AttributeValue> exprAttrVal = new HashMap<>();
-        exprAttrVal.put(":v1", new AttributeValue().withN("-3.2"));
-        exprAttrVal.put(":v2", new AttributeValue().withSS("setMember2"));
-        exprAttrVal.put(":v3", new AttributeValue().withS("TiTlE2"));
-        exprAttrVal.put(":v4", new AttributeValue().withN("-3"));
-        uir.setExpressionAttributeValues(exprAttrVal);
-        amazonDynamoDB.updateItem(uir);
-        phoenixDBClient.updateItem(uir);
+        exprAttrVal.put(":v1", AttributeValue.builder().n("-3.2").build());
+        exprAttrVal.put(":v2", AttributeValue.builder().ss("setMember2").build());
+        exprAttrVal.put(":v3", AttributeValue.builder().s("TiTlE2").build());
+        exprAttrVal.put(":v4", AttributeValue.builder().n("-3").build());
+        uir.expressionAttributeValues(exprAttrVal);
+        dynamoDbClient.updateItem(uir.build());
+        phoenixDBClientV2.updateItem(uir.build());
 
         validateItem(tableName, key);
     }
@@ -302,23 +302,23 @@ public class UpdateItemBaseTests {
 
         // update item
         Map<String, AttributeValue> key = getKey();
-        UpdateItemRequest uir = new UpdateItemRequest().withTableName(tableName).withKey(key);
-        uir.setUpdateExpression("DELETE #1 :v1 REMOVE #2 ADD #3 :v3 SET #4 = :v4");
+        UpdateItemRequest.Builder uir = UpdateItemRequest.builder().tableName(tableName).key(key);
+        uir.updateExpression("DELETE #1 :v1 REMOVE #2 ADD #3 :v3 SET #4 = :v4");
         Map<String, String> exprAttrNames = new HashMap<>();
         exprAttrNames.put("#1", "TopLevelSet");
         exprAttrNames.put("#2", "Reviews");
         exprAttrNames.put("#3", "COL1");
         exprAttrNames.put("#4", "COL3");
-        uir.setExpressionAttributeNames(exprAttrNames);
+        uir.expressionAttributeNames(exprAttrNames);
         Map<String, AttributeValue> exprAttrVal = new HashMap<>();
-        exprAttrVal.put(":v1", new AttributeValue().withSS("setMember2"));
-        exprAttrVal.put(":v3", new AttributeValue().withN("1000000"));
-        exprAttrVal.put(":v4", new AttributeValue().withS("dEsCrIpTiOn1"));
-        uir.setExpressionAttributeValues(exprAttrVal);
-        uir.setReturnValues(ALL_NEW);
-        UpdateItemResult dynamoResult = amazonDynamoDB.updateItem(uir);
-        UpdateItemResult phoenixResult = phoenixDBClient.updateItem(uir);
-        Assert.assertEquals(dynamoResult.getAttributes(), phoenixResult.getAttributes());
+        exprAttrVal.put(":v1", AttributeValue.builder().ss("setMember2").build());
+        exprAttrVal.put(":v3", AttributeValue.builder().n("1000000").build());
+        exprAttrVal.put(":v4", AttributeValue.builder().s("dEsCrIpTiOn1").build());
+        uir.expressionAttributeValues(exprAttrVal);
+        uir.returnValues(ALL_NEW);
+        UpdateItemResponse dynamoResult = dynamoDbClient.updateItem(uir.build());
+        UpdateItemResponse phoenixResult = phoenixDBClientV2.updateItem(uir.build());
+        Assert.assertEquals(dynamoResult.attributes(), phoenixResult.attributes());
 
         validateItem(tableName, key);
     }
@@ -337,44 +337,44 @@ public class UpdateItemBaseTests {
                             ScalarAttributeType.S, null, null);
         }
 
-        phoenixDBClient.createTable(createTableRequest);
-        amazonDynamoDB.createTable(createTableRequest);
+        phoenixDBClientV2.createTable(createTableRequest);
+        dynamoDbClient.createTable(createTableRequest);
 
         //put item
         Map<String, AttributeValue> item = getItem1();
-        PutItemRequest putItemRequest = new PutItemRequest(tableName, item);
-        phoenixDBClient.putItem(putItemRequest);
-        amazonDynamoDB.putItem(putItemRequest);
+        PutItemRequest putItemRequest = PutItemRequest.builder().tableName(tableName).item(item).build();
+        phoenixDBClientV2.putItem(putItemRequest);
+        dynamoDbClient.putItem(putItemRequest);
     }
 
     protected void validateItem(String tableName, Map<String, AttributeValue> key) {
-        GetItemRequest gir = new GetItemRequest(tableName, key);
-        GetItemResult phoenixResult = phoenixDBClient.getItem(gir);
-        GetItemResult dynamoResult = amazonDynamoDB.getItem(gir);
-        Assert.assertEquals(dynamoResult.getItem(), phoenixResult.getItem());
+        GetItemRequest gir = GetItemRequest.builder().tableName(tableName).key(key).build();
+        GetItemResponse phoenixResult = phoenixDBClientV2.getItem(gir);
+        GetItemResponse dynamoResult = dynamoDbClient.getItem(gir);
+        Assert.assertEquals(dynamoResult.item(), phoenixResult.item());
     }
 
     protected Map<String, AttributeValue> getItem1() {
         Map<String, AttributeValue> item = new HashMap<>();
-        item.put("PK1", new AttributeValue().withS("A"));
-        item.put("PK2", new AttributeValue().withN("1"));
-        item.put("COL1", new AttributeValue().withN("1"));
-        item.put("COL2", new AttributeValue().withS("Title1"));
-        item.put("COL3", new AttributeValue().withS("Description1"));
-        item.put("COL4", new AttributeValue().withN("34"));
-        item.put("TopLevelSet",  new AttributeValue().withSS("setMember1"));
+        item.put("PK1", AttributeValue.builder().s("A").build());
+        item.put("PK2", AttributeValue.builder().n("1").build());
+        item.put("COL1", AttributeValue.builder().n("1").build());
+        item.put("COL2", AttributeValue.builder().s("Title1").build());
+        item.put("COL3", AttributeValue.builder().s("Description1").build());
+        item.put("COL4", AttributeValue.builder().n("34").build());
+        item.put("TopLevelSet",  AttributeValue.builder().ss("setMember1").build());
         Map<String, AttributeValue> reviewMap1 = new HashMap<>();
-        reviewMap1.put("reviewer", new AttributeValue().withS("Alice"));
+        reviewMap1.put("reviewer", AttributeValue.builder().s("Alice").build());
         Map<String, AttributeValue> fiveStarMap = new HashMap<>();
-        fiveStarMap.put("FiveStar", new AttributeValue().withL(new AttributeValue().withM(reviewMap1)));
-        item.put("Reviews", new AttributeValue().withM(fiveStarMap));
+        fiveStarMap.put("FiveStar", AttributeValue.builder().l(AttributeValue.builder().m(reviewMap1).build()).build());
+        item.put("Reviews", AttributeValue.builder().m(fiveStarMap).build());
         return item;
     }
 
     protected Map<String, AttributeValue> getKey() {
         Map<String, AttributeValue> key = new HashMap<>();
-        key.put("PK1", new AttributeValue().withS("A"));
-        if (isSortKeyPresent) key.put("PK2", new AttributeValue().withN("1"));
+        key.put("PK1", AttributeValue.builder().s("A").build());
+        if (isSortKeyPresent) key.put("PK2", AttributeValue.builder().n("1").build());
         return key;
     }
 }

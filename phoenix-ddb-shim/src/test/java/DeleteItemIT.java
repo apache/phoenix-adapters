@@ -1,17 +1,17 @@
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
-import com.amazonaws.services.dynamodbv2.model.AttributeValue;
-import com.amazonaws.services.dynamodbv2.model.ConditionalCheckFailedException;
-import com.amazonaws.services.dynamodbv2.model.DeleteItemRequest;
-import com.amazonaws.services.dynamodbv2.model.DeleteItemResult;
-import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
-import com.amazonaws.services.dynamodbv2.model.PutItemRequest;
-import com.amazonaws.services.dynamodbv2.model.GetItemRequest;
-import com.amazonaws.services.dynamodbv2.model.GetItemResult;
-import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
+import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
+import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
+import software.amazon.awssdk.services.dynamodb.model.ConditionalCheckFailedException;
+import software.amazon.awssdk.services.dynamodb.model.DeleteItemRequest;
+import software.amazon.awssdk.services.dynamodb.model.DeleteItemResponse;
+import software.amazon.awssdk.services.dynamodb.model.CreateTableRequest;
+import software.amazon.awssdk.services.dynamodb.model.PutItemRequest;
+import software.amazon.awssdk.services.dynamodb.model.GetItemRequest;
+import software.amazon.awssdk.services.dynamodb.model.GetItemResponse;
+import software.amazon.awssdk.services.dynamodb.model.ScalarAttributeType;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
-import org.apache.phoenix.ddb.PhoenixDBClient;
+import org.apache.phoenix.ddb.PhoenixDBClientV2;
 import org.apache.phoenix.end2end.ServerMetadataCacheTestImpl;
 import org.apache.phoenix.jdbc.PhoenixDriver;
 import org.apache.phoenix.util.PhoenixRuntime;
@@ -49,8 +49,8 @@ public class DeleteItemIT {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DeleteItemIT.class);
 
-    private final AmazonDynamoDB amazonDynamoDB =
-            LocalDynamoDbTestBase.localDynamoDb().createV1Client();
+    private final DynamoDbClient dynamoDbClient =
+            LocalDynamoDbTestBase.localDynamoDb().createV2Client();
 
     private static String url;
     private static HBaseTestingUtility utility = null;
@@ -94,31 +94,31 @@ public class DeleteItemIT {
         CreateTableRequest createTableRequest =
                 DDLTestUtils.getCreateTableRequest(tableName, "ForumName",
                         ScalarAttributeType.S, null, null);
-        PhoenixDBClient phoenixDBClient = new PhoenixDBClient(url);
-        phoenixDBClient.createTable(createTableRequest);
-        amazonDynamoDB.createTable(createTableRequest);
+        PhoenixDBClientV2 phoenixDBClientV2 = new PhoenixDBClientV2(url);
+        phoenixDBClientV2.createTable(createTableRequest);
+        dynamoDbClient.createTable(createTableRequest);
 
         //put item
-        PutItemRequest putItemRequest1 = new PutItemRequest(tableName, getItem1());
-        phoenixDBClient.putItem(putItemRequest1);
-        amazonDynamoDB.putItem(putItemRequest1);
+        PutItemRequest putItemRequest1 = PutItemRequest.builder().tableName(tableName).item(getItem1()).build();
+        phoenixDBClientV2.putItem(putItemRequest1);
+        dynamoDbClient.putItem(putItemRequest1);
 
         //creating key to delete
         Map<String, AttributeValue> key = new HashMap<>();
-        key.put("ForumName", new AttributeValue().withS("Amazon RDS"));
+        key.put("ForumName", AttributeValue.builder().s("Amazon RDS").build());
 
         //deleting the item with that key
-        DeleteItemRequest dI = new DeleteItemRequest(tableName, key);
-        DeleteItemResult dynamoResult = amazonDynamoDB.deleteItem(dI);
-        DeleteItemResult phoenixResult = phoenixDBClient.deleteItem(dI);
+        DeleteItemRequest.Builder dI = DeleteItemRequest.builder().tableName(tableName).key(key);
+        DeleteItemResponse dynamoResult = dynamoDbClient.deleteItem(dI.build());
+        DeleteItemResponse phoenixResult = phoenixDBClientV2.deleteItem(dI.build());
 
         //trying to get the same key. we will see returned result is empty
-        GetItemRequest gI = new GetItemRequest(tableName, key);
+        GetItemRequest.Builder gI = GetItemRequest.builder().tableName(tableName).key(key);
         String projectionExpr2 = "LastPostDateTime, Tags";
-        gI.setProjectionExpression(projectionExpr2);
-        GetItemResult dynamoResult2 = amazonDynamoDB.getItem(gI);
-        GetItemResult phoenixResult2 = phoenixDBClient.getItem(gI);
-        Assert.assertEquals(dynamoResult2.getItem(), phoenixResult2.getItem());
+        gI.projectionExpression(projectionExpr2);
+        GetItemResponse dynamoResult2 = dynamoDbClient.getItem(gI.build());
+        GetItemResponse phoenixResult2 = phoenixDBClientV2.getItem(gI.build());
+        Assert.assertEquals(dynamoResult2.item(), phoenixResult2.item());
     }
 
     @Test(timeout = 120000)
@@ -128,32 +128,32 @@ public class DeleteItemIT {
         CreateTableRequest createTableRequest =
                 DDLTestUtils.getCreateTableRequest(tableName, "ForumName",
                         ScalarAttributeType.S, "SubjectNumber", ScalarAttributeType.N);
-        PhoenixDBClient phoenixDBClient = new PhoenixDBClient(url);
-        phoenixDBClient.createTable(createTableRequest);
-        amazonDynamoDB.createTable(createTableRequest);
+        PhoenixDBClientV2 phoenixDBClientV2 = new PhoenixDBClientV2(url);
+        phoenixDBClientV2.createTable(createTableRequest);
+        dynamoDbClient.createTable(createTableRequest);
 
         //put item
-        PutItemRequest putItemRequest1 = new PutItemRequest(tableName, getItem5());
-        phoenixDBClient.putItem(putItemRequest1);
-        amazonDynamoDB.putItem(putItemRequest1);
+        PutItemRequest putItemRequest1 = PutItemRequest.builder().tableName(tableName).item(getItem5()).build();
+        phoenixDBClientV2.putItem(putItemRequest1);
+        dynamoDbClient.putItem(putItemRequest1);
 
         //creating key to delete
         Map<String, AttributeValue> key = new HashMap<>();
-        key.put("ForumName", new AttributeValue().withS("Amazon DynamoDB"));
-        key.put("SubjectNumber", new AttributeValue().withN("20"));
+        key.put("ForumName", AttributeValue.builder().s("Amazon DynamoDB").build());
+        key.put("SubjectNumber", AttributeValue.builder().n("20").build());
 
         //deleting the item with that key
-        DeleteItemRequest dI = new DeleteItemRequest(tableName, key);
-        DeleteItemResult dynamoResult = amazonDynamoDB.deleteItem(dI);
-        DeleteItemResult phoenixResult = phoenixDBClient.deleteItem(dI);
+        DeleteItemRequest.Builder dI = DeleteItemRequest.builder().tableName(tableName).key(key);
+        DeleteItemResponse dynamoResult = dynamoDbClient.deleteItem(dI.build());
+        DeleteItemResponse phoenixResult = phoenixDBClientV2.deleteItem(dI.build());
 
         //trying to get the same key. we will see returned result is empty
-        GetItemRequest gI = new GetItemRequest(tableName, key);
+        GetItemRequest.Builder gI = GetItemRequest.builder().tableName(tableName).key(key);
         String projectionExpr = "LastPostDateTime, Message";
-        gI.setProjectionExpression(projectionExpr);
-        GetItemResult dynamoResult2 = amazonDynamoDB.getItem(gI);
-        GetItemResult phoenixResult2 = phoenixDBClient.getItem(gI);
-        Assert.assertEquals(dynamoResult2.getItem(), phoenixResult2.getItem());
+        gI.projectionExpression(projectionExpr);
+        GetItemResponse dynamoResult2 = dynamoDbClient.getItem(gI.build());
+        GetItemResponse phoenixResult2 = phoenixDBClientV2.getItem(gI.build());
+        Assert.assertEquals(dynamoResult2.item(), phoenixResult2.item());
 
     }
 
@@ -164,24 +164,24 @@ public class DeleteItemIT {
         CreateTableRequest createTableRequest =
                 DDLTestUtils.getCreateTableRequest(tableName, "ForumName",
                         ScalarAttributeType.S, "SubjectNumber", ScalarAttributeType.N);
-        PhoenixDBClient phoenixDBClient = new PhoenixDBClient(url);
-        phoenixDBClient.createTable(createTableRequest);
-        amazonDynamoDB.createTable(createTableRequest);
+        PhoenixDBClientV2 phoenixDBClientV2 = new PhoenixDBClientV2(url);
+        phoenixDBClientV2.createTable(createTableRequest);
+        dynamoDbClient.createTable(createTableRequest);
 
         //put item
-        PutItemRequest putItemRequest1 = new PutItemRequest(tableName, getItem5());
-        phoenixDBClient.putItem(putItemRequest1);
-        amazonDynamoDB.putItem(putItemRequest1);
+        PutItemRequest putItemRequest1 = PutItemRequest.builder().tableName(tableName).item(getItem5()).build();
+        phoenixDBClientV2.putItem(putItemRequest1);
+        dynamoDbClient.putItem(putItemRequest1);
 
         //creating key to delete
         Map<String, AttributeValue> key = new HashMap<>();
         //partition key exists but sort key does not
-        key.put("ForumName", new AttributeValue().withS("Amazon DynamoDB"));
-        key.put("SubjectNumber", new AttributeValue().withN("25"));
+        key.put("ForumName", AttributeValue.builder().s("Amazon DynamoDB").build());
+        key.put("SubjectNumber", AttributeValue.builder().n("25").build());
         //delete item will not work since sort key value does not exist in table
-        DeleteItemRequest dI = new DeleteItemRequest(tableName, key);
-        DeleteItemResult dynamoResult = amazonDynamoDB.deleteItem(dI);
-        DeleteItemResult phoenixResult = phoenixDBClient.deleteItem(dI);
+        DeleteItemRequest.Builder dI = DeleteItemRequest.builder().tableName(tableName).key(key);
+        DeleteItemResponse dynamoResult = dynamoDbClient.deleteItem(dI.build());
+        DeleteItemResponse phoenixResult = phoenixDBClientV2.deleteItem(dI.build());
 
         //since item was not deleted we will still see 1 item in the table
         try (Connection connection = DriverManager.getConnection(url)) {
@@ -198,25 +198,25 @@ public class DeleteItemIT {
         CreateTableRequest createTableRequest =
                 DDLTestUtils.getCreateTableRequest(tableName, "ForumName",
                         ScalarAttributeType.S, "SubjectNumber", ScalarAttributeType.N);
-        PhoenixDBClient phoenixDBClient = new PhoenixDBClient(url);
-        phoenixDBClient.createTable(createTableRequest);
-        amazonDynamoDB.createTable(createTableRequest);
+        PhoenixDBClientV2 phoenixDBClientV2 = new PhoenixDBClientV2(url);
+        phoenixDBClientV2.createTable(createTableRequest);
+        dynamoDbClient.createTable(createTableRequest);
 
         //put item
-        PutItemRequest putItemRequest1 = new PutItemRequest(tableName, getItem5());
-        phoenixDBClient.putItem(putItemRequest1);
-        amazonDynamoDB.putItem(putItemRequest1);
+        PutItemRequest putItemRequest1 = PutItemRequest.builder().tableName(tableName).item(getItem5()).build();
+        phoenixDBClientV2.putItem(putItemRequest1);
+        dynamoDbClient.putItem(putItemRequest1);
 
         //creating key to delete
         Map<String, AttributeValue> key = new HashMap<>();
         //both keys do not exist in the table
-        key.put("ForumName", new AttributeValue().withS("Amazon RDS"));
-        key.put("SubjectNumber", new AttributeValue().withN("25"));
+        key.put("ForumName", AttributeValue.builder().s("Amazon RDS").build());
+        key.put("SubjectNumber", AttributeValue.builder().n("25").build());
 
         //delete item will not work since sort key value does not exist in table
-        DeleteItemRequest dI = new DeleteItemRequest(tableName, key);
-        DeleteItemResult dynamoResult = amazonDynamoDB.deleteItem(dI);
-        DeleteItemResult phoenixResult = phoenixDBClient.deleteItem(dI);
+        DeleteItemRequest.Builder dI = DeleteItemRequest.builder().tableName(tableName).key(key);
+        DeleteItemResponse dynamoResult = dynamoDbClient.deleteItem(dI.build());
+        DeleteItemResponse phoenixResult = phoenixDBClientV2.deleteItem(dI.build());
 
         //since item was not deleted we will still see 1 item in the table
         try (Connection connection = DriverManager.getConnection(url)) {
@@ -234,41 +234,41 @@ public class DeleteItemIT {
         CreateTableRequest createTableRequest =
                 DDLTestUtils.getCreateTableRequest(tableName, "ForumName",
                         ScalarAttributeType.S, "LastPostDateTime", ScalarAttributeType.S);
-        PhoenixDBClient phoenixDBClient = new PhoenixDBClient(url);
-        phoenixDBClient.createTable(createTableRequest);
-        amazonDynamoDB.createTable(createTableRequest);
+        PhoenixDBClientV2 phoenixDBClientV2 = new PhoenixDBClientV2(url);
+        phoenixDBClientV2.createTable(createTableRequest);
+        dynamoDbClient.createTable(createTableRequest);
 
         //put item
-        PutItemRequest putItemRequest1 = new PutItemRequest(tableName, getItem5());
-        phoenixDBClient.putItem(putItemRequest1);
-        amazonDynamoDB.putItem(putItemRequest1);
+        PutItemRequest putItemRequest1 = PutItemRequest.builder().tableName(tableName).item(getItem5()).build();
+        phoenixDBClientV2.putItem(putItemRequest1);
+        dynamoDbClient.putItem(putItemRequest1);
 
         //creating key to delete
         Map<String, AttributeValue> key = new HashMap<>();
-        key.put("ForumName", new AttributeValue().withS("Amazon DynamoDB"));
-        key.put("LastPostDateTime", new AttributeValue().withS("201303201023"));
+        key.put("ForumName", AttributeValue.builder().s("Amazon DynamoDB").build());
+        key.put("LastPostDateTime", AttributeValue.builder().s("201303201023").build());
 
 
         //deleting the item with that key and returning return value if deleted
-        DeleteItemRequest dI = new DeleteItemRequest(tableName, key);
-        dI.setConditionExpression("#1 < :condVal");
+        DeleteItemRequest.Builder dI = DeleteItemRequest.builder().tableName(tableName).key(key);
+        dI.conditionExpression("#1 < :condVal");
         Map<String, String> exprAttrNames = new HashMap<>();
         exprAttrNames.put("#1", "SubjectNumber");
-        dI.setExpressionAttributeNames(exprAttrNames);
+        dI.expressionAttributeNames(exprAttrNames);
         Map<String, AttributeValue> exprAttrVal = new HashMap<>();
-        exprAttrVal.put(":condVal", new AttributeValue().withN("45"));
-        dI.setExpressionAttributeValues(exprAttrVal);
-        dI.setReturnValues(com.amazonaws.services.dynamodbv2.model.ReturnValue.ALL_OLD);
+        exprAttrVal.put(":condVal", AttributeValue.builder().n("45").build());
+        dI.expressionAttributeValues(exprAttrVal);
+        dI.returnValues(software.amazon.awssdk.services.dynamodb.model.ReturnValue.ALL_OLD);
 
-        DeleteItemResult dynamoResult = amazonDynamoDB.deleteItem(dI);
-        DeleteItemResult phoenixResult = phoenixDBClient.deleteItem(dI);
-        Assert.assertEquals(dynamoResult, phoenixResult);
+        DeleteItemResponse dynamoResult = dynamoDbClient.deleteItem(dI.build());
+        DeleteItemResponse phoenixResult = phoenixDBClientV2.deleteItem(dI.build());
+        Assert.assertEquals(dynamoResult.attributes(), phoenixResult.attributes());
 
         //trying to get the same key. we will see returned result is empty
-        GetItemRequest gI = new GetItemRequest(tableName, key);
-        GetItemResult dynamoResult2 = amazonDynamoDB.getItem(gI);
-        GetItemResult phoenixResult2 = phoenixDBClient.getItem(gI);
-        Assert.assertEquals(dynamoResult2.getItem(), phoenixResult2.getItem());
+        GetItemRequest.Builder gI = GetItemRequest.builder().tableName(tableName).key(key);
+        GetItemResponse dynamoResult2 = dynamoDbClient.getItem(gI.build());
+        GetItemResponse phoenixResult2 = phoenixDBClientV2.getItem(gI.build());
+        Assert.assertEquals(dynamoResult2.item(), phoenixResult2.item());
 
     }
 
@@ -279,48 +279,49 @@ public class DeleteItemIT {
         CreateTableRequest createTableRequest =
                 DDLTestUtils.getCreateTableRequest(tableName, "ForumName",
                         ScalarAttributeType.S, null, null);
-        PhoenixDBClient phoenixDBClient = new PhoenixDBClient(url);
-        phoenixDBClient.createTable(createTableRequest);
-        amazonDynamoDB.createTable(createTableRequest);
+        PhoenixDBClientV2 phoenixDBClientV2 = new PhoenixDBClientV2(url);
+        phoenixDBClientV2.createTable(createTableRequest);
+        dynamoDbClient.createTable(createTableRequest);
 
         //put item
-        PutItemRequest putItemRequest1 = new PutItemRequest(tableName, getItem1());
-        phoenixDBClient.putItem(putItemRequest1);
-        amazonDynamoDB.putItem(putItemRequest1);
+        PutItemRequest putItemRequest1 = PutItemRequest.builder().tableName(tableName).item(getItem1()).build();
+        phoenixDBClientV2.putItem(putItemRequest1);
+        dynamoDbClient.putItem(putItemRequest1);
 
         //creating key to delete
         Map<String, AttributeValue> key = new HashMap<>();
-        key.put("ForumName", new AttributeValue().withS("Amazon RDS"));
+        key.put("ForumName", AttributeValue.builder().s("Amazon RDS").build());
 
         //deleting the item with that key and returning no value because condExpr is false
-        DeleteItemRequest dI = new DeleteItemRequest(tableName, key);
-        dI.setConditionExpression("#1 < :condVal");
+        DeleteItemRequest.Builder dI = DeleteItemRequest.builder().tableName(tableName).key(key);
+        dI.conditionExpression("#1 < :condVal");
         Map<String, String> exprAttrNames = new HashMap<>();
         exprAttrNames.put("#1", "SubjectNumber");
-        dI.setExpressionAttributeNames(exprAttrNames);
+        dI.expressionAttributeNames(exprAttrNames);
         Map<String, AttributeValue> exprAttrVal = new HashMap<>();
-        exprAttrVal.put(":condVal", new AttributeValue().withN("2"));
-        dI.setExpressionAttributeValues(exprAttrVal);
-        dI.setReturnValues(com.amazonaws.services.dynamodbv2.model.ReturnValue.ALL_OLD);
+        exprAttrVal.put(":condVal", AttributeValue.builder().n("2").build());
+        dI.expressionAttributeValues(exprAttrVal);
+        dI.returnValues(software.amazon.awssdk.services.dynamodb.model.ReturnValue.ALL_OLD);
 
+        Map<String, AttributeValue> dynamoExceptionItem = null;
         try {
-            amazonDynamoDB.deleteItem(dI);
+            dynamoDbClient.deleteItem(dI.build());
             Assert.fail("DeleteItem should throw exception when condition check fails.");
         } catch (ConditionalCheckFailedException e) {
-            Assert.assertNull(e.getItem());
+            dynamoExceptionItem = e.item();
         }
         try {
-            phoenixDBClient.deleteItem(dI);
+            phoenixDBClientV2.deleteItem(dI.build());
             Assert.fail("DeleteItem should throw exception when condition check fails.");
         } catch (ConditionalCheckFailedException e) {
-            Assert.assertNull(e.getItem());
+            Assert.assertEquals(dynamoExceptionItem, e.item());
         }
 
         //key was not deleted and is still there
-        GetItemRequest gI = new GetItemRequest(tableName, key);
-        GetItemResult dynamoResult2 = amazonDynamoDB.getItem(gI);
-        GetItemResult phoenixResult2 = phoenixDBClient.getItem(gI);
-        Assert.assertEquals(dynamoResult2.getItem(), phoenixResult2.getItem());
+        GetItemRequest.Builder gI = GetItemRequest.builder().tableName(tableName).key(key);
+        GetItemResponse dynamoResult2 = dynamoDbClient.getItem(gI.build());
+        GetItemResponse phoenixResult2 = phoenixDBClientV2.getItem(gI.build());
+        Assert.assertEquals(dynamoResult2.item(), phoenixResult2.item());
 
     }
     @Test(timeout = 120000)
@@ -330,49 +331,50 @@ public class DeleteItemIT {
         CreateTableRequest createTableRequest =
                 DDLTestUtils.getCreateTableRequest(tableName, "ForumName",
                         ScalarAttributeType.S, null, null);
-        PhoenixDBClient phoenixDBClient = new PhoenixDBClient(url);
-        phoenixDBClient.createTable(createTableRequest);
-        amazonDynamoDB.createTable(createTableRequest);
+        PhoenixDBClientV2 phoenixDBClientV2 = new PhoenixDBClientV2(url);
+        phoenixDBClientV2.createTable(createTableRequest);
+        dynamoDbClient.createTable(createTableRequest);
 
         //put item
-        PutItemRequest putItemRequest1 = new PutItemRequest(tableName, getItem1());
-        phoenixDBClient.putItem(putItemRequest1);
-        amazonDynamoDB.putItem(putItemRequest1);
+        PutItemRequest putItemRequest1 = PutItemRequest.builder().tableName(tableName).item(getItem1()).build();
+        phoenixDBClientV2.putItem(putItemRequest1);
+        dynamoDbClient.putItem(putItemRequest1);
 
         //creating key to delete and setting ReturnValuesOnConditionCheckFailure
         Map<String, AttributeValue> key = new HashMap<>();
-        key.put("ForumName", new AttributeValue().withS("Amazon RDS"));
+        key.put("ForumName", AttributeValue.builder().s("Amazon RDS").build());
 
         //deleting the item with that key
-        DeleteItemRequest dI = new DeleteItemRequest(tableName, key);
-        dI.setConditionExpression("#1 < :condVal");
+        DeleteItemRequest.Builder dI = DeleteItemRequest.builder().tableName(tableName).key(key);
+        dI.conditionExpression("#1 < :condVal");
         Map<String, String> exprAttrNames = new HashMap<>();
         exprAttrNames.put("#1", "SubjectNumber");
-        dI.setExpressionAttributeNames(exprAttrNames);
+        dI.expressionAttributeNames(exprAttrNames);
         Map<String, AttributeValue> exprAttrVal = new HashMap<>();
-        exprAttrVal.put(":condVal", new AttributeValue().withN("5"));
-        dI.setExpressionAttributeValues(exprAttrVal);
-        dI.setReturnValuesOnConditionCheckFailure(com.amazonaws.services.dynamodbv2.model.ReturnValuesOnConditionCheckFailure.ALL_OLD);
+        exprAttrVal.put(":condVal", AttributeValue.builder().n("5").build());
+        dI.expressionAttributeValues(exprAttrVal);
+        dI.returnValuesOnConditionCheckFailure(software.amazon.awssdk.services.dynamodb.model.ReturnValuesOnConditionCheckFailure.ALL_OLD);
         try {
-            amazonDynamoDB.deleteItem(dI);
+            dynamoDbClient.deleteItem(dI.build());
             Assert.fail("Delete item should throw exception when condition check fails.");
         } catch (ConditionalCheckFailedException e) {
             //dynamodb returns item if condition expression fails and ReturnValuesOnConditionCheckFailure is set
-            Assert.assertNotNull(e.getItem());
+            Assert.assertNotNull(e.item());
         }
         try {
-            phoenixDBClient.deleteItem(dI);
+            phoenixDBClientV2.deleteItem(dI.build());
             Assert.fail("Delete item should throw exception when condition check fails.");
         } catch (ConditionalCheckFailedException e) {
             //phoenix returns null if condition expression fails and ReturnValuesOnConditionCheckFailure is set
-            Assert.assertNull(e.getItem());
+            // sdkv2 will have empty map
+            Assert.assertTrue(e.item().isEmpty());
         }
 
         //key was not deleted and is still there
-        GetItemRequest gI = new GetItemRequest(tableName, key);
-        GetItemResult dynamoResult2 = amazonDynamoDB.getItem(gI);
-        GetItemResult phoenixResult2 = phoenixDBClient.getItem(gI);
-        Assert.assertEquals(dynamoResult2.getItem(), phoenixResult2.getItem());
+        GetItemRequest.Builder gI = GetItemRequest.builder().tableName(tableName).key(key);
+        GetItemResponse dynamoResult2 = dynamoDbClient.getItem(gI.build());
+        GetItemResponse phoenixResult2 = phoenixDBClientV2.getItem(gI.build());
+        Assert.assertEquals(dynamoResult2.item(), phoenixResult2.item());
     }
 
     @Test(timeout = 120000)
@@ -382,14 +384,14 @@ public class DeleteItemIT {
         CreateTableRequest createTableRequest =
                 DDLTestUtils.getCreateTableRequest(tableName, "ForumName",
                         ScalarAttributeType.S, null, null);
-        PhoenixDBClient phoenixDBClient = new PhoenixDBClient(url);
-        phoenixDBClient.createTable(createTableRequest);
-        amazonDynamoDB.createTable(createTableRequest);
+        PhoenixDBClientV2 phoenixDBClientV2 = new PhoenixDBClientV2(url);
+        phoenixDBClientV2.createTable(createTableRequest);
+        dynamoDbClient.createTable(createTableRequest);
 
         //put item
-        PutItemRequest putItemRequest1 = new PutItemRequest(tableName, getItem1());
-        phoenixDBClient.putItem(putItemRequest1);
-        amazonDynamoDB.putItem(putItemRequest1);
+        PutItemRequest putItemRequest1 = PutItemRequest.builder().tableName(tableName).item(getItem1()).build();
+        phoenixDBClientV2.putItem(putItemRequest1);
+        dynamoDbClient.putItem(putItemRequest1);
 
         ExecutorService executorService = Executors.newFixedThreadPool(5);
         AtomicInteger updateCount = new AtomicInteger(0);
@@ -397,40 +399,38 @@ public class DeleteItemIT {
 
         //creating key to delete and setting ReturnValuesOnConditionCheckFailure
         Map<String, AttributeValue> key = new HashMap<>();
-        key.put("ForumName", new AttributeValue().withS("Amazon RDS"));
+        key.put("ForumName", AttributeValue.builder().s("Amazon RDS").build());
 
         //deleting the item with that key
-        DeleteItemRequest dI = new DeleteItemRequest(tableName, key);
-        dI.setConditionExpression("#1 < :condVal");
+        DeleteItemRequest.Builder dI = DeleteItemRequest.builder().tableName(tableName).key(key);
+        dI.conditionExpression("#1 < :condVal");
         Map<String, String> exprAttrNames = new HashMap<>();
         exprAttrNames.put("#1", "SubjectNumber");
-        dI.setExpressionAttributeNames(exprAttrNames);
+        dI.expressionAttributeNames(exprAttrNames);
         Map<String, AttributeValue> exprAttrVal = new HashMap<>();
-        exprAttrVal.put(":condVal", new AttributeValue().withN("45"));
-        dI.setExpressionAttributeValues(exprAttrVal);
-        dI.setReturnValues(com.amazonaws.services.dynamodbv2.model.ReturnValue.ALL_OLD);
+        exprAttrVal.put(":condVal", AttributeValue.builder().n("45").build());
+        dI.expressionAttributeValues(exprAttrVal);
+        dI.returnValues(software.amazon.awssdk.services.dynamodb.model.ReturnValue.ALL_OLD);
         for (int i = 0; i < 5; i++) {
             executorService.submit(() -> {
                 try {
-                    amazonDynamoDB.deleteItem(dI);
+                    dynamoDbClient.deleteItem(dI.build());
                 } catch (ConditionalCheckFailedException e) {
-                    Assert.assertNull(e.getItem());
                 }
                 try {
-                    phoenixDBClient.deleteItem(dI);
+                    phoenixDBClientV2.deleteItem(dI.build());
                     updateCount.incrementAndGet();
                 } catch (ConditionalCheckFailedException e) {
-                    Assert.assertNull(e.getItem());
                     errorCount.incrementAndGet();
                 }
             });
         }
 
         //key was deleted once and is not there and returned result is empty
-        GetItemRequest gI = new GetItemRequest(tableName, key);
-        GetItemResult dynamoResult2 = amazonDynamoDB.getItem(gI);
-        GetItemResult phoenixResult2 = phoenixDBClient.getItem(gI);
-        Assert.assertEquals(dynamoResult2.getItem(), phoenixResult2.getItem());
+        GetItemRequest.Builder gI = GetItemRequest.builder().tableName(tableName).key(key);
+        GetItemResponse dynamoResult2 = dynamoDbClient.getItem(gI.build());
+        GetItemResponse phoenixResult2 = phoenixDBClientV2.getItem(gI.build());
+        Assert.assertEquals(dynamoResult2.item(), phoenixResult2.item());
 
         executorService.shutdown();
         try {
@@ -449,22 +449,22 @@ public class DeleteItemIT {
 
     private static Map<String, AttributeValue> getItem1() {
         Map<String, AttributeValue> item = new HashMap<>();
-        item.put("ForumName", new AttributeValue().withS("Amazon RDS"));
-        item.put("LastPostedBy", new AttributeValue().withS("brad@example.com"));
-        item.put("LastPostDateTime", new AttributeValue().withS("201303201042"));
-        item.put("Tags", new AttributeValue().withS(("Update")));
-        item.put("SubjectNumber", new AttributeValue().withN("35"));
+        item.put("ForumName", AttributeValue.builder().s("Amazon RDS").build());
+        item.put("LastPostedBy", AttributeValue.builder().s("brad@example.com").build());
+        item.put("LastPostDateTime", AttributeValue.builder().s("201303201042").build());
+        item.put("Tags", AttributeValue.builder().s(("Update")).build());
+        item.put("SubjectNumber", AttributeValue.builder().n("35").build());
         return item;
     }
     private static Map<String, AttributeValue> getItem5() {
         Map<String, AttributeValue> item = new HashMap<>();
-        item.put("ForumName", new AttributeValue().withS("Amazon DynamoDB"));
-        item.put("SubjectNumber", new AttributeValue().withN("20"));
-        item.put("LastPostedBy", new AttributeValue().withS("fred@example.com"));
-        item.put("LastPostDateTime", new AttributeValue().withS("201303201023"));
-        item.put("Tags", new AttributeValue().withS(("Update,Multiple Items,HelpMe")));
-        item.put("Subject", new AttributeValue().withS(("How do I update multiple items?")));
-        item.put("Message", new AttributeValue().withS("I want to update multiple items in a single call. What's the best way to do that?"));
+        item.put("ForumName", AttributeValue.builder().s("Amazon DynamoDB").build());
+        item.put("SubjectNumber", AttributeValue.builder().n("20").build());
+        item.put("LastPostedBy", AttributeValue.builder().s("fred@example.com").build());
+        item.put("LastPostDateTime", AttributeValue.builder().s("201303201023").build());
+        item.put("Tags", AttributeValue.builder().s(("Update,Multiple Items,HelpMe")).build());
+        item.put("Subject", AttributeValue.builder().s(("How do I update multiple items?")).build());
+        item.put("Message", AttributeValue.builder().s("I want to update multiple items in a single call. What's the best way to do that?").build());
         return item;
     }
 

@@ -20,7 +20,8 @@ import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.amazonaws.services.dynamodbv2.model.AttributeValue;
+import software.amazon.awssdk.core.SdkBytes;
+import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import org.bson.BsonDocument;
 import org.junit.Assert;
 import org.junit.Test;
@@ -73,443 +74,443 @@ public class DocumentDdbAttributesTest {
 
   protected static Map<String, AttributeValue> getItem1() {
     Map<String, AttributeValue> item = new HashMap<>();
-    item.put("attr_0", new AttributeValue().withS("str_val_0"));
+    item.put("attr_0", AttributeValue.builder().s("str_val_0").build());
     commonAttributeValues1(item);
     return item;
   }
 
   protected static Map<String, AttributeValue> getItemWithBinary1() {
     Map<String, AttributeValue> item = new HashMap<>();
-    item.put("attr_0", new AttributeValue().withB(ByteBuffer.wrap(Bytes.toBytes("str_val_0"))));
-    item.put("pk2", new AttributeValue().withB(ByteBuffer.wrap(Bytes.toBytes("str_val_2"))));
+    item.put("attr_0", AttributeValue.builder().b(SdkBytes.fromByteArray(Bytes.toBytes("str_val_0"))).build());
+    item.put("pk2", AttributeValue.builder().b(SdkBytes.fromByteArray(Bytes.toBytes("str_val_2"))).build());
     commonAttributeValues1(item);
     return item;
   }
 
   private static void commonAttributeValues1(Map<String, AttributeValue> item) {
-    item.put("attr_1", new AttributeValue().withN("1295.03"));
-    item.put("attr_5", new AttributeValue().withL(
-        new AttributeValue().withN("1234"),
-        new AttributeValue().withS("str001"),
-        new AttributeValue().withB(ByteBuffer.wrap(
-            new byte[] {0, 1, 2, 3, 4, 5}))));
+    item.put("attr_1", AttributeValue.builder().n("1295.03").build());
+    item.put("attr_5", AttributeValue.builder().l(
+        AttributeValue.builder().n("1234").build(),
+        AttributeValue.builder().s("str001").build(),
+        AttributeValue.builder().b(SdkBytes.fromByteArray(
+            new byte[] {0, 1, 2, 3, 4, 5})).build()).build());
     Map<String, AttributeValue> nMap1 = new HashMap<>();
-    nMap1.put("n_attr_0", new AttributeValue().withS("str_val_0"));
-    nMap1.put("n_attr_1", new AttributeValue().withN("1295.03"));
+    nMap1.put("n_attr_0", AttributeValue.builder().s("str_val_0").build());
+    nMap1.put("n_attr_1", AttributeValue.builder().n("1295.03").build());
     String bytesFieldVal1 = "2048u5nblwjeiWFGTH(4bf930";
     byte[] bytesAttrVal1 = bytesFieldVal1.getBytes();
-    nMap1.put("n_attr_2", new AttributeValue().withB(ByteBuffer.wrap(
-        bytesAttrVal1)));
-    nMap1.put("n_attr_3", new AttributeValue().withBOOL(true));
-    nMap1.put("n_attr_4", new AttributeValue().withNULL(true));
-    item.put("attr_6", new AttributeValue().withM(nMap1));
-    item.put("Id", new AttributeValue().withN("101.01"));
-    item.put("IdS", new AttributeValue().withS("101.01"));
-    item.put("Id2", new AttributeValue().withN("101.01"));
+    nMap1.put("n_attr_2", AttributeValue.builder().b(SdkBytes.fromByteArray(
+        bytesAttrVal1)).build());
+    nMap1.put("n_attr_3", AttributeValue.builder().bool(true).build());
+    nMap1.put("n_attr_4", AttributeValue.builder().nul(true).build());
+    item.put("attr_6", AttributeValue.builder().m(nMap1).build());
+    item.put("Id", AttributeValue.builder().n("101.01").build());
+    item.put("IdS", AttributeValue.builder().s("101.01").build());
+    item.put("Id2", AttributeValue.builder().n("101.01").build());
     item.put("ColorBytes",
-        new AttributeValue().withB(ByteBuffer.wrap(Bytes.toBytes("Black"))));
+        AttributeValue.builder().b(SdkBytes.fromByteArray(Bytes.toBytes("Black"))).build());
     item.put("RelatedItems",
-        new AttributeValue().withNS("1234", "-485.45582904", "123.0948", "0.111"));
-    item.put("Pictures", new AttributeValue().withSS(
+        AttributeValue.builder().ns("1234", "-485.45582904", "123.0948", "0.111").build());
+    item.put("Pictures", AttributeValue.builder().ss(
         "http://example1.com/products/123_rear.jpg",
         "http://example2.com/products/xyz_rear.jpg",
         "http://example3.com/products/123_front.jpg",
         "http://example4.com/products/123_front.jpg"
-    ));
-    item.put("PictureBinarySet", new AttributeValue().withBS(
-        ByteBuffer.wrap(Bytes.toBytes("http://example1.com/products/123_rear.jpg")),
-        ByteBuffer.wrap(Bytes.toBytes("http://example2.com/products/xyz_rear.jpg")),
-        ByteBuffer.wrap(Bytes.toBytes("http://example3.com/products/123_front.jpg")),
-        ByteBuffer.wrap(Bytes.toBytes("http://example4.com/products/123_front.jpg"))
-    ));
-    item.put("Title", new AttributeValue().withS("Book 101 Title"));
-    item.put("ISBN", new AttributeValue().withS("111-1111111111"));
-    item.put("InPublication", new AttributeValue().withBOOL(false));
+    ).build());
+    item.put("PictureBinarySet", AttributeValue.builder().bs(
+        SdkBytes.fromByteArray(Bytes.toBytes("http://example1.com/products/123_rear.jpg")),
+        SdkBytes.fromByteArray(Bytes.toBytes("http://example2.com/products/xyz_rear.jpg")),
+        SdkBytes.fromByteArray(Bytes.toBytes("http://example3.com/products/123_front.jpg")),
+        SdkBytes.fromByteArray(Bytes.toBytes("http://example4.com/products/123_front.jpg"))
+    ).build());
+    item.put("Title", AttributeValue.builder().s("Book 101 Title").build());
+    item.put("ISBN", AttributeValue.builder().s("111-1111111111").build());
+    item.put("InPublication", AttributeValue.builder().bool(false).build());
     Map<String, AttributeValue> nestedMap1 = new HashMap<>();
-    nestedMap1.put("Id", new AttributeValue().withN("101.01"));
-    nestedMap1.put("Title", new AttributeValue().withS("Book 101 Title"));
-    nestedMap1.put("ISBN", new AttributeValue().withS("111-1111111111"));
-    nestedMap1.put("InPublication", new AttributeValue().withBOOL(false));
+    nestedMap1.put("Id", AttributeValue.builder().n("101.01").build());
+    nestedMap1.put("Title", AttributeValue.builder().s("Book 101 Title").build());
+    nestedMap1.put("ISBN", AttributeValue.builder().s("111-1111111111").build());
+    nestedMap1.put("InPublication", AttributeValue.builder().bool(false).build());
     nestedMap1.put("NList1",
-        new AttributeValue().withL(new AttributeValue().withS("NListVal01"),
-            new AttributeValue().withN("-0.00234")));
-    item.put("NestedMap1", new AttributeValue().withM(nestedMap1));
+        AttributeValue.builder().l(AttributeValue.builder().s("NListVal01").build(),
+            AttributeValue.builder().n("-0.00234").build()).build());
+    item.put("NestedMap1", AttributeValue.builder().m(nestedMap1).build());
     Map<String, AttributeValue> nestedList1Map1 = new HashMap<>();
-    nestedList1Map1.put("Id", new AttributeValue().withN("101.01"));
-    nestedList1Map1.put("Title", new AttributeValue().withS("Book 101 Title"));
-    nestedList1Map1.put("ISBN", new AttributeValue().withS("111-1111111111"));
-    nestedList1Map1.put("InPublication", new AttributeValue().withBOOL(false));
+    nestedList1Map1.put("Id", AttributeValue.builder().n("101.01").build());
+    nestedList1Map1.put("Title", AttributeValue.builder().s("Book 101 Title").build());
+    nestedList1Map1.put("ISBN", AttributeValue.builder().s("111-1111111111").build());
+    nestedList1Map1.put("InPublication", AttributeValue.builder().bool(false).build());
     nestedList1Map1.put("IdSet",
-        new AttributeValue().withNS("204850.697038475",
+        AttributeValue.builder().ns("204850.697038475",
             "-3947860.4863946",
             "20576024",
             "19306873",
-            "4869067048362759068"));
+            "4869067048362759068").build());
     nestedList1Map1.put("TitleSet",
-        new AttributeValue().withSS("Book 1010 Title", "Book 1011 Title",
-            "Book 1111 Title"));
-    nestedList1Map1.put("BinaryTitleSet", new AttributeValue().withBS(
-        ByteBuffer.wrap(Bytes.toBytes("Book 1010 Title Binary")),
-        ByteBuffer.wrap(Bytes.toBytes("Book 1011 Title Binary")),
-        ByteBuffer.wrap(Bytes.toBytes("Book 1111 Title Binary"))
-    ));
+        AttributeValue.builder().ss("Book 1010 Title", "Book 1011 Title",
+            "Book 1111 Title").build());
+    nestedList1Map1.put("BinaryTitleSet", AttributeValue.builder().bs(
+        SdkBytes.fromByteArray(Bytes.toBytes("Book 1010 Title Binary")),
+        SdkBytes.fromByteArray(Bytes.toBytes("Book 1011 Title Binary")),
+        SdkBytes.fromByteArray(Bytes.toBytes("Book 1111 Title Binary"))
+    ).build());
     item.put("NestedList1",
-        new AttributeValue().withL(new AttributeValue().withN("-485.34"),
-            new AttributeValue().withS("1234abcd"),
-            new AttributeValue().withL(new AttributeValue().withS("xyz0123"),
-                new AttributeValue().withM(nestedList1Map1))));
+        AttributeValue.builder().l(AttributeValue.builder().n("-485.34").build(),
+            AttributeValue.builder().s("1234abcd").build(),
+            AttributeValue.builder().l(AttributeValue.builder().s("xyz0123").build(),
+                AttributeValue.builder().m(nestedList1Map1).build()).build()).build());
   }
 
   protected static Map<String, AttributeValue> getItem2() {
     Map<String, AttributeValue> item = new HashMap<>();
-    item.put("attr_0", new AttributeValue().withS("str_val_0"));
+    item.put("attr_0", AttributeValue.builder().s("str_val_0").build());
     commonAttributeValues2(item);
     return item;
   }
 
   protected static Map<String, AttributeValue> getItemWithBinary2() {
     Map<String, AttributeValue> item = new HashMap<>();
-    item.put("attr_0", new AttributeValue().withB(ByteBuffer.wrap(Bytes.toBytes("str_val_0"))));
-    item.put("pk2", new AttributeValue().withB(ByteBuffer.wrap(Bytes.toBytes("str_val_2"))));
+    item.put("attr_0", AttributeValue.builder().b(SdkBytes.fromByteArray(Bytes.toBytes("str_val_0"))).build());
+    item.put("pk2", AttributeValue.builder().b(SdkBytes.fromByteArray(Bytes.toBytes("str_val_2"))).build());
     commonAttributeValues2(item);
     return item;
   }
 
   private static void commonAttributeValues2(Map<String, AttributeValue> item) {
-    item.put("attr_1", new AttributeValue().withN("1295.03"));
-    item.put("attr_5", new AttributeValue().withL(
-        new AttributeValue().withN("1234"),
-        new AttributeValue().withS("str001"),
-        new AttributeValue().withB(ByteBuffer.wrap(
-            new byte[] {0, 1, 2, 3, 4, 5}))));
+    item.put("attr_1", AttributeValue.builder().n("1295.03").build());
+    item.put("attr_5", AttributeValue.builder().l(
+        AttributeValue.builder().n("1234").build(),
+        AttributeValue.builder().s("str001").build(),
+        AttributeValue.builder().b(SdkBytes.fromByteArray(
+            new byte[] {0, 1, 2, 3, 4, 5})).build()).build());
     Map<String, AttributeValue> nMap1 = new HashMap<>();
-    nMap1.put("n_attr_0", new AttributeValue().withS("str_val_0"));
-    nMap1.put("n_attr_1", new AttributeValue().withN("1295.03"));
+    nMap1.put("n_attr_0", AttributeValue.builder().s("str_val_0").build());
+    nMap1.put("n_attr_1", AttributeValue.builder().n("1295.03").build());
     String bytesAttributeVal1 = "2048u5nblwjeiWFGTH(4bf930";
     byte[] bytesAttrVal1 = bytesAttributeVal1.getBytes();
-    nMap1.put("n_attr_2", new AttributeValue().withB(ByteBuffer.wrap(
-        bytesAttrVal1)));
-    nMap1.put("n_attr_3", new AttributeValue().withBOOL(true));
-    nMap1.put("n_attr_4", new AttributeValue().withNULL(true));
-    item.put("attr_6", new AttributeValue().withM(nMap1));
-    item.put("Id", new AttributeValue().withN("-102.01"));
-    item.put("IdS", new AttributeValue().withS("101.01"));
-    item.put("Id2", new AttributeValue().withN("101234.9921"));
+    nMap1.put("n_attr_2", AttributeValue.builder().b(SdkBytes.fromByteArray(
+        bytesAttrVal1)).build());
+    nMap1.put("n_attr_3", AttributeValue.builder().bool(true).build());
+    nMap1.put("n_attr_4", AttributeValue.builder().nul(true).build());
+    item.put("attr_6", AttributeValue.builder().m(nMap1).build());
+    item.put("Id", AttributeValue.builder().n("-102.01").build());
+    item.put("IdS", AttributeValue.builder().s("101.01").build());
+    item.put("Id2", AttributeValue.builder().n("101234.9921").build());
     item.put("ColorBytes",
-        new AttributeValue().withB(ByteBuffer.wrap(Bytes.toBytes("Black"))));
+        AttributeValue.builder().b(SdkBytes.fromByteArray(Bytes.toBytes("Black"))).build());
     item.put("RelatedItems",
-        new AttributeValue().withNS("1234", "-485.45582904", "123.0948", "0.111"));
-    item.put("Pictures", new AttributeValue().withSS(
+        AttributeValue.builder().ns("1234", "-485.45582904", "123.0948", "0.111").build());
+    item.put("Pictures", AttributeValue.builder().ss(
         "1123_rear.jpg",
         "2xyz_rear.jpg",
         "3123_front.jpg",
         "4xyz_front.jpg"
-    ));
-    item.put("PictureBinarySet", new AttributeValue().withBS(
-        ByteBuffer.wrap(Bytes.toBytes("1123_rear.jpg")),
-        ByteBuffer.wrap(Bytes.toBytes("2xyz_rear.jpg")),
-        ByteBuffer.wrap(Bytes.toBytes("3123_front.jpg")),
-        ByteBuffer.wrap(Bytes.toBytes("4xyz_front.jpg")),
-        ByteBuffer.wrap(Bytes.toBytes("5123abc_rear.jpg")),
-        ByteBuffer.wrap(Bytes.toBytes("6xyzabc_rear.jpg"))
-    ));
-    item.put("Title", new AttributeValue().withS("Book 101 Title"));
-    item.put("ISBN", new AttributeValue().withS("111-1111111111"));
-    item.put("InPublication", new AttributeValue().withBOOL(false));
+    ).build());
+    item.put("PictureBinarySet", AttributeValue.builder().bs(
+        SdkBytes.fromByteArray(Bytes.toBytes("1123_rear.jpg")),
+        SdkBytes.fromByteArray(Bytes.toBytes("2xyz_rear.jpg")),
+        SdkBytes.fromByteArray(Bytes.toBytes("3123_front.jpg")),
+        SdkBytes.fromByteArray(Bytes.toBytes("4xyz_front.jpg")),
+        SdkBytes.fromByteArray(Bytes.toBytes("5123abc_rear.jpg")),
+        SdkBytes.fromByteArray(Bytes.toBytes("6xyzabc_rear.jpg"))
+    ).build());
+    item.put("Title", AttributeValue.builder().s("Book 101 Title").build());
+    item.put("ISBN", AttributeValue.builder().s("111-1111111111").build());
+    item.put("InPublication", AttributeValue.builder().bool(false).build());
     Map<String, AttributeValue> nestedMap1 = new HashMap<>();
-    nestedMap1.put("Id", new AttributeValue().withN("101.01"));
-    nestedMap1.put("Title", new AttributeValue().withS("Book 101 Title"));
-    nestedMap1.put("ISBN", new AttributeValue().withS("111-1111111111"));
-    nestedMap1.put("InPublication", new AttributeValue().withBOOL(false));
+    nestedMap1.put("Id", AttributeValue.builder().n("101.01").build());
+    nestedMap1.put("Title", AttributeValue.builder().s("Book 101 Title").build());
+    nestedMap1.put("ISBN", AttributeValue.builder().s("111-1111111111").build());
+    nestedMap1.put("InPublication", AttributeValue.builder().bool(false).build());
     nestedMap1.put("NList1",
-        new AttributeValue().withL(new AttributeValue().withS("NListVal01"),
-            new AttributeValue().withN("-0.00234"),
-            new AttributeValue().withB(ByteBuffer.wrap(Bytes.toBytes("to_be_removed")))));
+        AttributeValue.builder().l(AttributeValue.builder().s("NListVal01").build(),
+            AttributeValue.builder().n("-0.00234").build(),
+            AttributeValue.builder().b(SdkBytes.fromByteArray(Bytes.toBytes("to_be_removed"))).build()).build());
     Map<String, AttributeValue> nestedMap2 = new HashMap<>();
-    nestedMap2.put("Id", new AttributeValue().withN("101.22"));
-    nestedMap2.put("Title", new AttributeValue().withS("Book 10122 Title"));
-    nestedMap2.put("ISBN", new AttributeValue().withS("111-1111111111999"));
-    nestedMap2.put("InPublication", new AttributeValue().withBOOL(true));
+    nestedMap2.put("Id", AttributeValue.builder().n("101.22").build());
+    nestedMap2.put("Title", AttributeValue.builder().s("Book 10122 Title").build());
+    nestedMap2.put("ISBN", AttributeValue.builder().s("111-1111111111999").build());
+    nestedMap2.put("InPublication", AttributeValue.builder().bool(true).build());
     nestedMap2.put("NList",
-        new AttributeValue().withL(new AttributeValue().withS("NListVal01"),
-            new AttributeValue().withN("-0.00234")));
+        AttributeValue.builder().l(AttributeValue.builder().s("NListVal01").build(),
+            AttributeValue.builder().n("-0.00234").build()).build());
     nestedMap1.put("NestedMap2",
-        new AttributeValue().withM(nestedMap2));
+        AttributeValue.builder().m(nestedMap2).build());
     nestedMap1.put("NSet1",
-        new AttributeValue().withNS("123.45", "9586.7778", "-124", "-6830.5555", "10238",
-            "-48695"));
-    item.put("NestedMap1", new AttributeValue().withM(nestedMap1));
+        AttributeValue.builder().ns("123.45", "9586.7778", "-124", "-6830.5555", "10238",
+            "-48695").build());
+    item.put("NestedMap1", AttributeValue.builder().m(nestedMap1).build());
     Map<String, AttributeValue> nestedList1Map1 = new HashMap<>();
-    nestedList1Map1.put("Id", new AttributeValue().withN("9991234.0231"));
-    nestedList1Map1.put("Title", new AttributeValue().withS("Book 101 Title"));
-    nestedList1Map1.put("ISBN", new AttributeValue().withS("111-1111111111"));
-    nestedList1Map1.put("InPublication", new AttributeValue().withBOOL(false));
+    nestedList1Map1.put("Id", AttributeValue.builder().n("9991234.0231").build());
+    nestedList1Map1.put("Title", AttributeValue.builder().s("Book 101 Title").build());
+    nestedList1Map1.put("ISBN", AttributeValue.builder().s("111-1111111111").build());
+    nestedList1Map1.put("InPublication", AttributeValue.builder().bool(false).build());
     nestedList1Map1.put("IdSet",
-        new AttributeValue().withNS("204850.69703847",
+        AttributeValue.builder().ns("204850.69703847",
             "-3945786.4869476",
             "20576024",
             "19306873",
-            "486906704836274959"));
+            "486906704836274959").build());
     nestedList1Map1.put("TitleSet1",
-        new AttributeValue().withSS("Book 1010 Title", "Book 1011 Title",
-            "Book 1111 Title", "Book 1200 Title", "Book 1201 Title"));
+        AttributeValue.builder().ss("Book 1010 Title", "Book 1011 Title",
+            "Book 1111 Title", "Book 1200 Title", "Book 1201 Title").build());
     nestedList1Map1.put("TitleSet2",
-        new AttributeValue().withSS("Book 1010 Title", "Book 1011 Title",
-            "Book 1111 Title", "Book 1200 Title", "Book 1201 Title"));
-    nestedList1Map1.put("BinaryTitleSet", new AttributeValue().withBS(
-        ByteBuffer.wrap(Bytes.toBytes("Book 1010 Title Binary")),
-        ByteBuffer.wrap(Bytes.toBytes("Book 1011 Title Binary")),
-        ByteBuffer.wrap(Bytes.toBytes("Book 1111 Title Binary"))
-    ));
+        AttributeValue.builder().ss("Book 1010 Title", "Book 1011 Title",
+            "Book 1111 Title", "Book 1200 Title", "Book 1201 Title").build());
+    nestedList1Map1.put("BinaryTitleSet", AttributeValue.builder().bs(
+        SdkBytes.fromByteArray(Bytes.toBytes("Book 1010 Title Binary")),
+        SdkBytes.fromByteArray(Bytes.toBytes("Book 1011 Title Binary")),
+        SdkBytes.fromByteArray(Bytes.toBytes("Book 1111 Title Binary"))
+    ).build());
     item.put("NestedList1",
-        new AttributeValue().withL(new AttributeValue().withN("-485.34"),
-            new AttributeValue().withS("1234abcd"),
-            new AttributeValue().withL(new AttributeValue().withS("xyz0123"),
-                new AttributeValue().withM(nestedList1Map1))));
+        AttributeValue.builder().l(AttributeValue.builder().n("-485.34").build(),
+            AttributeValue.builder().s("1234abcd").build(),
+            AttributeValue.builder().l(AttributeValue.builder().s("xyz0123").build(),
+                AttributeValue.builder().m(nestedList1Map1).build()).build()).build());
     item.put("NestedList12",
-        new AttributeValue().withL(new AttributeValue().withN("-485.34"),
-            new AttributeValue().withS("1234abcd"),
-            new AttributeValue().withL(
-                new AttributeValue().withSS("xyz0123"),
-                new AttributeValue().withBS(
-                    ByteBuffer.wrap(Bytes.toBytes("val01")),
-                    ByteBuffer.wrap(Bytes.toBytes("val02")),
-                    ByteBuffer.wrap(Bytes.toBytes("val03"))))));
+        AttributeValue.builder().l(AttributeValue.builder().n("-485.34").build(),
+            AttributeValue.builder().s("1234abcd").build(),
+            AttributeValue.builder().l(
+                AttributeValue.builder().ss("xyz0123").build(),
+                AttributeValue.builder().bs(
+                    SdkBytes.fromByteArray(Bytes.toBytes("val01")),
+                    SdkBytes.fromByteArray(Bytes.toBytes("val02")),
+                    SdkBytes.fromByteArray(Bytes.toBytes("val03"))).build()).build()).build());
   }
 
   private static Map<String, AttributeValue> getItem3() {
     Map<String, AttributeValue> item = new HashMap<>();
-    item.put("attr_0", new AttributeValue().withS("str_val_0"));
-    item.put("AddedId", new AttributeValue().withN("10"));
-    item.put("attr_1", new AttributeValue().withN("1295.03"));
+    item.put("attr_0", AttributeValue.builder().s("str_val_0").build());
+    item.put("AddedId", AttributeValue.builder().n("10").build());
+    item.put("attr_1", AttributeValue.builder().n("1295.03").build());
     item.put("Id1",
-        new AttributeValue().withB(ByteBuffer.wrap(Bytes.toBytes("ID_101"))));
-    item.put("attr_5", new AttributeValue().withL(
-        new AttributeValue().withN("1234"),
-        new AttributeValue().withS("str001"),
-        new AttributeValue().withB(ByteBuffer.wrap(
-            new byte[] {0, 1, 2, 3, 4, 5}))));
+        AttributeValue.builder().b(SdkBytes.fromByteArray(Bytes.toBytes("ID_101"))).build());
+    item.put("attr_5", AttributeValue.builder().l(
+        AttributeValue.builder().n("1234").build(),
+        AttributeValue.builder().s("str001").build(),
+        AttributeValue.builder().b(SdkBytes.fromByteArray(
+            new byte[] {0, 1, 2, 3, 4, 5})).build()).build());
     Map<String, AttributeValue> nMap1 = new HashMap<>();
-    nMap1.put("n_attr_0", new AttributeValue().withS("str_val_0"));
-    nMap1.put("n_attr_1", new AttributeValue().withN("1295.03123"));
+    nMap1.put("n_attr_0", AttributeValue.builder().s("str_val_0").build());
+    nMap1.put("n_attr_1", AttributeValue.builder().n("1295.03123").build());
     String bytesAttributeVal1 = "2048u5nblwjeiWFGTH(4bf930";
     byte[] bytesAttrVal1 = bytesAttributeVal1.getBytes();
-    nMap1.put("n_attr_2", new AttributeValue().withB(ByteBuffer.wrap(
-        bytesAttrVal1)));
-    nMap1.put("n_attr_3", new AttributeValue().withBOOL(true));
-    nMap1.put("n_attr_4", new AttributeValue().withNULL(true));
-    item.put("attr_6", new AttributeValue().withM(nMap1));
-    item.put("Id", new AttributeValue().withS("12345"));
+    nMap1.put("n_attr_2", AttributeValue.builder().b(SdkBytes.fromByteArray(
+        bytesAttrVal1)).build());
+    nMap1.put("n_attr_3", AttributeValue.builder().bool(true).build());
+    nMap1.put("n_attr_4", AttributeValue.builder().nul(true).build());
+    item.put("attr_6", AttributeValue.builder().m(nMap1).build());
+    item.put("Id", AttributeValue.builder().s("12345").build());
     item.put("ColorBytes",
-        new AttributeValue().withB(ByteBuffer.wrap(Bytes.toBytes("Black"))));
+        AttributeValue.builder().b(SdkBytes.fromByteArray(Bytes.toBytes("Black"))).build());
     item.put("RelatedItems",
-        new AttributeValue().withNS("1234",
+        AttributeValue.builder().ns("1234",
             "-485.45582904",
             "123.0948",
-            "0.111"));
-    item.put("Pictures", new AttributeValue().withSS(
+            "0.111").build());
+    item.put("Pictures", AttributeValue.builder().ss(
         "123_rear.jpg",
         "1235@_rear.jpg",
         "xyz5@_rear.jpg",
         "xyz_rear.jpg",
         "123_front.jpg",
         "xyz_front.jpg"
-    ));
-    item.put("PictureBinarySet", new AttributeValue().withBS(
-        ByteBuffer.wrap(Bytes.toBytes("xyz_rear.jpg")),
-        ByteBuffer.wrap(Bytes.toBytes("123_front.jpg")),
-        ByteBuffer.wrap(Bytes.toBytes("123abc_rear.jpg")),
-        ByteBuffer.wrap(Bytes.toBytes("xyzabc_rear.jpg"))
-    ));
-    item.put("Title", new AttributeValue().withS("Cycle_1234_new"));
-    item.put("ISBN", new AttributeValue().withS("111-1111111111"));
-    item.put("InPublication", new AttributeValue().withBOOL(false));
+    ).build());
+    item.put("PictureBinarySet", AttributeValue.builder().bs(
+        SdkBytes.fromByteArray(Bytes.toBytes("xyz_rear.jpg")),
+        SdkBytes.fromByteArray(Bytes.toBytes("123_front.jpg")),
+        SdkBytes.fromByteArray(Bytes.toBytes("123abc_rear.jpg")),
+        SdkBytes.fromByteArray(Bytes.toBytes("xyzabc_rear.jpg"))
+    ).build());
+    item.put("Title", AttributeValue.builder().s("Cycle_1234_new").build());
+    item.put("ISBN", AttributeValue.builder().s("111-1111111111").build());
+    item.put("InPublication", AttributeValue.builder().bool(false).build());
     Map<String, AttributeValue> nestedMap1 = new HashMap<>();
-    nestedMap1.put("Id", new AttributeValue().withN("101.01"));
-    nestedMap1.put("AddedId", new AttributeValue().withN("10"));
-    nestedMap1.put("ISBN", new AttributeValue().withS("111-1111111111"));
-    nestedMap1.put("InPublication", new AttributeValue().withBOOL(false));
-    nestedMap1.put("NList1", new AttributeValue().withL(
-        new AttributeValue().withSS("Updated_set_01", "Updated_set_02"),
-        new AttributeValue().withN("-0.00234")));
-    nestedMap1.put("ColorList", new AttributeValue().withL(
-        new AttributeValue().withS("Black"),
-        new AttributeValue().withB(ByteBuffer.wrap(Bytes.toBytes("White"))),
-        new AttributeValue().withS("Silver")
-    ));
+    nestedMap1.put("Id", AttributeValue.builder().n("101.01").build());
+    nestedMap1.put("AddedId", AttributeValue.builder().n("10").build());
+    nestedMap1.put("ISBN", AttributeValue.builder().s("111-1111111111").build());
+    nestedMap1.put("InPublication", AttributeValue.builder().bool(false).build());
+    nestedMap1.put("NList1", AttributeValue.builder().l(
+        AttributeValue.builder().ss("Updated_set_01", "Updated_set_02").build(),
+        AttributeValue.builder().n("-0.00234").build()).build());
+    nestedMap1.put("ColorList", AttributeValue.builder().l(
+        AttributeValue.builder().s("Black").build(),
+        AttributeValue.builder().b(SdkBytes.fromByteArray(Bytes.toBytes("White"))).build(),
+        AttributeValue.builder().s("Silver").build()
+    ).build());
     Map<String, AttributeValue> nestedMap2 = new HashMap<>();
-    nestedMap2.put("Id", new AttributeValue().withN("-12243.78"));
-    nestedMap2.put("NewID", new AttributeValue().withS("12345"));
-    nestedMap2.put("Title", new AttributeValue().withS("Book 10122 Title"));
-    nestedMap2.put("ISBN", new AttributeValue().withS("111-1111111111999"));
+    nestedMap2.put("Id", AttributeValue.builder().n("-12243.78").build());
+    nestedMap2.put("NewID", AttributeValue.builder().s("12345").build());
+    nestedMap2.put("Title", AttributeValue.builder().s("Book 10122 Title").build());
+    nestedMap2.put("ISBN", AttributeValue.builder().s("111-1111111111999").build());
     nestedMap2.put("NList",
-        new AttributeValue().withL(
-            new AttributeValue().withN("12.22"),
-            new AttributeValue().withN("-0.00234"),
-            new AttributeValue().withNULL(true)));
+        AttributeValue.builder().l(
+            AttributeValue.builder().n("12.22").build(),
+            AttributeValue.builder().n("-0.00234").build(),
+            AttributeValue.builder().nul(true).build()).build());
     nestedMap1.put("NestedMap2",
-        new AttributeValue().withM(nestedMap2));
+        AttributeValue.builder().m(nestedMap2).build());
     nestedMap1.put("NSet1",
-        new AttributeValue().withNS("123.45", "9586.7778", "-124", "10238"));
-    item.put("NestedMap1", new AttributeValue().withM(nestedMap1));
+        AttributeValue.builder().ns("123.45", "9586.7778", "-124", "10238").build());
+    item.put("NestedMap1", AttributeValue.builder().m(nestedMap1).build());
     Map<String, AttributeValue> nestedList1Map1 = new HashMap<>();
-    nestedList1Map1.put("Id", new AttributeValue().withN("101.01"));
-    nestedList1Map1.put("Title", new AttributeValue().withS("Book 101 Title"));
-    nestedList1Map1.put("ISBN", new AttributeValue().withS("111-1111111122"));
-    nestedList1Map1.put("InPublication", new AttributeValue().withBOOL(false));
+    nestedList1Map1.put("Id", AttributeValue.builder().n("101.01").build());
+    nestedList1Map1.put("Title", AttributeValue.builder().s("Book 101 Title").build());
+    nestedList1Map1.put("ISBN", AttributeValue.builder().s("111-1111111122").build());
+    nestedList1Map1.put("InPublication", AttributeValue.builder().bool(false).build());
     nestedList1Map1.put("IdSet",
-        new AttributeValue().withNS("204850.697038423",
+        AttributeValue.builder().ns("204850.697038423",
             "-9457860.98693947",
             "20576024",
             "19306873",
-            "9067048362749590684"));
+            "9067048362749590684").build());
     nestedList1Map1.put("TitleSet2",
-        new AttributeValue().withSS(
-            "Book 1111 Title", "Book 1200 Title", "Book 1201 Title"));
-    nestedList1Map1.put("BinaryTitleSet", new AttributeValue().withBS(
-        ByteBuffer.wrap(Bytes.toBytes("Book 1010 Title Binary")),
-        ByteBuffer.wrap(Bytes.toBytes("Book 1011 Title Binary")),
-        ByteBuffer.wrap(Bytes.toBytes("Book 1111 Title Binary"))
-    ));
+        AttributeValue.builder().ss(
+            "Book 1111 Title", "Book 1200 Title", "Book 1201 Title").build());
+    nestedList1Map1.put("BinaryTitleSet", AttributeValue.builder().bs(
+        SdkBytes.fromByteArray(Bytes.toBytes("Book 1010 Title Binary")),
+        SdkBytes.fromByteArray(Bytes.toBytes("Book 1011 Title Binary")),
+        SdkBytes.fromByteArray(Bytes.toBytes("Book 1111 Title Binary"))
+    ).build());
     item.put("NestedList1",
-        new AttributeValue().withL(new AttributeValue().withN("-485.34"),
-            new AttributeValue().withS("1234abcd"),
-            new AttributeValue().withL(new AttributeValue().withS("xyz0123"),
-                new AttributeValue().withM(nestedList1Map1))));
+        AttributeValue.builder().l(AttributeValue.builder().n("-485.34").build(),
+            AttributeValue.builder().s("1234abcd").build(),
+            AttributeValue.builder().l(AttributeValue.builder().s("xyz0123").build(),
+                AttributeValue.builder().m(nestedList1Map1).build()).build()).build());
     item.put("NestedList12",
-        new AttributeValue().withL(
-            new AttributeValue().withN("-485.34"),
-            new AttributeValue().withS("1234abcd"),
-            new AttributeValue().withL(
-                new AttributeValue().withSS("xyz0123", "xyz01234", "abc01234"),
-                new AttributeValue().withBS(
-                    ByteBuffer.wrap(Bytes.toBytes("val01")),
-                    ByteBuffer.wrap(Bytes.toBytes("val02")),
-                    ByteBuffer.wrap(Bytes.toBytes("val03")),
-                    ByteBuffer.wrap(Bytes.toBytes("val04"))),
-                new AttributeValue().withNS(
+        AttributeValue.builder().l(
+            AttributeValue.builder().n("-485.34").build(),
+            AttributeValue.builder().s("1234abcd").build(),
+            AttributeValue.builder().l(
+                AttributeValue.builder().ss("xyz0123", "xyz01234", "abc01234").build(),
+                AttributeValue.builder().bs(
+                    SdkBytes.fromByteArray(Bytes.toBytes("val01")),
+                    SdkBytes.fromByteArray(Bytes.toBytes("val02")),
+                    SdkBytes.fromByteArray(Bytes.toBytes("val03")),
+                    SdkBytes.fromByteArray(Bytes.toBytes("val04"))).build(),
+                AttributeValue.builder().ns(
                     "-234.56",
                     "123",
                     "93756.93475960549",
-                    "9375572.6870899"))));
+                    "9375572.6870899").build()).build()).build());
     return item;
   }
 
   private static Map<String, AttributeValue> getItem4() {
     Map<String, AttributeValue> item = new HashMap<>();
-    item.put("attr_0", new AttributeValue().withS("str_val_0"));
-    item.put("AddedId", new AttributeValue().withN("10"));
-    item.put("attr_1", new AttributeValue().withN("1295.03"));
-    item.put("Id1", new AttributeValue().withS("12345"));
-    item.put("attr_5", new AttributeValue().withL(
-        new AttributeValue().withN("1224"),
-        new AttributeValue().withS("str001"),
-        new AttributeValue().withB(ByteBuffer.wrap(
-            new byte[] {0, 1, 2, 3, 4, 5}))));
+    item.put("attr_0", AttributeValue.builder().s("str_val_0").build());
+    item.put("AddedId", AttributeValue.builder().n("10").build());
+    item.put("attr_1", AttributeValue.builder().n("1295.03").build());
+    item.put("Id1", AttributeValue.builder().s("12345").build());
+    item.put("attr_5", AttributeValue.builder().l(
+        AttributeValue.builder().n("1224").build(),
+        AttributeValue.builder().s("str001").build(),
+        AttributeValue.builder().b(SdkBytes.fromByteArray(
+            new byte[] {0, 1, 2, 3, 4, 5})).build()).build());
     Map<String, AttributeValue> nMap1 = new HashMap<>();
-    nMap1.put("n_attr_0", new AttributeValue().withS("str_val_0"));
-    nMap1.put("n_attr_1", new AttributeValue().withN("1223456.03"));
+    nMap1.put("n_attr_0", AttributeValue.builder().s("str_val_0").build());
+    nMap1.put("n_attr_1", AttributeValue.builder().n("1223456.03").build());
     String bytesAttributeVal1 = "2048u5nblwjeiWFGTH(4bf930";
     byte[] bytesAttrVal1 = bytesAttributeVal1.getBytes();
-    nMap1.put("n_attr_2", new AttributeValue().withB(ByteBuffer.wrap(
-        bytesAttrVal1)));
-    nMap1.put("n_attr_3", new AttributeValue().withBOOL(true));
-    nMap1.put("n_attr_4", new AttributeValue().withNULL(true));
-    item.put("attr_6", new AttributeValue().withM(nMap1));
-    item.put("Id", new AttributeValue().withS("12345"));
+    nMap1.put("n_attr_2", AttributeValue.builder().b(SdkBytes.fromByteArray(
+        bytesAttrVal1)).build());
+    nMap1.put("n_attr_3", AttributeValue.builder().bool(true).build());
+    nMap1.put("n_attr_4", AttributeValue.builder().nul(true).build());
+    item.put("attr_6", AttributeValue.builder().m(nMap1).build());
+    item.put("Id", AttributeValue.builder().s("12345").build());
     item.put("ColorBytes",
-        new AttributeValue().withB(ByteBuffer.wrap(Bytes.toBytes("Black"))));
+        AttributeValue.builder().b(SdkBytes.fromByteArray(Bytes.toBytes("Black"))).build());
     item.put("RelatedItems",
-        new AttributeValue().withNS("1234",
+        AttributeValue.builder().ns("1234",
             "-485.45582904",
             "123.0948",
-            "0.111"));
-    item.put("Pictures", new AttributeValue().withSS(
+            "0.111").build());
+    item.put("Pictures", AttributeValue.builder().ss(
         "123_rear.jpg",
         "1235@_rear.jpg",
         "xyz5@_rear.jpg",
         "xyz_rear.jpg",
         "123_front.jpg",
         "xyz_front.jpg"
-    ));
-    item.put("PictureBinarySet", new AttributeValue().withBS(
-        ByteBuffer.wrap(Bytes.toBytes("xyz_rear.jpg")),
-        ByteBuffer.wrap(Bytes.toBytes("123_front.jpg")),
-        ByteBuffer.wrap(Bytes.toBytes("123abc_rear.jpg")),
-        ByteBuffer.wrap(Bytes.toBytes("xyzabc_rear.jpg"))
-    ));
-    item.put("Title", new AttributeValue().withS("Cycle_1234_new"));
-    item.put("ISBN", new AttributeValue().withS("111-1111111111"));
-    item.put("InPublication", new AttributeValue().withBOOL(false));
+    ).build());
+    item.put("PictureBinarySet", AttributeValue.builder().bs(
+        SdkBytes.fromByteArray(Bytes.toBytes("xyz_rear.jpg")),
+        SdkBytes.fromByteArray(Bytes.toBytes("123_front.jpg")),
+        SdkBytes.fromByteArray(Bytes.toBytes("123abc_rear.jpg")),
+        SdkBytes.fromByteArray(Bytes.toBytes("xyzabc_rear.jpg"))
+    ).build());
+    item.put("Title", AttributeValue.builder().s("Cycle_1234_new").build());
+    item.put("ISBN", AttributeValue.builder().s("111-1111111111").build());
+    item.put("InPublication", AttributeValue.builder().bool(false).build());
     Map<String, AttributeValue> nestedMap1 = new HashMap<>();
-    nestedMap1.put("Id", new AttributeValue().withN("101.01"));
-    nestedMap1.put("AddedId", new AttributeValue().withN("10"));
-    nestedMap1.put("ISBN", new AttributeValue().withS("111-1111111111"));
-    nestedMap1.put("InPublication", new AttributeValue().withBOOL(false));
-    nestedMap1.put("NList1", new AttributeValue().withL(
-        new AttributeValue().withSS("Updated_set_01", "Updated_set_02"),
-        new AttributeValue().withN("-0.00234")));
-    nestedMap1.put("ColorList", new AttributeValue().withL(
-        new AttributeValue().withS("Black"),
-        new AttributeValue().withB(ByteBuffer.wrap(Bytes.toBytes("White"))),
-        new AttributeValue().withS("Silver")
-    ));
+    nestedMap1.put("Id", AttributeValue.builder().n("101.01").build());
+    nestedMap1.put("AddedId", AttributeValue.builder().n("10").build());
+    nestedMap1.put("ISBN", AttributeValue.builder().s("111-1111111111").build());
+    nestedMap1.put("InPublication", AttributeValue.builder().bool(false).build());
+    nestedMap1.put("NList1", AttributeValue.builder().l(
+        AttributeValue.builder().ss("Updated_set_01", "Updated_set_02").build(),
+        AttributeValue.builder().n("-0.00234").build()).build());
+    nestedMap1.put("ColorList", AttributeValue.builder().l(
+        AttributeValue.builder().s("Black").build(),
+        AttributeValue.builder().b(SdkBytes.fromByteArray(Bytes.toBytes("White"))).build(),
+        AttributeValue.builder().s("Silver").build()
+    ).build());
     Map<String, AttributeValue> nestedMap2 = new HashMap<>();
-    nestedMap2.put("Id", new AttributeValue().withN("-12243.78"));
-    nestedMap2.put("NewID", new AttributeValue().withS("12345"));
-    nestedMap2.put("Title", new AttributeValue().withS("Book 10122 Title"));
-    nestedMap2.put("ISBN", new AttributeValue().withS("111-1111111111999"));
+    nestedMap2.put("Id", AttributeValue.builder().n("-12243.78").build());
+    nestedMap2.put("NewID", AttributeValue.builder().s("12345").build());
+    nestedMap2.put("Title", AttributeValue.builder().s("Book 10122 Title").build());
+    nestedMap2.put("ISBN", AttributeValue.builder().s("111-1111111111999").build());
     nestedMap2.put("NList",
-        new AttributeValue().withL(
-            new AttributeValue().withN("12.22"),
-            new AttributeValue().withN("-0.00234"),
-            new AttributeValue().withNULL(true)));
+        AttributeValue.builder().l(
+            AttributeValue.builder().n("12.22").build(),
+            AttributeValue.builder().n("-0.00234").build(),
+            AttributeValue.builder().nul(true).build()).build());
     nestedMap1.put("NestedMap2",
-        new AttributeValue().withM(nestedMap2));
+        AttributeValue.builder().m(nestedMap2).build());
     nestedMap1.put("NSet1",
-        new AttributeValue().withNS("123.45",
+        AttributeValue.builder().ns("123.45",
             "9586.7778",
             "-124",
             "10238",
-            "-0.29475029304"));
-    item.put("NestedMap1", new AttributeValue().withM(nestedMap1));
+            "-0.29475029304").build());
+    item.put("NestedMap1", AttributeValue.builder().m(nestedMap1).build());
     Map<String, AttributeValue> nestedList1Map1 = new HashMap<>();
-    nestedList1Map1.put("Id", new AttributeValue().withN("101.01"));
-    nestedList1Map1.put("Title", new AttributeValue().withS("Book 101 Title"));
-    nestedList1Map1.put("ISBN", new AttributeValue().withS("111-1111111122"));
-    nestedList1Map1.put("InPublication", new AttributeValue().withBOOL(false));
+    nestedList1Map1.put("Id", AttributeValue.builder().n("101.01").build());
+    nestedList1Map1.put("Title", AttributeValue.builder().s("Book 101 Title").build());
+    nestedList1Map1.put("ISBN", AttributeValue.builder().s("111-1111111122").build());
+    nestedList1Map1.put("InPublication", AttributeValue.builder().bool(false).build());
     nestedList1Map1.put("IdSet",
-        new AttributeValue().withNS("2048502.69703847",
+        AttributeValue.builder().ns("2048502.69703847",
             "-45786.4869476",
             "20576024",
             "19306873",
-            "83627495940380684"));
+            "83627495940380684").build());
     nestedList1Map1.put("TitleSet2",
-        new AttributeValue().withSS(
-            "Book 1111 Title", "Book 1200 Title", "Book 1201 Title"));
-    nestedList1Map1.put("BinaryTitleSet", new AttributeValue().withBS(
-        ByteBuffer.wrap(Bytes.toBytes("Book 1010 Title Binary")),
-        ByteBuffer.wrap(Bytes.toBytes("Book 1011 Title Binary")),
-        ByteBuffer.wrap(Bytes.toBytes("Book 1111 Title Binary"))
-    ));
+        AttributeValue.builder().ss(
+            "Book 1111 Title", "Book 1200 Title", "Book 1201 Title").build());
+    nestedList1Map1.put("BinaryTitleSet", AttributeValue.builder().bs(
+        SdkBytes.fromByteArray(Bytes.toBytes("Book 1010 Title Binary")),
+        SdkBytes.fromByteArray(Bytes.toBytes("Book 1011 Title Binary")),
+        SdkBytes.fromByteArray(Bytes.toBytes("Book 1111 Title Binary"))
+    ).build());
     item.put("NestedList1",
-        new AttributeValue().withL(new AttributeValue().withN("-473.11999999999995"),
-            new AttributeValue().withS("1234abcd"),
-            new AttributeValue().withL(new AttributeValue().withS("xyz0123"),
-                new AttributeValue().withM(nestedList1Map1)),
-            new AttributeValue().withNULL(true),
-            new AttributeValue().withBOOL(true)));
+        AttributeValue.builder().l(AttributeValue.builder().n("-473.11999999999995").build(),
+            AttributeValue.builder().s("1234abcd").build(),
+            AttributeValue.builder().l(AttributeValue.builder().s("xyz0123").build(),
+                AttributeValue.builder().m(nestedList1Map1).build()).build(),
+            AttributeValue.builder().nul(true).build(),
+            AttributeValue.builder().bool(true).build()).build());
     item.put("NestedList12",
-        new AttributeValue().withL(
-            new AttributeValue().withN("-485.34"),
-            new AttributeValue().withS("1234abcd"),
-            new AttributeValue().withL(
-                new AttributeValue().withSS("xyz0123", "xyz01234", "abc01234"),
-                new AttributeValue().withBS(
-                    ByteBuffer.wrap(Bytes.toBytes("val01")),
-                    ByteBuffer.wrap(Bytes.toBytes("val02")),
-                    ByteBuffer.wrap(Bytes.toBytes("val03")),
-                    ByteBuffer.wrap(Bytes.toBytes("val04"))))));
+        AttributeValue.builder().l(
+            AttributeValue.builder().n("-485.34").build(),
+            AttributeValue.builder().s("1234abcd").build(),
+            AttributeValue.builder().l(
+                AttributeValue.builder().ss("xyz0123", "xyz01234", "abc01234").build(),
+                AttributeValue.builder().bs(
+                    SdkBytes.fromByteArray(Bytes.toBytes("val01")),
+                    SdkBytes.fromByteArray(Bytes.toBytes("val02")),
+                    SdkBytes.fromByteArray(Bytes.toBytes("val03")),
+                    SdkBytes.fromByteArray(Bytes.toBytes("val04"))).build()).build()).build());
     return item;
   }
 

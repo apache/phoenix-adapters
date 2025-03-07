@@ -1,8 +1,8 @@
 package org.apache.phoenix.ddb.service;
 
-import com.amazonaws.services.dynamodbv2.model.AttributeValue;
-import com.amazonaws.services.dynamodbv2.model.PutItemRequest;
-import com.amazonaws.services.dynamodbv2.model.PutItemResult;
+import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
+import software.amazon.awssdk.services.dynamodb.model.PutItemRequest;
+import software.amazon.awssdk.services.dynamodb.model.PutItemResponse;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.phoenix.ddb.bson.DdbAttributesToBsonDocument;
 import org.apache.phoenix.ddb.utils.CommonServiceUtils;
@@ -40,8 +40,8 @@ public class PutItemService {
             " COL = CASE WHEN BSON_CONDITION_EXPRESSION(COL,'%s') THEN ? \n" +
             " ELSE COL END";
 
-    public static PutItemResult putItem(PutItemRequest request, String connectionUrl) {
-        PutItemResult result;
+    public static PutItemResponse putItem(PutItemRequest request, String connectionUrl) {
+        PutItemResponse result;
         try (Connection connection = DriverManager.getConnection(connectionUrl)) {
             connection.setAutoCommit(true);
             result = putItemWithConn(connection, request);
@@ -51,15 +51,14 @@ public class PutItemService {
         return result;
     }
 
-    public static PutItemResult putItemWithConn(Connection connection, PutItemRequest request)
+    public static PutItemResponse putItemWithConn(Connection connection, PutItemRequest request)
             throws SQLException {
-        Map<String, AttributeValue> item = request.getItem();
-        PutItemResult result = new PutItemResult();
+        Map<String, AttributeValue> item = request.item();
         BsonDocument bsonDoc = DdbAttributesToBsonDocument.getBsonDocument(item);
         // get PTable and PK PColumns
         PhoenixConnection phoenixConnection = connection.unwrap(PhoenixConnection.class);
         PTable table = phoenixConnection.getTable(
-                new PTableKey(phoenixConnection.getTenantId(), request.getTableName()));
+                new PTableKey(phoenixConnection.getTenantId(), request.tableName()));
         List<PColumn> pkCols = table.getPKColumns();
 
         //create statement based on PKs and conditional expression
@@ -72,11 +71,10 @@ public class PutItemService {
         //execute, auto commit is on
         LOGGER.info("Upsert Query for PutItem: {}", stmt);
         Map<String, AttributeValue> returnAttrs
-                = DMLUtils.executeUpdate(stmt, request.getReturnValues(),
-                request.getReturnValuesOnConditionCheckFailure(),
-                request.getConditionExpression(), pkCols, false);
-        result.setAttributes(returnAttrs);
-        return result;
+                = DMLUtils.executeUpdate(stmt, request.returnValues(),
+                request.returnValuesOnConditionCheckFailure(),
+                request.conditionExpression(), pkCols, false);
+        return PutItemResponse.builder().attributes(returnAttrs).build();
     }
 
     /**
@@ -86,10 +84,10 @@ public class PutItemService {
     private static PreparedStatement getPreparedStatement(Connection conn, PutItemRequest request,
                                                       int numPKs) throws SQLException {
         PreparedStatement stmt;
-        String tableName = request.getTableName();
-        String condExpr = request.getConditionExpression();
-        Map<String, String> exprAttrNames =  request.getExpressionAttributeNames();
-        Map<String, AttributeValue> exprAttrVals =  request.getExpressionAttributeValues();
+        String tableName = request.tableName();
+        String condExpr = request.conditionExpression();
+        Map<String, String> exprAttrNames =  request.expressionAttributeNames();
+        Map<String, AttributeValue> exprAttrVals =  request.expressionAttributeValues();
         if (!StringUtils.isEmpty(condExpr)) {
             String bsonCondExpr = CommonServiceUtils
                     .getBsonConditionExpression(condExpr, exprAttrNames, exprAttrVals);

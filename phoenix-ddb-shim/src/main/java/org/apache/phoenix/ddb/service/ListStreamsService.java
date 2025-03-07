@@ -1,8 +1,8 @@
 package org.apache.phoenix.ddb.service;
 
-import com.amazonaws.services.dynamodbv2.model.ListStreamsRequest;
-import com.amazonaws.services.dynamodbv2.model.ListStreamsResult;
-import com.amazonaws.services.dynamodbv2.model.Stream;
+import software.amazon.awssdk.services.dynamodb.model.ListStreamsRequest;
+import software.amazon.awssdk.services.dynamodb.model.ListStreamsResponse;
+import software.amazon.awssdk.services.dynamodb.model.Stream;
 import org.apache.phoenix.ddb.utils.DDBShimCDCUtils;
 import org.apache.phoenix.jdbc.PhoenixConnection;
 import org.apache.phoenix.schema.PTable;
@@ -17,15 +17,15 @@ import java.util.List;
 
 public class ListStreamsService {
 
-    public static ListStreamsResult listStreams(ListStreamsRequest request, String connectionUrl) {
-        String tableName = request.getTableName();
+    public static ListStreamsResponse listStreams(ListStreamsRequest request, String connectionUrl) {
+        String tableName = request.tableName();
         Preconditions.checkNotNull(tableName, "Table Name should be provided.");
 
-        ListStreamsResult result = new ListStreamsResult();
+        ListStreamsResponse.Builder result = ListStreamsResponse.builder();
         try (Connection connection = DriverManager.getConnection(connectionUrl)) {
             PhoenixConnection pconn = connection.unwrap(PhoenixConnection.class);
             PTable table = pconn.getTable(
-                    new PTableKey(pconn.getTenantId(), request.getTableName()));
+                    new PTableKey(pconn.getTenantId(), request.tableName()));
             List<Stream> streams = new ArrayList<>();
             // For now, we will only return the currently enabled or enabling stream
             // TODO: once phoenix can handle disable stream, we will also return historical streams.
@@ -33,15 +33,15 @@ public class ListStreamsService {
                     = DDBShimCDCUtils.getEnabledStreamName(pconn, table.getName().getString());
             if (streamName != null && table.getSchemaVersion() != null) {
                 long creationTS = DDBShimCDCUtils.getCDCIndexTimestampFromStreamName(streamName);
-                streams.add(new Stream()
-                        .withTableName(table.getName().getString())
-                        .withStreamArn(streamName)
-                        .withStreamLabel(DDBShimCDCUtils.getStreamLabel(creationTS)));
+                streams.add(Stream.builder()
+                        .tableName(table.getName().getString())
+                        .streamArn(streamName)
+                        .streamLabel(DDBShimCDCUtils.getStreamLabel(creationTS)).build());
             }
-            result.setStreams(streams);
+            result.streams(streams);
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
-        return result;
+        return result.build();
     }
 }

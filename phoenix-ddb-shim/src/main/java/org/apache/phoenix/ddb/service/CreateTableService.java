@@ -27,14 +27,16 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
-import com.amazonaws.services.dynamodbv2.model.AttributeDefinition;
-import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
-import com.amazonaws.services.dynamodbv2.model.CreateTableResult;
-import com.amazonaws.services.dynamodbv2.model.GlobalSecondaryIndex;
-import com.amazonaws.services.dynamodbv2.model.KeySchemaElement;
-import com.amazonaws.services.dynamodbv2.model.LocalSecondaryIndex;
-import com.amazonaws.services.dynamodbv2.model.StreamSpecification;
-import com.amazonaws.services.dynamodbv2.model.TableDescription;
+import software.amazon.awssdk.services.dynamodb.model.AttributeDefinition;
+import software.amazon.awssdk.services.dynamodb.model.CreateTableRequest;
+import software.amazon.awssdk.services.dynamodb.model.CreateTableResponse;
+import software.amazon.awssdk.services.dynamodb.model.GlobalSecondaryIndex;
+import software.amazon.awssdk.services.dynamodb.model.KeySchemaElement;
+import software.amazon.awssdk.services.dynamodb.model.LocalSecondaryIndex;
+import software.amazon.awssdk.services.dynamodb.model.ScalarAttributeType;
+import software.amazon.awssdk.services.dynamodb.model.StreamSpecification;
+import software.amazon.awssdk.services.dynamodb.model.StreamViewType;
+import software.amazon.awssdk.services.dynamodb.model.TableDescription;
 import org.apache.phoenix.ddb.utils.CommonServiceUtils;
 import org.apache.phoenix.ddb.utils.TableDescriptorUtils;
 import org.slf4j.Logger;
@@ -49,13 +51,11 @@ public class CreateTableService {
   private static final String CREATE_CDC_DDL = "CREATE CDC CDC_%s on %s";
   private static final String ALTER_TABLE_STREAM_TYPE_DDL = "ALTER TABLE %s set SCHEMA_VERSION = '%s'";
 
-  public static CreateTableResult getCreateTableResponse(final String tableName,
+  public static CreateTableResponse getCreateTableResponse(final String tableName,
       final String connectionUrl) {
-      CreateTableResult result = new CreateTableResult();
       TableDescription
           tableDescription = TableDescriptorUtils.getTableDescription(tableName, connectionUrl);
-      result.setTableDescription(tableDescription);
-      return result;
+      return CreateTableResponse.builder().tableDescription(tableDescription).build();
   }
 
   public static void addIndexDDL(CreateTableRequest request, Set<String> pkCols,
@@ -68,63 +68,63 @@ public class CreateTableService {
 
       KeySchemaElement hashKey = keySchemaElements.get(0);
       Optional<AttributeDefinition> hashKeyAttr = attributeDefinitions.stream().filter(
-          attributeDefinition -> hashKey.getAttributeName()
-              .equals(attributeDefinition.getAttributeName())).findFirst();
+          attributeDefinition -> hashKey.attributeName()
+              .equals(attributeDefinition.attributeName())).findFirst();
       Preconditions.checkArgument(hashKeyAttr.isPresent(),
           "Hash key attribute should be " + "defined");
       AttributeDefinition hashKeyAttribute = hashKeyAttr.get();
-      String hashKeyType = hashKeyAttribute.getAttributeType();
+      ScalarAttributeType hashKeyType = hashKeyAttribute.attributeType();
       switch (hashKeyType) {
-      case "S":
-          indexOn.append("BSON_VALUE(COL,'").append(hashKey.getAttributeName())
+      case S:
+          indexOn.append("BSON_VALUE(COL,'").append(hashKey.attributeName())
               .append("','VARCHAR')");
           break;
-      case "N":
-          indexOn.append("BSON_VALUE(COL,'").append(hashKey.getAttributeName())
+      case N:
+          indexOn.append("BSON_VALUE(COL,'").append(hashKey.attributeName())
               .append("','DOUBLE')");
           break;
-      case "B":
-          indexOn.append("BSON_VALUE(COL,'").append(hashKey.getAttributeName())
+      case B:
+          indexOn.append("BSON_VALUE(COL,'").append(hashKey.attributeName())
               .append("','VARBINARY_ENCODED')");
           break;
       default:
           throw new IllegalArgumentException(
               "Attribute Type " + hashKeyType + " is not " + "correct type");
       }
-      indexHashKey = "BSON_VALUE(COL,'" + hashKey.getAttributeName() + "','VARCHAR')";
+      indexHashKey = "BSON_VALUE(COL,'" + hashKey.attributeName() + "','VARCHAR')";
 
       if (keySchemaElements.size() == 2) {
           KeySchemaElement rangeKey = keySchemaElements.get(1);
           indexOn.append(",");
           Optional<AttributeDefinition> rangeKeyAttr = attributeDefinitions.stream().filter(
-              attributeDefinition -> rangeKey.getAttributeName()
-                  .equals(attributeDefinition.getAttributeName())).findFirst();
+              attributeDefinition -> rangeKey.attributeName()
+                  .equals(attributeDefinition.attributeName())).findFirst();
           Preconditions.checkArgument(rangeKeyAttr.isPresent(),
               "Range key attribute should be " + "defined");
           AttributeDefinition rangeKeyAttribute = rangeKeyAttr.get();
-          String rangeKeyType = rangeKeyAttribute.getAttributeType();
+          ScalarAttributeType rangeKeyType = rangeKeyAttribute.attributeType();
           switch (rangeKeyType) {
-          case "S":
-              indexOn.append("BSON_VALUE(COL,'").append(rangeKey.getAttributeName())
+          case S:
+              indexOn.append("BSON_VALUE(COL,'").append(rangeKey.attributeName())
                   .append("','VARCHAR')");
               break;
-          case "N":
-              indexOn.append("BSON_VALUE(COL,'").append(rangeKey.getAttributeName())
+          case N:
+              indexOn.append("BSON_VALUE(COL,'").append(rangeKey.attributeName())
                   .append("','DOUBLE')");
               break;
-          case "B":
-              indexOn.append("BSON_VALUE(COL,'").append(rangeKey.getAttributeName())
+          case B:
+              indexOn.append("BSON_VALUE(COL,'").append(rangeKey.attributeName())
                   .append("','VARBINARY_ENCODED')");
               break;
           default:
               throw new IllegalArgumentException(
                   "Attribute Type " + rangeKeyType + " is not " + "correct type");
           }
-          indexSortKey = "BSON_VALUE(COL,'" + rangeKey.getAttributeName() + "','VARCHAR')";
+          indexSortKey = "BSON_VALUE(COL,'" + rangeKey.attributeName() + "','VARCHAR')";
       }
 
       indexDDLs.add(
-              "CREATE INDEX " + indexName + " ON " + request.getTableName()
+              "CREATE INDEX " + indexName + " ON " + request.tableName()
                       + " (" + indexOn + ") INCLUDE (COL) WHERE " + indexHashKey + " IS NOT " +
                       "NULL" + ((indexSortKey != null) ? " AND " + indexSortKey + " IS NOT " +
                       "NULL" : ""));
@@ -132,22 +132,22 @@ public class CreateTableService {
 
   public static List<String> getIndexDDLs(CreateTableRequest request, Set<String> pkCols) {
       final List<String> indexDDLs = new ArrayList<>();
-      List<AttributeDefinition> attributeDefinitions = request.getAttributeDefinitions();
+      List<AttributeDefinition> attributeDefinitions = request.attributeDefinitions();
 
-      if (request.getGlobalSecondaryIndexes() != null) {
-          for (GlobalSecondaryIndex globalSecondaryIndex : request.getGlobalSecondaryIndexes()) {
-              final String indexName = globalSecondaryIndex.getIndexName();
+      if (request.globalSecondaryIndexes() != null) {
+          for (GlobalSecondaryIndex globalSecondaryIndex : request.globalSecondaryIndexes()) {
+              final String indexName = globalSecondaryIndex.indexName();
               final List<KeySchemaElement> keySchemaElements =
-                  globalSecondaryIndex.getKeySchema();
+                  globalSecondaryIndex.keySchema();
               addIndexDDL(request, pkCols, keySchemaElements,
                   attributeDefinitions, indexDDLs, indexName);
           }
       }
 
-      if (request.getLocalSecondaryIndexes() != null) {
-          for (LocalSecondaryIndex localSecondaryIndex : request.getLocalSecondaryIndexes()) {
-              final String indexName = localSecondaryIndex.getIndexName();
-              final List<KeySchemaElement> keySchemaElements = localSecondaryIndex.getKeySchema();
+      if (request.localSecondaryIndexes() != null) {
+          for (LocalSecondaryIndex localSecondaryIndex : request.localSecondaryIndexes()) {
+              final String indexName = localSecondaryIndex.indexName();
+              final List<KeySchemaElement> keySchemaElements = localSecondaryIndex.keySchema();
               addIndexDDL(request, pkCols, keySchemaElements,
                   attributeDefinitions, indexDDLs, indexName);
           }
@@ -162,48 +162,48 @@ public class CreateTableService {
      */
   public static List<String> getCdcDDL(CreateTableRequest request) {
       final List<String> cdcDDLs = new ArrayList<>();
-      StreamSpecification streamSpec = request.getStreamSpecification();
-      if (streamSpec != null && streamSpec.getStreamEnabled()) {
-        String tableName = request.getTableName();
-        String streamType = streamSpec.getStreamViewType();
+      StreamSpecification streamSpec = request.streamSpecification();
+      if (streamSpec != null && streamSpec.streamEnabled()) {
+        String tableName = request.tableName();
+        StreamViewType streamType = streamSpec.streamViewType();
         cdcDDLs.add(String.format(CREATE_CDC_DDL, tableName, tableName));
         cdcDDLs.add(String.format(ALTER_TABLE_STREAM_TYPE_DDL, tableName, streamType));
       }
       return cdcDDLs;
   }
 
-  public static CreateTableResult createTable(final CreateTableRequest request,
+  public static CreateTableResponse createTable(final CreateTableRequest request,
       final String connectionUrl) {
-      final String tableName = request.getTableName();
-      List<KeySchemaElement> keySchemaElements = request.getKeySchema();
-      List<AttributeDefinition> attributeDefinitions = request.getAttributeDefinitions();
+      final String tableName = request.tableName();
+      List<KeySchemaElement> keySchemaElements = request.keySchema();
+      List<AttributeDefinition> attributeDefinitions = request.attributeDefinitions();
 
       StringBuilder cols = new StringBuilder();
       StringBuilder pkCols = new StringBuilder();
       Set<String> pkColsSet = new HashSet<>();
 
       KeySchemaElement hashKey = keySchemaElements.get(0);
-      String hashKeyQuoted = CommonServiceUtils.getEscapedArgument(hashKey.getAttributeName());
+      String hashKeyQuoted = CommonServiceUtils.getEscapedArgument(hashKey.attributeName());
       cols.append(hashKeyQuoted).append(" ");
       pkCols.append(hashKeyQuoted);
 
       Optional<AttributeDefinition> hashKeyAttr =
               attributeDefinitions.stream()
-                      .filter(attributeDefinition -> hashKey.getAttributeName()
-                              .equals(attributeDefinition.getAttributeName())).findFirst();
+                      .filter(attributeDefinition -> hashKey.attributeName()
+                              .equals(attributeDefinition.attributeName())).findFirst();
       Preconditions.checkArgument(hashKeyAttr.isPresent(), "Hash key attribute should be " +
               "defined");
       AttributeDefinition hashKeyAttribute = hashKeyAttr.get();
-      String hashKeyType = hashKeyAttribute.getAttributeType();
-      pkColsSet.add(hashKey.getAttributeName());
+      ScalarAttributeType hashKeyType = hashKeyAttribute.attributeType();
+      pkColsSet.add(hashKey.attributeName());
       switch (hashKeyType) {
-          case "S":
+          case S:
               cols.append("VARCHAR NOT NULL");
               break;
-          case "N":
+          case N:
               cols.append("DOUBLE NOT NULL");
               break;
-          case "B":
+          case B:
               cols.append("VARBINARY_ENCODED NOT NULL");
               break;
           default:
@@ -214,27 +214,27 @@ public class CreateTableService {
       if (keySchemaElements.size() == 2) {
           cols.append(", ");
           KeySchemaElement rangeKey = keySchemaElements.get(1);
-          String rangeKeyQuoted = CommonServiceUtils.getEscapedArgument(rangeKey.getAttributeName());
+          String rangeKeyQuoted = CommonServiceUtils.getEscapedArgument(rangeKey.attributeName());
           cols.append(rangeKeyQuoted).append(" ");
           pkCols.append(",").append(rangeKeyQuoted);
 
           Optional<AttributeDefinition> rangeKeyAttr =
                   attributeDefinitions.stream()
-                          .filter(attributeDefinition -> rangeKey.getAttributeName()
-                                  .equals(attributeDefinition.getAttributeName())).findFirst();
+                          .filter(attributeDefinition -> rangeKey.attributeName()
+                                  .equals(attributeDefinition.attributeName())).findFirst();
           Preconditions.checkArgument(rangeKeyAttr.isPresent(), "Range key attribute should be "
                   + "defined");
           AttributeDefinition rangeKeyAttribute = rangeKeyAttr.get();
-          String rangeKeyType = rangeKeyAttribute.getAttributeType();
-          pkColsSet.add(rangeKey.getAttributeName());
+          ScalarAttributeType rangeKeyType = rangeKeyAttribute.attributeType();
+          pkColsSet.add(rangeKey.attributeName());
           switch (rangeKeyType) {
-              case "S":
+              case S:
                   cols.append("VARCHAR NOT NULL");
                   break;
-              case "N":
+              case N:
                   cols.append("DOUBLE NOT NULL");
                   break;
-              case "B":
+              case B:
                   cols.append("VARBINARY_ENCODED NOT NULL");
                   break;
               default:
@@ -271,6 +271,6 @@ public class CreateTableService {
           throw new RuntimeException(e);
       }
 
-      return getCreateTableResponse(request.getTableName(), connectionUrl);
+      return getCreateTableResponse(request.tableName(), connectionUrl);
   }
 }

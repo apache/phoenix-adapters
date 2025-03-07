@@ -1,15 +1,14 @@
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDBStreams;
-import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
-import com.amazonaws.services.dynamodbv2.model.ListStreamsRequest;
-import com.amazonaws.services.dynamodbv2.model.ListStreamsResult;
-import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
-import com.amazonaws.services.dynamodbv2.model.Stream;
+import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
+import software.amazon.awssdk.services.dynamodb.model.CreateTableRequest;
+import software.amazon.awssdk.services.dynamodb.model.ListStreamsRequest;
+import software.amazon.awssdk.services.dynamodb.model.ListStreamsResponse;
+import software.amazon.awssdk.services.dynamodb.model.ScalarAttributeType;
+import software.amazon.awssdk.services.dynamodb.model.Stream;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
-import org.apache.phoenix.ddb.PhoenixDBClient;
-import org.apache.phoenix.ddb.PhoenixDBStreamsClient;
+import org.apache.phoenix.ddb.PhoenixDBClientV2;
+import org.apache.phoenix.ddb.PhoenixDBStreamsClientV2;
 import org.apache.phoenix.end2end.ServerMetadataCacheTestImpl;
 import org.apache.phoenix.jdbc.PhoenixDriver;
 import org.apache.phoenix.util.PhoenixRuntime;
@@ -22,6 +21,7 @@ import org.junit.Test;
 import org.junit.rules.TestName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.services.dynamodb.streams.DynamoDbStreamsClient;
 
 import java.io.IOException;
 import java.sql.DriverManager;
@@ -41,11 +41,11 @@ public class ListStreamsIT {
     @Rule
     public final TestName testName = new TestName();
 
-    private final AmazonDynamoDB amazonDynamoDB =
-            LocalDynamoDbTestBase.localDynamoDb().createV1Client();
+    private final DynamoDbClient dynamoDbClient =
+            LocalDynamoDbTestBase.localDynamoDb().createV2Client();
 
-    private final AmazonDynamoDBStreams amazonDynamoDBStreams =
-            LocalDynamoDbTestBase.localDynamoDb().createV1StreamsClient();
+    private final DynamoDbStreamsClient dynamoDbStreamsClient =
+            LocalDynamoDbTestBase.localDynamoDb().createV2StreamsClient();
 
     private static String url;
 
@@ -84,24 +84,24 @@ public class ListStreamsIT {
                 DDLTestUtils.getCreateTableRequest(tableName, "hashKey",
                         ScalarAttributeType.B, "sortKey", ScalarAttributeType.N);
 
-        DDLTestUtils.addStreamSpecToRequest(createTableRequest, "NEW_IMAGE");
+        createTableRequest = DDLTestUtils.addStreamSpecToRequest(createTableRequest, "NEW_IMAGE");
 
-        PhoenixDBClient phoenixDBClient = new PhoenixDBClient(url);
-        PhoenixDBStreamsClient phoenixDBStreamsClient = new PhoenixDBStreamsClient(url);
-        amazonDynamoDB.createTable(createTableRequest);
-        phoenixDBClient.createTable(createTableRequest);
+        PhoenixDBClientV2 phoenixDBClientV2 = new PhoenixDBClientV2(url);
+        PhoenixDBStreamsClientV2 phoenixDBStreamsClientV2 = new PhoenixDBStreamsClientV2(url);
+        dynamoDbClient.createTable(createTableRequest);
+        phoenixDBClientV2.createTable(createTableRequest);
 
-        ListStreamsRequest lsr = new ListStreamsRequest().withTableName(tableName);
-        ListStreamsResult phoenixResult = phoenixDBStreamsClient.listStreams(lsr);
-        ListStreamsResult dynamoResult = amazonDynamoDBStreams.listStreams(lsr);
-        LOGGER.info("ListStreamsResult in Phoenix: " + phoenixResult);
-        LOGGER.info("ListStreamsResult in DDB: " + dynamoResult);
+        ListStreamsRequest lsr = ListStreamsRequest.builder().tableName(tableName).build();
+        ListStreamsResponse phoenixResult = phoenixDBStreamsClientV2.listStreams(lsr);
+        ListStreamsResponse dynamoResult = dynamoDbStreamsClient.listStreams(lsr);
+        LOGGER.info("ListStreamsResponse in Phoenix: " + phoenixResult);
+        LOGGER.info("ListStreamsResponse in DDB: " + dynamoResult);
 
-        Assert.assertEquals(dynamoResult.getStreams().size(), phoenixResult.getStreams().size());
-        Stream phoenixStream = phoenixResult.getStreams().get(0);
-        Assert.assertEquals(tableName, phoenixStream.getTableName());
+        Assert.assertEquals(dynamoResult.streams().size(), phoenixResult.streams().size());
+        Stream phoenixStream = phoenixResult.streams().get(0);
+        Assert.assertEquals(tableName, phoenixStream.tableName());
         SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS zzz");
-        Date date = df.parse(phoenixStream.getStreamLabel());
-        Assert.assertTrue(phoenixStream.getStreamArn().contains(String.valueOf(date.getTime())));
+        Date date = df.parse(phoenixStream.streamLabel());
+        Assert.assertTrue(phoenixStream.streamArn().contains(String.valueOf(date.getTime())));
     }
 }

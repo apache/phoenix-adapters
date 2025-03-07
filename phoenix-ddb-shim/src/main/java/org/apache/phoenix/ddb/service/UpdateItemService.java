@@ -1,8 +1,8 @@
 package org.apache.phoenix.ddb.service;
 
-import com.amazonaws.services.dynamodbv2.model.AttributeValue;
-import com.amazonaws.services.dynamodbv2.model.UpdateItemRequest;
-import com.amazonaws.services.dynamodbv2.model.UpdateItemResult;
+import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
+import software.amazon.awssdk.services.dynamodb.model.UpdateItemRequest;
+import software.amazon.awssdk.services.dynamodb.model.UpdateItemResponse;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.phoenix.ddb.utils.CommonServiceUtils;
 import org.apache.phoenix.ddb.utils.DMLUtils;
@@ -46,33 +46,33 @@ public class UpdateItemService {
             " THEN BSON_UPDATE_EXPRESSION(COL,'%s') \n" +
             " ELSE COL END";
 
-    public static UpdateItemResult updateItem(UpdateItemRequest request, String connectionUrl) {
-        UpdateItemResult result = new UpdateItemResult();
+    public static UpdateItemResponse updateItem(UpdateItemRequest request, String connectionUrl) {
+        UpdateItemResponse.Builder result = UpdateItemResponse.builder();
         try (Connection connection = DriverManager.getConnection(connectionUrl)) {
             connection.setAutoCommit(true);
             // get PTable and PK PColumns
             PhoenixConnection phoenixConnection = connection.unwrap(PhoenixConnection.class);
             PTable table = phoenixConnection.getTable(
-                    new PTableKey(phoenixConnection.getTenantId(), request.getTableName()));
+                    new PTableKey(phoenixConnection.getTenantId(), request.tableName()));
             List<PColumn> pkCols = table.getPKColumns();
 
             //create statement based on PKs and conditional expression
             PreparedStatement stmt = getPreparedStatement(connection, request, pkCols.size());
 
             // extract PKs from item
-            DMLUtils.setKeysOnStatement(stmt, pkCols, request.getKey());
+            DMLUtils.setKeysOnStatement(stmt, pkCols, request.key());
 
             //execute, auto commit is on
             LOGGER.info("Upsert Query for UpdateItem: {}", stmt);
             Map<String, AttributeValue> returnAttrs
-                    = DMLUtils.executeUpdate(stmt, request.getReturnValues(),
-                    request.getReturnValuesOnConditionCheckFailure(),
-                    request.getConditionExpression(), pkCols, false);
-            result.setAttributes(returnAttrs);
+                    = DMLUtils.executeUpdate(stmt, request.returnValues(),
+                    request.returnValuesOnConditionCheckFailure(),
+                    request.conditionExpression(), pkCols, false);
+            result.attributes(returnAttrs);
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
-        return result;
+        return result.build();
     }
 
     private static PreparedStatement getPreparedStatement(Connection conn,
@@ -80,12 +80,12 @@ public class UpdateItemService {
                                                           int numPKs)
             throws SQLException {
         PreparedStatement stmt;
-        String tableName = request.getTableName();
-        String condExpr = request.getConditionExpression();
-        Map<String, String> exprAttrNames =  request.getExpressionAttributeNames();
-        Map<String, AttributeValue> exprAttrVals =  request.getExpressionAttributeValues();
+        String tableName = request.tableName();
+        String condExpr = request.conditionExpression();
+        Map<String, String> exprAttrNames =  request.expressionAttributeNames();
+        Map<String, AttributeValue> exprAttrVals =  request.expressionAttributeValues();
         BsonDocument updateExpr = CommonServiceUtils
-                .getBsonUpdateExpression(request.getUpdateExpression(), exprAttrNames, exprAttrVals);
+                .getBsonUpdateExpression(request.updateExpression(), exprAttrNames, exprAttrVals);
         if (!StringUtils.isEmpty(condExpr)) {
             String bsonCondExpr = CommonServiceUtils
                     .getBsonConditionExpression(condExpr, exprAttrNames, exprAttrVals);

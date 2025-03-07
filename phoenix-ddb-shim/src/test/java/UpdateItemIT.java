@@ -1,7 +1,7 @@
-import com.amazonaws.services.dynamodbv2.model.AttributeValue;
-import com.amazonaws.services.dynamodbv2.model.ConditionalCheckFailedException;
-import com.amazonaws.services.dynamodbv2.model.UpdateItemRequest;
-import com.amazonaws.services.dynamodbv2.model.UpdateItemResult;
+import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
+import software.amazon.awssdk.services.dynamodb.model.ConditionalCheckFailedException;
+import software.amazon.awssdk.services.dynamodb.model.UpdateItemRequest;
+import software.amazon.awssdk.services.dynamodb.model.UpdateItemResponse;
 import org.junit.Assert;
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -14,8 +14,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static com.amazonaws.services.dynamodbv2.model.ReturnValue.ALL_NEW;
-import static com.amazonaws.services.dynamodbv2.model.ReturnValuesOnConditionCheckFailure.ALL_OLD;
+import static software.amazon.awssdk.services.dynamodb.model.ReturnValue.ALL_NEW;
+import static software.amazon.awssdk.services.dynamodb.model.ReturnValuesOnConditionCheckFailure.ALL_OLD;
 
 /**
  * Tests for UpdateItem API with conditional expressions.
@@ -36,9 +36,9 @@ public class UpdateItemIT extends UpdateItemBaseTests {
 
         // update item
         Map<String, AttributeValue> key = getKey();
-        UpdateItemRequest uir = new UpdateItemRequest().withTableName(tableName).withKey(key);
-        uir.setUpdateExpression("SET #1 = :v1, #2 = #2 + :v2, #3 = #3 - :v3");
-        uir.setConditionExpression("#4.#5[0].#6 = :condVal");
+        UpdateItemRequest.Builder uir = UpdateItemRequest.builder().tableName(tableName).key(key);
+        uir.updateExpression("SET #1 = :v1, #2 = #2 + :v2, #3 = #3 - :v3");
+        uir.conditionExpression("#4.#5[0].#6 = :condVal");
         Map<String, String> exprAttrNames = new HashMap<>();
         exprAttrNames.put("#1", "COL2");
         exprAttrNames.put("#2", "COL1");
@@ -46,17 +46,17 @@ public class UpdateItemIT extends UpdateItemBaseTests {
         exprAttrNames.put("#4", "Reviews");
         exprAttrNames.put("#5", "FiveStar");
         exprAttrNames.put("#6", "reviewer");
-        uir.setExpressionAttributeNames(exprAttrNames);
+        uir.expressionAttributeNames(exprAttrNames);
         Map<String, AttributeValue> exprAttrVal = new HashMap<>();
-        exprAttrVal.put(":v1", new AttributeValue().withS("TiTlE2"));
-        exprAttrVal.put(":v2", new AttributeValue().withN("3.2"));
-        exprAttrVal.put(":v3", new AttributeValue().withN("89.34"));
-        exprAttrVal.put(":condVal", new AttributeValue().withS("Alice"));
-        uir.setExpressionAttributeValues(exprAttrVal);
-        uir.setReturnValues(ALL_NEW);
-        UpdateItemResult dynamoResult = amazonDynamoDB.updateItem(uir);
-        UpdateItemResult phoenixResult = phoenixDBClient.updateItem(uir);
-        Assert.assertEquals(dynamoResult.getAttributes(), phoenixResult.getAttributes());
+        exprAttrVal.put(":v1", AttributeValue.builder().s("TiTlE2").build());
+        exprAttrVal.put(":v2", AttributeValue.builder().n("3.2").build());
+        exprAttrVal.put(":v3", AttributeValue.builder().n("89.34").build());
+        exprAttrVal.put(":condVal", AttributeValue.builder().s("Alice").build());
+        uir.expressionAttributeValues(exprAttrVal);
+        uir.returnValues(ALL_NEW);
+        UpdateItemResponse dynamoResult = dynamoDbClient.updateItem(uir.build());
+        UpdateItemResponse phoenixResult = phoenixDBClientV2.updateItem(uir.build());
+        Assert.assertEquals(dynamoResult.attributes(), phoenixResult.attributes());
         validateItem(tableName, key);
     }
 
@@ -66,26 +66,28 @@ public class UpdateItemIT extends UpdateItemBaseTests {
         createTableAndPutItem(tableName);
         // update item
         Map<String, AttributeValue> key = getKey();
-        UpdateItemRequest uir = new UpdateItemRequest().withTableName(tableName).withKey(key);
-        uir.setUpdateExpression("REMOVE #3");
-        uir.setConditionExpression("#3 > :v3");
+        UpdateItemRequest.Builder uir = UpdateItemRequest.builder().tableName(tableName).key(key);
+        uir.updateExpression("REMOVE #3");
+        uir.conditionExpression("#3 > :v3");
         Map<String, String> exprAttrNames = new HashMap<>();
         exprAttrNames.put("#3", "COL1");
-        uir.setExpressionAttributeNames(exprAttrNames);
+        uir.expressionAttributeNames(exprAttrNames);
         Map<String, AttributeValue> exprAttrVal = new HashMap<>();
-        exprAttrVal.put(":v3", new AttributeValue().withN("4.3"));
-        uir.setExpressionAttributeValues(exprAttrVal);
+        exprAttrVal.put(":v3", AttributeValue.builder().n("4.3").build());
+        uir.expressionAttributeValues(exprAttrVal);
+
+        Map<String, AttributeValue> dynamoExceptionItem = null;
         try {
-            amazonDynamoDB.updateItem(uir);
+            dynamoDbClient.updateItem(uir.build());
             Assert.fail("UpdateItem should throw exception when condition check fails.");
         } catch (ConditionalCheckFailedException e) {
-            Assert.assertNull(e.getItem());
+            dynamoExceptionItem = e.item();
         }
         try {
-            phoenixDBClient.updateItem(uir);
+            phoenixDBClientV2.updateItem(uir.build());
             Assert.fail("UpdateItem should throw exception when condition check fails.");
         } catch (ConditionalCheckFailedException e) {
-            Assert.assertNull(e.getItem());
+            Assert.assertEquals(dynamoExceptionItem, e.item());
         }
 
         validateItem(tableName, key);
@@ -97,28 +99,28 @@ public class UpdateItemIT extends UpdateItemBaseTests {
         createTableAndPutItem(tableName);
         // update item
         Map<String, AttributeValue> key = getKey();
-        UpdateItemRequest uir = new UpdateItemRequest().withTableName(tableName).withKey(key);
-        uir.setUpdateExpression("REMOVE #3");
-        uir.setConditionExpression("#3 > :v3");
+        UpdateItemRequest.Builder uir = UpdateItemRequest.builder().tableName(tableName).key(key);
+        uir.updateExpression("REMOVE #3");
+        uir.conditionExpression("#3 > :v3");
         Map<String, String> exprAttrNames = new HashMap<>();
         exprAttrNames.put("#3", "COL1");
-        uir.setExpressionAttributeNames(exprAttrNames);
+        uir.expressionAttributeNames(exprAttrNames);
         Map<String, AttributeValue> exprAttrVal = new HashMap<>();
-        exprAttrVal.put(":v3", new AttributeValue().withN("4.3"));
-        uir.setExpressionAttributeValues(exprAttrVal);
-        uir.setReturnValuesOnConditionCheckFailure(ALL_OLD);
+        exprAttrVal.put(":v3", AttributeValue.builder().n("4.3").build());
+        uir.expressionAttributeValues(exprAttrVal);
+        uir.returnValuesOnConditionCheckFailure(ALL_OLD);
         Map<String, AttributeValue> dynamoReturnAttr = null, phoenixReturnAttr = null;
         try {
-            amazonDynamoDB.updateItem(uir);
+            dynamoDbClient.updateItem(uir.build());
             Assert.fail("UpdateItem should throw exception when condition check fails.");
         } catch (ConditionalCheckFailedException e) {
-            dynamoReturnAttr = e.getItem();
+            dynamoReturnAttr = e.item();
         }
         try {
-            phoenixDBClient.updateItem(uir);
+            phoenixDBClientV2.updateItem(uir.build());
             Assert.fail("UpdateItem should throw exception when condition check fails.");
         } catch (ConditionalCheckFailedException e) {
-            phoenixReturnAttr = e.getItem();
+            phoenixReturnAttr = e.item();
         }
         Assert.assertEquals(dynamoReturnAttr, phoenixReturnAttr);
         validateItem(tableName, key);
@@ -133,34 +135,34 @@ public class UpdateItemIT extends UpdateItemBaseTests {
         AtomicInteger updateCount = new AtomicInteger(0);
         AtomicInteger errorCount = new AtomicInteger(0);
 
-        UpdateItemRequest uir = new UpdateItemRequest().withTableName(tableName).withKey(getKey());
-        uir.setUpdateExpression("SET #1 = #1 + :v1");
-        uir.setConditionExpression("#1 < :condVal");
+        UpdateItemRequest.Builder uir = UpdateItemRequest.builder().tableName(tableName).key(getKey());
+        uir.updateExpression("SET #1 = #1 + :v1");
+        uir.conditionExpression("#1 < :condVal");
         Map<String, String> exprAttrNames = new HashMap<>();
         exprAttrNames.put("#1", "COL1");
-        uir.setExpressionAttributeNames(exprAttrNames);
+        uir.expressionAttributeNames(exprAttrNames);
         Map<String, AttributeValue> exprAttrVal = new HashMap<>();
-        exprAttrVal.put(":v1", new AttributeValue().withN("10"));
-        exprAttrVal.put(":condVal", new AttributeValue().withN("5"));
-        uir.setExpressionAttributeValues(exprAttrVal);
-        uir.setReturnValues(ALL_NEW);
-        uir.setReturnValuesOnConditionCheckFailure(ALL_OLD);
-        Map<String, AttributeValue> newItem = amazonDynamoDB.updateItem(uir).getAttributes();
+        exprAttrVal.put(":v1", AttributeValue.builder().n("10").build());
+        exprAttrVal.put(":condVal", AttributeValue.builder().n("5").build());
+        uir.expressionAttributeValues(exprAttrVal);
+        uir.returnValues(ALL_NEW);
+        uir.returnValuesOnConditionCheckFailure(ALL_OLD);
+        Map<String, AttributeValue> newItem = dynamoDbClient.updateItem(uir.build()).attributes();
 
         for (int i = 0; i < 5; i++) {
             executorService.submit(() -> {
                 Map<String, AttributeValue> oldItem = null;
                 try {
-                    amazonDynamoDB.updateItem(uir);
+                    dynamoDbClient.updateItem(uir.build());
                 } catch (ConditionalCheckFailedException e) {
-                    oldItem = e.getItem();
+                    oldItem = e.item();
                 }
                 try {
-                    UpdateItemResult result = phoenixDBClient.updateItem(uir);
-                    Assert.assertEquals(newItem, result.getAttributes());
+                    UpdateItemResponse result = phoenixDBClientV2.updateItem(uir.build());
+                    Assert.assertEquals(newItem, result.attributes());
                     updateCount.incrementAndGet();
                 } catch (ConditionalCheckFailedException e) {
-                    Assert.assertEquals(oldItem, e.getItem());
+                    Assert.assertEquals(oldItem, e.item());
                     errorCount.incrementAndGet();
                 }
             });

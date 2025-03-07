@@ -1,16 +1,16 @@
 
 
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
-import com.amazonaws.services.dynamodbv2.model.AttributeValue;
-import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
-import com.amazonaws.services.dynamodbv2.model.PutItemRequest;
-import com.amazonaws.services.dynamodbv2.model.QueryRequest;
-import com.amazonaws.services.dynamodbv2.model.QueryResult;
-import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
+import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
+import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
+import software.amazon.awssdk.services.dynamodb.model.CreateTableRequest;
+import software.amazon.awssdk.services.dynamodb.model.PutItemRequest;
+import software.amazon.awssdk.services.dynamodb.model.QueryRequest;
+import software.amazon.awssdk.services.dynamodb.model.QueryResponse;
+import software.amazon.awssdk.services.dynamodb.model.ScalarAttributeType;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
-import org.apache.phoenix.ddb.PhoenixDBClient;
+import org.apache.phoenix.ddb.PhoenixDBClientV2;
 import org.apache.phoenix.end2end.ServerMetadataCacheTestImpl;
 import org.apache.phoenix.jdbc.PhoenixDriver;
 import org.apache.phoenix.util.PhoenixRuntime;
@@ -31,13 +31,13 @@ import static org.apache.phoenix.query.BaseTest.setUpConfigForMiniCluster;
 
 public class QueryProjectionIT {
 
-    private final AmazonDynamoDB amazonDynamoDB =
-            LocalDynamoDbTestBase.localDynamoDb().createV1Client();
+    private final DynamoDbClient dynamoDbClient =
+            LocalDynamoDbTestBase.localDynamoDb().createV2Client();
 
     private static HBaseTestingUtility utility = null;
     private static String tmpDir;
 
-    private static PhoenixDBClient phoenixDBClient = null;
+    private static PhoenixDBClientV2 phoenixDBClientV2 = null;
 
     private static String url;
 
@@ -55,22 +55,23 @@ public class QueryProjectionIT {
         String zkQuorum = "localhost:" + utility.getZkCluster().getClientPort();
         url = PhoenixRuntime.JDBC_PROTOCOL + PhoenixRuntime.JDBC_PROTOCOL_SEPARATOR + zkQuorum;
 
-        phoenixDBClient = new PhoenixDBClient(url);
-        AmazonDynamoDB amazonDynamoDB =
-                LocalDynamoDbTestBase.localDynamoDb().createV1Client();
+        phoenixDBClientV2 = new PhoenixDBClientV2(url);
+        DynamoDbClient dynamoDbClient =
+                LocalDynamoDbTestBase.localDynamoDb().createV2Client();
 
         //create table
         CreateTableRequest createTableRequest =
                 DDLTestUtils.getCreateTableRequest(TABLE_NAME, "attr_0",
                         ScalarAttributeType.S, null, null);
 
-        phoenixDBClient.createTable(createTableRequest);
-        amazonDynamoDB.createTable(createTableRequest);
+        phoenixDBClientV2.createTable(createTableRequest);
+        dynamoDbClient.createTable(createTableRequest);
 
         //put
-        PutItemRequest putItemRequest1 = new PutItemRequest(TABLE_NAME, getItem());
-        phoenixDBClient.putItem(putItemRequest1);
-        amazonDynamoDB.putItem(putItemRequest1);
+        PutItemRequest putItemRequest1
+                = PutItemRequest.builder().tableName(TABLE_NAME).item(getItem()).build();
+        phoenixDBClientV2.putItem(putItemRequest1);
+        dynamoDbClient.putItem(putItemRequest1);
 
     }
 
@@ -92,87 +93,86 @@ public class QueryProjectionIT {
     /* Item Schema */
     private static Map<String, AttributeValue> getItem() {
         Map<String, AttributeValue> item = new HashMap<>();
-        item.put("attr_0", new AttributeValue().withS("B"));
-        item.put("attr_1", new AttributeValue().withN("2"));
-        item.put("Id1", new AttributeValue().withN("-15"));
-        item.put("Id2", new AttributeValue().withN("150.10"));
-        item.put("title", new AttributeValue().withS("Title2"));
+        item.put("attr_0", AttributeValue.builder().s("B").build());
+        item.put("attr_1", AttributeValue.builder().n("2").build());
+        item.put("Id1", AttributeValue.builder().n("-15").build());
+        item.put("Id2", AttributeValue.builder().n("150.10").build());
+        item.put("title", AttributeValue.builder().s("Title2").build());
 
         // list of maps
         Map<String, AttributeValue> reviewMap1 = new HashMap<>();
-        reviewMap1.put("reviewer", new AttributeValue().withS("Bob1"));
+        reviewMap1.put("reviewer", AttributeValue.builder().s("Bob1").build());
         Map<String, AttributeValue> reviewMap2 = new HashMap<>();
-        reviewMap2.put("reviewer", new AttributeValue().withS("Bob2"));
+        reviewMap2.put("reviewer", AttributeValue.builder().s("Bob2").build());
         Map<String, AttributeValue> reviewMap3 = new HashMap<>();
-        reviewMap3.put("reviewer", new AttributeValue().withS("Bob3"));
+        reviewMap3.put("reviewer", AttributeValue.builder().s("Bob3").build());
         Map<String, AttributeValue> reviewMap4 = new HashMap<>();
-        reviewMap4.put("reviewer", new AttributeValue().withS("Bob4"));
+        reviewMap4.put("reviewer", AttributeValue.builder().s("Bob4").build());
         Map<String, AttributeValue> fiveStarMap = new HashMap<>();
-        fiveStarMap.put("FiveStar", new AttributeValue().withL(
-                new AttributeValue().withM(reviewMap1),
-                new AttributeValue().withM(reviewMap2),
-                new AttributeValue().withM(reviewMap3),
-                new AttributeValue().withM(reviewMap4)));
-        item.put("Reviews", new AttributeValue().withM(fiveStarMap));
+        fiveStarMap.put("FiveStar", AttributeValue.builder().l(
+                AttributeValue.builder().m(reviewMap1).build(),
+                AttributeValue.builder().m(reviewMap2).build(),
+                AttributeValue.builder().m(reviewMap3).build(),
+                AttributeValue.builder().m(reviewMap4).build()).build());
+        item.put("Reviews", AttributeValue.builder().m(fiveStarMap).build());
 
         // nested maps
         Map<String, AttributeValue> nestedMap1 = new HashMap<>();
-        nestedMap1.put("val1", new AttributeValue().withS("val1"));
-        nestedMap1.put("val2", new AttributeValue().withS("val2"));
-        nestedMap1.put("val3", new AttributeValue().withS("val3"));
+        nestedMap1.put("val1", AttributeValue.builder().s("val1").build());
+        nestedMap1.put("val2", AttributeValue.builder().s("val2").build());
+        nestedMap1.put("val3", AttributeValue.builder().s("val3").build());
         Map<String, AttributeValue> nestedMap2 = new HashMap<>();
-        nestedMap2.put("map2", new AttributeValue().withM(nestedMap1));
-        item.put("map3", new AttributeValue().withM(nestedMap2));
+        nestedMap2.put("map2", AttributeValue.builder().m(nestedMap1).build());
+        item.put("map3", AttributeValue.builder().m(nestedMap2).build());
 
         //nested list with different types
-        item.put("nestedList", new AttributeValue().withL(
-                new AttributeValue().withL(
-                        new AttributeValue().withS("a"),
-                        new AttributeValue().withN("1")
-                ),
-                new AttributeValue().withL(
-                        new AttributeValue().withL(
-                                new AttributeValue().withS("c"),
-                                new AttributeValue().withS("d")
-                        )
-                ),
-                new AttributeValue().withL(
-                        new AttributeValue().withS("b"),
-                        new AttributeValue().withN("2")
-                )
-        ));
+        item.put("nestedList", AttributeValue.builder().l(
+                AttributeValue.builder().l(
+                        AttributeValue.builder().s("a").build(),
+                        AttributeValue.builder().n("1").build()
+                ).build(),
+                AttributeValue.builder().l(
+                        AttributeValue.builder().l(
+                                AttributeValue.builder().s("c").build(),
+                                AttributeValue.builder().s("d").build()
+                        ).build()
+                ).build(),
+                AttributeValue.builder().l(
+                        AttributeValue.builder().s("b").build(),
+                        AttributeValue.builder().n("2").build()
+                ).build()
+        ).build());
 
         // nested list->list->map->list
         // track[0].shot[2][0].city.standard[2]
-        AttributeValue list1 = new AttributeValue().withL(
-                new AttributeValue().withN("1"),
-                new AttributeValue().withN("2"),
-                new AttributeValue().withN("3")
-        );
+        AttributeValue list1 = AttributeValue.builder().l(
+                AttributeValue.builder().n("1").build(),
+                AttributeValue.builder().n("2").build(),
+                AttributeValue.builder().n("3").build()
+        ).build();
         Map<String, AttributeValue> map1 = new HashMap<>();
         map1.put("standard", list1);
         Map<String, AttributeValue> map2 = new HashMap<>();
-        map2.put("city", new AttributeValue().withM(map1));
+        map2.put("city", AttributeValue.builder().m(map1).build());
 
-        AttributeValue shot = new AttributeValue().withL(
-                new AttributeValue().withL(),
-                new AttributeValue().withL(
-                        new AttributeValue().withS("x")
-                ),
-                new AttributeValue().withL(
-                        new AttributeValue().withM(map2),
-                        new AttributeValue().withS("s")
-                )
-        );
+        AttributeValue shot = AttributeValue.builder().l(
+                AttributeValue.builder().l(
+                        AttributeValue.builder().s("x").build()
+                ).build(),
+                AttributeValue.builder().l(
+                        AttributeValue.builder().m(map2).build(),
+                        AttributeValue.builder().s("s").build()
+                ).build()
+        ).build();
 
         Map<String, AttributeValue> shotMap = new HashMap<>();
         shotMap.put("shot", shot);
-        AttributeValue list2 = new AttributeValue().withL(
-                new AttributeValue().withM(shotMap),
-                new AttributeValue().withS("hello")
-        );
+        AttributeValue list2 = AttributeValue.builder().l(
+                AttributeValue.builder().m(shotMap).build(),
+                AttributeValue.builder().s("hello").build()
+        ).build();
         item.put("track", list2);
-        item.put("A.B", new AttributeValue().withS("not nested field 1"));
+        item.put("A.B", AttributeValue.builder().s("not nested field 1").build());
         return item;
     }
 
@@ -274,33 +274,33 @@ public class QueryProjectionIT {
         testWithMap("#0[0].#1[2][0].#2.#3[1],#0[0].#1[2][0].#2.#3[2], #0[0].#1[2][0].#2.#3[0], #4", exprAttrNames);
     }
 
-    private QueryRequest getQueryRequest(Map<String, String> exprAttrNames) {
-        QueryRequest qr = new QueryRequest(TABLE_NAME);
-        qr.setKeyConditionExpression("#hashKey = :v0");
+    private QueryRequest.Builder getQueryRequest(Map<String, String> exprAttrNames) {
+        QueryRequest.Builder qr = QueryRequest.builder().tableName(TABLE_NAME);
+        qr.keyConditionExpression("#hashKey = :v0");
         if (exprAttrNames == null) exprAttrNames = new HashMap<>();
         exprAttrNames.put("#hashKey", "attr_0");
-        qr.setExpressionAttributeNames(exprAttrNames);
+        qr.expressionAttributeNames(exprAttrNames);
         Map<String, AttributeValue> exprAttrVal = new HashMap<>();
-        exprAttrVal.put(":v0", new AttributeValue().withS("B"));
-        qr.setExpressionAttributeValues(exprAttrVal);
+        exprAttrVal.put(":v0", AttributeValue.builder().s("B").build());
+        qr.expressionAttributeValues(exprAttrVal);
         return qr;
     }
 
     private void test(String projectionExpr) {
-        QueryRequest qr = getQueryRequest(null);
-        qr.setProjectionExpression(projectionExpr);
-        QueryResult phoenixResult = phoenixDBClient.query(qr);
-        QueryResult dynamoResult = amazonDynamoDB.query(qr);
-        Assert.assertEquals(dynamoResult.getCount(), phoenixResult.getCount());
-        Assert.assertEquals(dynamoResult.getItems().get(0), phoenixResult.getItems().get(0));
+        QueryRequest.Builder qr = getQueryRequest(null);
+        qr.projectionExpression(projectionExpr);
+        QueryResponse phoenixResult = phoenixDBClientV2.query(qr.build());
+        QueryResponse dynamoResult = dynamoDbClient.query(qr.build());
+        Assert.assertEquals(dynamoResult.count(), phoenixResult.count());
+        Assert.assertEquals(dynamoResult.items().get(0), phoenixResult.items().get(0));
     }
 
     private void testWithMap(String projectionExpr, Map<String, String> exprAttrNames) {
-        QueryRequest qr = getQueryRequest(exprAttrNames);
-        qr.setProjectionExpression(projectionExpr);
-        QueryResult phoenixResult = phoenixDBClient.query(qr);
-        QueryResult dynamoResult = amazonDynamoDB.query(qr);
-        Assert.assertEquals(dynamoResult.getCount(), phoenixResult.getCount());
-        Assert.assertEquals(dynamoResult.getItems().get(0), phoenixResult.getItems().get(0));
+        QueryRequest.Builder qr = getQueryRequest(exprAttrNames);
+        qr.projectionExpression(projectionExpr);
+        QueryResponse phoenixResult = phoenixDBClientV2.query(qr.build());
+        QueryResponse dynamoResult = dynamoDbClient.query(qr.build());
+        Assert.assertEquals(dynamoResult.count(), phoenixResult.count());
+        Assert.assertEquals(dynamoResult.items().get(0), phoenixResult.items().get(0));
     }
 }

@@ -1,9 +1,9 @@
 package org.apache.phoenix.ddb.utils;
 
-import com.amazonaws.AmazonWebServiceResult;
-import com.amazonaws.services.dynamodbv2.model.AttributeValue;
-import com.amazonaws.services.dynamodbv2.model.QueryResult;
-import com.amazonaws.services.dynamodbv2.model.ScanResult;
+import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
+import software.amazon.awssdk.services.dynamodb.model.DynamoDbResponse;
+import software.amazon.awssdk.services.dynamodb.model.QueryResponse;
+import software.amazon.awssdk.services.dynamodb.model.ScanResponse;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.phoenix.ddb.bson.BsonDocumentToDdbAttributes;
 import org.apache.phoenix.schema.PColumn;
@@ -26,14 +26,14 @@ public class DQLUtils {
 
     /**
      * Execute the given PreparedStatement, collect all returned items with projected attributes
-     * and return QueryReuslt or ScanResult.
+     * and return QueryReuslt or ScanResponse.
      */
-    public static AmazonWebServiceResult executeStatementReturnResult(boolean isQuery,
-                                                                      PreparedStatement stmt,
-                                                                      List<String> projectionAttributes,
-                                                                      boolean useIndex,
-                                                                      List<PColumn> tablePKCols,
-                                                                      List<PColumn> indexPKCols)
+    public static DynamoDbResponse executeStatementReturnResult(boolean isQuery,
+                                                                PreparedStatement stmt,
+                                                                List<String> projectionAttributes,
+                                                                boolean useIndex,
+                                                                List<PColumn> tablePKCols,
+                                                                List<PColumn> indexPKCols)
             throws SQLException {
         int count = 0;
         List<Map<String, AttributeValue>> items = new ArrayList<>();
@@ -50,11 +50,11 @@ public class DQLUtils {
                     = DQLUtils.getKeyFromDoc(lastBsonDoc, useIndex, tablePKCols, indexPKCols);
             int countRowsScanned = (int) PhoenixUtils.getRowsScanned(rs);
             if (isQuery) {
-                return new QueryResult().withItems(items).withCount(count)
-                        .withLastEvaluatedKey(lastKey).withScannedCount(countRowsScanned);
+                return QueryResponse.builder().items(items).count(count)
+                        .lastEvaluatedKey(lastKey).scannedCount(countRowsScanned).build();
             } else {
-                return new ScanResult().withItems(items).withCount(count)
-                        .withLastEvaluatedKey(lastKey).withScannedCount(countRowsScanned);
+                return ScanResponse.builder().items(items).count(count)
+                        .lastEvaluatedKey(lastKey).scannedCount(countRowsScanned).build();
             }
         }
     }
@@ -122,27 +122,31 @@ public class DQLUtils {
      * did not have a condition on the sortKey.
      */
     public static void addExclusiveStartKeyCondition(boolean isQuery,
+                                                     boolean isFilterAddedForScan,
                                                      StringBuilder queryBuilder,
                                                      Map<String, AttributeValue> exclusiveStartKey,
                                                      boolean useIndex,
                                                      PColumn partitionKeyPKCol,
                                                      PColumn sortKeyPKCol) {
-        if (exclusiveStartKey != null) {
-            if (sortKeyPKCol != null) {
-                //append sortKey condition if there is a sortKey
-                String name = sortKeyPKCol.getName().toString();
-                name =  (useIndex)
-                        ? name.substring(1)
-                        : CommonServiceUtils.getEscapedArgument(name);
-                queryBuilder.append(" AND " + name + " > ? ");
+        if (exclusiveStartKey != null && !exclusiveStartKey.isEmpty()) {
+            // query, only sort key
+            if (isQuery) {
+                if (sortKeyPKCol != null) {
+                    //append sortKey condition if there is a sortKey
+                    String name = sortKeyPKCol.getName().toString();
+                    name =  (useIndex)
+                            ? name.substring(1)
+                            : CommonServiceUtils.getEscapedArgument(name);
+                    queryBuilder.append(" AND " + name + " > ? ");
+                }
             }
-            // also append partitionKey condition for Scans
-            if (!isQuery) {
-                String name = partitionKeyPKCol.getName().toString();
-                name =  (useIndex)
-                        ? name.substring(1)
-                        : CommonServiceUtils.getEscapedArgument(name);
-                queryBuilder.append(" AND " + name + " > ? ");
+            // scan
+            else {
+                if (isFilterAddedForScan) {
+                    queryBuilder.append(" AND ");
+                }
+                queryBuilder.append(getExclusiveStartKeyConditionForScan(
+                        partitionKeyPKCol, sortKeyPKCol, useIndex));
             }
         }
     }
@@ -176,13 +180,13 @@ public class DQLUtils {
                                                AttributeValue attrVal, boolean isLike)
             throws SQLException {
         // TODO: does LIKE work with varbinary_encoded
-        if (attrVal.getN() != null) {
-            stmt.setDouble(index, Double.parseDouble(attrVal.getN()));
-        } else if (attrVal.getS() != null) {
-            String stringVal = isLike ? attrVal.getS()+"%" : attrVal.getS();
+        if (attrVal.n() != null) {
+            stmt.setDouble(index, Double.parseDouble(attrVal.n()));
+        } else if (attrVal.s() != null) {
+            String stringVal = isLike ? attrVal.s()+"%" : attrVal.s();
             stmt.setString(index, stringVal);
-        } else if (attrVal.getB() != null) {
-            stmt.setBytes(index, attrVal.getB().array());
+        } else if (attrVal.b() != null) {
+            stmt.setBytes(index, attrVal.b().asByteArray());
         }
     }
 
@@ -192,5 +196,26 @@ public class DQLUtils {
     public static Properties getConnectionProps() {
         Properties props = PhoenixUtils.getConnectionProps();
         return props;
+    }
+
+    /**
+     * last evaluated key as k1 --> pk1 > k1
+     * last evaluated key as k1,k2 --> (pk1 = k1 AND pk2 > k2) OR pk1 > k1)
+     */
+    private static String getExclusiveStartKeyConditionForScan(PColumn partitionKeyPKCol,
+                                                               PColumn sortKeyPKCol,
+                                                               boolean useIndex) {
+        String pkName = partitionKeyPKCol.getName().toString();
+        pkName =  (useIndex)
+                ? pkName.substring(1)
+                : CommonServiceUtils.getEscapedArgument(pkName);
+        if (sortKeyPKCol == null) {
+            return pkName + " > ?";
+        }
+        String skName = sortKeyPKCol.getName().toString();
+        skName =  (useIndex)
+                ? skName.substring(1)
+                : CommonServiceUtils.getEscapedArgument(skName);
+        return String.format(" ((%s = ? AND %s > ?) OR %s > ?) ", pkName, skName, pkName);
     }
 }
