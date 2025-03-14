@@ -297,11 +297,6 @@ public class BatchGetItemIT {
         BatchGetItemRequest gI = BatchGetItemRequest.builder().requestItems(requestItems).build();
         BatchGetItemResponse dynamoResult = dynamoDbClient.batchGetItem(gI);
         BatchGetItemResponse phoenixResult = phoenixDBClientV2.batchGetItem(gI);
-        //sort both the responses since dynamodb doesnt guarantee any order
-        dynamoResult.responses().get("FORUM").
-                sort(Comparator.comparingInt(entry -> (int) Integer.parseInt(entry.get("Id").n())));
-        phoenixResult.responses().get("FORUM").
-                sort(Comparator.comparingInt(entry -> (int) Integer.parseInt(entry.get("Id").n())));
         Assert.assertEquals(dynamoResult.responses(), phoenixResult.responses());
     }
 

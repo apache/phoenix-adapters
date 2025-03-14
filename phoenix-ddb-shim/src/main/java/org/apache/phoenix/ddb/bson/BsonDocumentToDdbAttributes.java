@@ -20,10 +20,10 @@ package org.apache.phoenix.ddb.bson;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
@@ -62,36 +62,53 @@ public class BsonDocumentToDdbAttributes {
     if (attributesToProject == null || attributesToProject.isEmpty()) {
       return getFullItem(bsonDocument);
     }
-    Map<String, AttributeValue> map = new HashMap<>();
+    BsonDocument newDocument = new BsonDocument();
     for (String attribute : attributesToProject) {
-      updateNewBsonDocumentByFieldKeyValue(attribute, bsonDocument, map);
+      updateNewBsonDocumentByFieldKeyValue(attribute, bsonDocument, newDocument);
     }
-    removeNullListElements(map);
-    return map;
+    removeNullListElements(newDocument);
+    return getFullItem(newDocument);
   }
 
-  private static void removeNullListElements(Map<String, AttributeValue> map) {
-    for (Map.Entry<String, AttributeValue> entry : map.entrySet()) {
-      if (entry.getValue().hasM()) {
-        removeNullListElements(entry.getValue().m());
-      } else if (entry.getValue().hasL()) {
-        removeNullListElements(entry.getValue());
-      }
-    }
-  }
-
-  private static void removeNullListElements(AttributeValue listValue) {
-    List<AttributeValue> curList = listValue.l();
-    List<AttributeValue> newList =
-        curList.stream().filter(Objects::nonNull).collect(Collectors.toList());
-    listValue = listValue.toBuilder().l(newList).build();
-    listValue.l().forEach(attributeValue -> {
-      if (attributeValue.hasM()) {
-        removeNullListElements(attributeValue.m());
-      } else if (attributeValue.hasL()) {
-        removeNullListElements(attributeValue);
+  private static void removeNullListElements(BsonDocument document) {
+    List<String> keysToRemove = new ArrayList<>();
+    document.forEach((key, value) -> {
+      if (value.isDocument()) {
+        BsonDocument doc = value.asDocument();
+        removeNullListElements(doc);
+        if (doc.isEmpty()) {
+          keysToRemove.add(key);
+        }
+      } else if (value.isArray()) {
+        BsonArray array = value.asArray();
+        removeNullListElements(array);
+        if (array.isEmpty()) {
+          keysToRemove.add(key);
+        }
       }
     });
+    keysToRemove.forEach(document::remove);
+  }
+
+  private static void removeNullListElements(BsonArray listValue) {
+    listValue.removeIf(Objects::isNull);
+    Iterator<BsonValue> iterator = listValue.iterator();
+    while (iterator.hasNext()) {
+      BsonValue value = iterator.next();
+      if (value.isDocument()) {
+        BsonDocument doc = value.asDocument();
+        removeNullListElements(doc);
+        if (doc.isEmpty()) {
+          iterator.remove();
+        }
+      } else if (value.isArray()) {
+        BsonArray array = value.asArray();
+        removeNullListElements(array);
+        if (array.isEmpty()) {
+          iterator.remove();
+        }
+      }
+    }
   }
 
   /**
@@ -175,67 +192,6 @@ public class BsonDocumentToDdbAttributes {
     throw new RuntimeException("Invalid data type of BsonValue");
   }
 
-  private static void updateAttributeValue(BsonValue bsonValue, AttributeValue.Builder targetValue) {
-    if (bsonValue.isString()) {
-      targetValue.s(((BsonString) bsonValue).getValue());
-    } else if (bsonValue.isNumber() || bsonValue.isDecimal128()) {
-      targetValue.n(numberToString(getNumberFromBsonNumber((BsonNumber) bsonValue)));
-    } else if (bsonValue.isBinary()) {
-      BsonBinary bsonBinary = (BsonBinary) bsonValue;
-      targetValue.b(SdkBytes.fromByteArray(bsonBinary.getData()));
-    } else if (bsonValue.isBoolean()) {
-      targetValue.bool(((BsonBoolean) bsonValue).getValue());
-    } else if (bsonValue.isNull()) {
-      targetValue.nul(true);
-    } else if (bsonValue.isDocument()) {
-      BsonDocument bsonDocument = (BsonDocument) bsonValue;
-      if (bsonDocument.size() == 1 && bsonDocument.containsKey("$set")) {
-        BsonValue value = bsonDocument.get("$set");
-        if (!value.isArray()) {
-          throw new IllegalArgumentException("$set is reserved for Set datatype");
-        }
-        BsonArray bsonArray = (BsonArray) value;
-        if (bsonArray.isEmpty()) {
-          throw new IllegalArgumentException("Set cannot be empty");
-        }
-        BsonValue firstElement = bsonArray.get(0);
-        if (firstElement.isString()) {
-          List<String> stringSet = new ArrayList<>();
-          bsonArray.getValues().forEach(val -> stringSet.add(((BsonString) val).getValue()));
-          targetValue.ss(stringSet);
-        } else if (firstElement.isNumber() || firstElement.isDecimal128()) {
-          List<String> numberSet = new ArrayList<>();
-          bsonArray.getValues().forEach(val -> numberSet.add(
-                  numberToString(getNumberFromBsonNumber((BsonNumber) val))));
-          targetValue.ns(numberSet);
-        } else if (firstElement.isBinary()) {
-          List<SdkBytes> binarySet = new ArrayList<>();
-          bsonArray.getValues().forEach(val -> binarySet.add(
-                  SdkBytes.fromByteArray(((BsonBinary) val).getData())));
-          targetValue.bs(binarySet);
-        } else {
-          throw new IllegalArgumentException("Invalid set type");
-        }
-      } else {
-        Map<String, AttributeValue> map = new HashMap<>();
-        for (Map.Entry<String, BsonValue> entry : bsonDocument.entrySet()) {
-          updateMapEntries(entry, map);
-        }
-        targetValue.m(map);
-      }
-    } else if (bsonValue.isArray()) {
-      BsonArray bsonArray = (BsonArray) bsonValue;
-      List<AttributeValue> attributeValueList = new ArrayList<>();
-      for (BsonValue bsonArrayValue : bsonArray.getValues()) {
-        attributeValueList.add(getAttributeValue(bsonArrayValue));
-      }
-      targetValue.l(attributeValueList);
-    } else {
-      LOGGER.error("Invalid data type of BsonValue: {}", bsonValue);
-      throw new RuntimeException("Invalid data type of BsonValue");
-    }
-  }
-
   private static AttributeValue getNumber(BsonNumber bsonNumber) {
     AttributeValue attributeValue = AttributeValue.builder()
             .n(numberToString(getNumberFromBsonNumber(bsonNumber))).build();
@@ -280,7 +236,8 @@ public class BsonDocumentToDdbAttributes {
    * Traverse the given bsonDocument and extract the values for given attributeName into result.
    */
   private static void updateNewBsonDocumentByFieldKeyValue(final String documentFieldKey,
-                                                           final BsonDocument bsonDocument, final Map<String, AttributeValue> map) {
+                                                           final BsonDocument bsonDocument,
+                                                           final BsonDocument newDocument) {
     if ((documentFieldKey.contains(".") && bsonDocument.get(documentFieldKey) == null)
             || documentFieldKey.contains("[")) {
       StringBuilder sb = new StringBuilder();
@@ -290,37 +247,35 @@ public class BsonDocumentToDdbAttributes {
           if (value == null) {
             return;
           }
-          map.putIfAbsent(sb.toString(), AttributeValue.builder().m(new HashMap<>()).build());
-          updateNestedAttributeVal(value, i, documentFieldKey, map.get(sb.toString()).toBuilder());
+          newDocument.putIfAbsent(sb.toString(), new BsonDocument());
+          updateNestedAttributeVal(value, i, documentFieldKey, newDocument.get(sb.toString()));
           return;
         } else if (documentFieldKey.charAt(i) == '[') {
           BsonValue value = bsonDocument.get(sb.toString());
           if (value == null) {
             return;
           }
-          map.putIfAbsent(sb.toString(), AttributeValue.builder().l(new ArrayList<>()).build());
-          updateNestedAttributeVal(value, i, documentFieldKey, map.get(sb.toString()).toBuilder());
+          newDocument.putIfAbsent(sb.toString(), new BsonArray());
+          updateNestedAttributeVal(value, i, documentFieldKey, newDocument.get(sb.toString()));
           return;
         } else {
           sb.append(documentFieldKey.charAt(i));
         }
       }
     } else {
-      map.put(documentFieldKey, getAttributeValue(bsonDocument.get(documentFieldKey)));
+      newDocument.put(documentFieldKey, bsonDocument.get(documentFieldKey));
     }
   }
 
   public static void updateNestedAttributeVal(BsonValue value, int idx,
-      final String documentFieldKey, AttributeValue.Builder attributeValue) {
-    if (idx == documentFieldKey.length()) {
-      updateAttributeValue(value, attributeValue);
-      return;
-    }
+      final String documentFieldKey, BsonValue newValue) {
     int curIdx = idx;
     if (documentFieldKey.charAt(curIdx) == '.') {
       BsonDocument nestedDocument =
               value != null && value.isDocument() ? (BsonDocument) value : null;
-      if (nestedDocument == null) {
+      BsonDocument newNestedDocument =
+              newValue != null && newValue.isDocument() ? (BsonDocument) newValue : null;
+      if (nestedDocument == null || newNestedDocument == null) {
         LOGGER.warn("Incorrect access. Should have found nested map for value: {}", value);
         return;
       }
@@ -332,25 +287,24 @@ public class BsonDocumentToDdbAttributes {
           if (nestedValue == null) {
             return;
           }
-          final Map<String, AttributeValue> map = attributeValue.build().m();
-          map.putIfAbsent(sb.toString(), AttributeValue.builder().m(new HashMap<>()).build());
-          updateNestedAttributeVal(nestedValue, curIdx, documentFieldKey, map.get(sb.toString()).toBuilder());
+          newNestedDocument.putIfAbsent(sb.toString(), new BsonDocument());
+          updateNestedAttributeVal(nestedValue, curIdx, documentFieldKey,
+                  newNestedDocument.get(sb.toString()));
           return;
         } else if (documentFieldKey.charAt(curIdx) == '[') {
           BsonValue nestedValue = nestedDocument.get(sb.toString());
           if (nestedValue == null) {
             return;
           }
-          final Map<String, AttributeValue> map = attributeValue.build().m();
-          map.putIfAbsent(sb.toString(), AttributeValue.builder().l(new ArrayList<>()).build());
-          updateNestedAttributeVal(nestedValue, curIdx, documentFieldKey, map.get(sb.toString()).toBuilder());
+          newNestedDocument.putIfAbsent(sb.toString(), new BsonArray());
+          updateNestedAttributeVal(nestedValue, curIdx, documentFieldKey,
+                  newNestedDocument.get(sb.toString()));
           return;
         } else {
           sb.append(documentFieldKey.charAt(curIdx));
         }
       }
-      attributeValue.build().m()
-              .put(sb.toString(), getAttributeValue(nestedDocument.get(sb.toString())));
+      newNestedDocument.put(sb.toString(), nestedDocument.get(sb.toString()));
       return;
     } else if (documentFieldKey.charAt(curIdx) == '[') {
       curIdx++;
@@ -362,7 +316,9 @@ public class BsonDocumentToDdbAttributes {
       curIdx++;
       int arrayIdx = Integer.parseInt(arrayIdxStr.toString());
       BsonArray nestedArray = value != null && value.isArray() ? (BsonArray) value : null;
-      if (nestedArray == null) {
+      BsonArray newNestedArray = newValue != null && newValue.isArray() ? (BsonArray) newValue
+              : null;
+      if (nestedArray == null || newNestedArray == null) {
         LOGGER.warn("Incorrect access. Should have found nested list for value: {}", value);
         return;
       }
@@ -373,24 +329,23 @@ public class BsonDocumentToDdbAttributes {
         return;
       }
       BsonValue valueAtIdx = nestedArray.get(arrayIdx);
-      List<AttributeValue> list = attributeValue.build().l();
-      if (list.size() <= arrayIdx) {
-        for (int i = list.size(); i <= arrayIdx; i++) {
-          list.add(null);
+      if (newNestedArray.size() <= arrayIdx) {
+        for (int i = newNestedArray.size(); i <= arrayIdx; i++) {
+          newNestedArray.add(null);
         }
       }
       if (curIdx == documentFieldKey.length()) {
-        list.set(arrayIdx, getAttributeValue(valueAtIdx));
+        newNestedArray.set(arrayIdx, valueAtIdx);
         return;
       }
-      if (list.get(arrayIdx) == null) {
+      if (newNestedArray.get(arrayIdx) == null) {
         if (documentFieldKey.charAt(curIdx) == '.') {
-          list.set(arrayIdx, AttributeValue.builder().m(new HashMap<>()).build());
+          newNestedArray.set(arrayIdx, new BsonDocument());
         } else if (documentFieldKey.charAt(curIdx) == '[') {
-          list.set(arrayIdx, AttributeValue.builder().l(new ArrayList<>()).build());
+          newNestedArray.set(arrayIdx, new BsonArray());
         }
       }
-      updateNestedAttributeVal(valueAtIdx, curIdx, documentFieldKey, list.get(arrayIdx).toBuilder());
+      updateNestedAttributeVal(valueAtIdx, curIdx, documentFieldKey, newNestedArray.get(arrayIdx));
       return;
     }
     LOGGER.warn("This is erroneous case. getNestedFieldVal should not be used for "
