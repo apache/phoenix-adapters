@@ -1,0 +1,293 @@
+package org.apache.phoenix.ddb.rest;
+
+import java.lang.management.ManagementFactory;
+import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.ArrayBlockingQueue;
+
+import org.apache.hadoop.hbase.zookeeper.ZKConfig;
+import org.apache.phoenix.ddb.rest.util.Constants;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.ServerName;
+import org.apache.hadoop.hbase.http.HttpServerUtil;
+import org.apache.hadoop.hbase.log.HBaseMarkers;
+import org.apache.hadoop.hbase.security.UserProvider;
+import org.apache.hadoop.hbase.util.DNS;
+import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
+import org.apache.hadoop.hbase.util.ReflectionUtils;
+import org.apache.hadoop.hbase.util.Strings;
+
+import org.apache.hbase.thirdparty.com.fasterxml.jackson.jaxrs.json.JacksonJaxbJsonProvider;
+import org.apache.hbase.thirdparty.org.apache.commons.cli.CommandLine;
+import org.apache.hbase.thirdparty.org.apache.commons.cli.HelpFormatter;
+import org.apache.hbase.thirdparty.org.apache.commons.cli.Options;
+import org.apache.hbase.thirdparty.org.apache.commons.cli.ParseException;
+import org.apache.hbase.thirdparty.org.apache.commons.cli.PosixParser;
+import org.apache.hbase.thirdparty.org.eclipse.jetty.jmx.MBeanContainer;
+import org.apache.hbase.thirdparty.org.eclipse.jetty.server.HttpConfiguration;
+import org.apache.hbase.thirdparty.org.eclipse.jetty.server.HttpConnectionFactory;
+import org.apache.hbase.thirdparty.org.eclipse.jetty.server.Server;
+import org.apache.hbase.thirdparty.org.eclipse.jetty.server.ServerConnector;
+import org.apache.hbase.thirdparty.org.eclipse.jetty.servlet.ServletContextHandler;
+import org.apache.hbase.thirdparty.org.eclipse.jetty.servlet.ServletHolder;
+import org.apache.hbase.thirdparty.org.eclipse.jetty.util.thread.QueuedThreadPool;
+import org.apache.hbase.thirdparty.org.glassfish.jersey.server.ResourceConfig;
+import org.apache.hbase.thirdparty.org.glassfish.jersey.servlet.ServletContainer;
+
+/**
+ * Main class for launching REST gateway as a servlet hosted by Jetty.
+ */
+public class RESTServer {
+
+    private static final Logger LOG = LoggerFactory.getLogger(RESTServer.class);
+
+    private final Configuration conf;
+    private final UserProvider userProvider;
+    private Server server;
+    //    private InfoServer infoServer;
+    private ServerName serverName;
+
+    public RESTServer(Configuration conf) {
+        this.conf = conf;
+        this.userProvider = UserProvider.instantiate(conf);
+    }
+
+    private static void printUsageAndExit(Options options, int exitCode) {
+        HelpFormatter formatter = new HelpFormatter();
+        formatter.printHelp("phoenix ddb rest start", "", options,
+                "\nTo run the REST server as a daemon, execute "
+                        + "phoenix-ddb.sh start|stop rest [-i <port>] [-p <port>] [-z <zk_quorum_for_phoenix_connection>]\n",
+                true);
+        System.exit(exitCode);
+    }
+
+    private static void parseCommandLine(String[] args, Configuration conf) {
+        Options options = new Options();
+        options.addOption("p", "port", true,
+                "Port to bind to [default: " + Constants.DEFAULT_LISTEN_PORT + "]");
+        options.addOption("i", "infoport", true, "Port for WEB UI");
+        options.addOption("z", "zkquorum", true, "ZK Quorum to be used for Phoenix Connection");
+
+        CommandLine commandLine = null;
+        try {
+            commandLine = new PosixParser().parse(options, args);
+        } catch (ParseException e) {
+            LOG.error("Could not parse: ", e);
+            printUsageAndExit(options, -1);
+        }
+
+        // check for user-defined port setting, if so override the conf
+        if (commandLine != null && commandLine.hasOption("port")) {
+            String val = commandLine.getOptionValue("port");
+            conf.setInt(Constants.PHOENIX_DDB_REST_PORT, Integer.parseInt(val));
+            LOG.debug("port set to {}", val);
+        }
+
+        // check for user-defined info server port setting, if so override the conf
+        if (commandLine != null && commandLine.hasOption("infoport")) {
+            String val = commandLine.getOptionValue("infoport");
+            conf.setInt(Constants.PHOENIX_DDB_REST_INFO_PORT, Integer.parseInt(val));
+            LOG.debug("WEB UI port set to {}", val);
+        }
+
+        // check for user-defined zookeeper quorum setting, if so override the conf
+        if (commandLine != null && commandLine.hasOption("zkquorum")) {
+            String val = commandLine.getOptionValue("zkquorum");
+            conf.set(Constants.PHOENIX_DDB_ZK_QUORUM, val);
+            LOG.debug("ZK Quorum set to {}", val);
+        }
+
+        List<String> remainingArgs =
+                commandLine != null ? commandLine.getArgList() : new ArrayList<>();
+        if (remainingArgs.size() != 1) {
+            printUsageAndExit(options, 1);
+        }
+
+        String command = remainingArgs.get(0);
+        if ("start".equals(command)) {
+            // continue and start container
+        } else if ("stop".equals(command)) {
+            System.exit(1);
+        } else {
+            printUsageAndExit(options, 1);
+        }
+    }
+
+    /**
+     * Runs the REST server.
+     */
+    public synchronized void run() throws Exception {
+        Class<? extends ServletContainer> containerClass = ServletContainer.class;
+
+        if (conf.get(Constants.PHOENIX_DDB_ZK_QUORUM) == null) {
+            String clientZkQuorumServers = ZKConfig.getClientZKQuorumServersString(conf);
+            String quorum = clientZkQuorumServers != null ?
+                    clientZkQuorumServers :
+                    ZKConfig.getZKQuorumServersString(conf);
+            quorum = quorum.replaceAll(":", "\\\\:");
+            conf.set(Constants.PHOENIX_DDB_ZK_QUORUM, quorum);
+        }
+
+        RESTServlet servlet = RESTServlet.getInstance(conf, userProvider);
+
+        // set up the Jersey servlet container for Jetty
+        ResourceConfig application = new ResourceConfig().packages("org.apache.phoenix.ddb.rest")
+                .register(JacksonJaxbJsonProvider.class);
+        // Using our custom ServletContainer is tremendously important. This is what makes sure the
+        // UGI.doAs() is done for the remoteUser, and calls are not made as the REST server itself.
+        ServletContainer servletContainer =
+                ReflectionUtils.newInstance(containerClass, application);
+        ServletHolder sh = new ServletHolder(servletContainer);
+
+        // Set the default max thread number to 100 to limit
+        // the number of concurrent requests so that REST server doesn't OOM easily.
+        // Jetty set the default max thread number to 250, if we don't set it.
+        //
+        // Our default min thread number 2 is the same as that used by Jetty.
+        int maxThreads =
+                servlet.getConfiguration().getInt(Constants.REST_THREAD_POOL_THREADS_MAX, 125);
+        int minThreads =
+                servlet.getConfiguration().getInt(Constants.REST_THREAD_POOL_THREADS_MIN, 2);
+        // Use the default queue (unbounded with Jetty 9.3) if the queue size is negative, otherwise use
+        // bounded {@link ArrayBlockingQueue} with the given size
+        int queueSize =
+                servlet.getConfiguration().getInt(Constants.REST_THREAD_POOL_TASK_QUEUE_SIZE, -1);
+        int idleTimeout = servlet.getConfiguration()
+                .getInt(Constants.REST_THREAD_POOL_THREAD_IDLE_TIMEOUT, 60000);
+        QueuedThreadPool threadPool = queueSize > 0 ?
+                new QueuedThreadPool(maxThreads, minThreads, idleTimeout,
+                        new ArrayBlockingQueue<>(queueSize)) :
+                new QueuedThreadPool(maxThreads, minThreads, idleTimeout);
+
+        this.server = new Server(threadPool);
+
+        // Setup JMX
+        MBeanContainer mbContainer = new MBeanContainer(ManagementFactory.getPlatformMBeanServer());
+        server.addEventListener(mbContainer);
+        server.addBean(mbContainer);
+
+        String host =
+                servlet.getConfiguration().get("phoenix.ddb.rest.host", Constants.DEFAULT_HOST);
+        int servicePort = servlet.getConfiguration()
+                .getInt(Constants.PHOENIX_DDB_REST_PORT, Constants.DEFAULT_LISTEN_PORT);
+        int httpHeaderCacheSize = servlet.getConfiguration()
+                .getInt(Constants.HTTP_HEADER_CACHE_SIZE, Constants.DEFAULT_HTTP_HEADER_CACHE_SIZE);
+
+        HttpConfiguration httpConfig = new HttpConfiguration();
+        httpConfig.setSecureScheme("https");
+        httpConfig.setSecurePort(servicePort);
+        httpConfig.setHeaderCacheSize(httpHeaderCacheSize);
+        httpConfig.setRequestHeaderSize(Constants.DEFAULT_HTTP_MAX_HEADER_SIZE);
+        httpConfig.setResponseHeaderSize(Constants.DEFAULT_HTTP_MAX_HEADER_SIZE);
+        httpConfig.setSendServerVersion(false);
+        //        httpConfig.setSendDateHeader(false);
+
+        ServerConnector serverConnector;
+        serverConnector = new ServerConnector(server, new HttpConnectionFactory(httpConfig));
+
+        int acceptQueueSize =
+                servlet.getConfiguration().getInt(Constants.REST_CONNECTOR_ACCEPT_QUEUE_SIZE, -1);
+        if (acceptQueueSize >= 0) {
+            serverConnector.setAcceptQueueSize(acceptQueueSize);
+        }
+
+        serverConnector.setPort(servicePort);
+        serverConnector.setHost(host);
+
+        server.addConnector(serverConnector);
+        server.setStopAtShutdown(true);
+
+        // set up context
+        ServletContextHandler ctxHandler =
+                new ServletContextHandler(server, "/", ServletContextHandler.SESSIONS);
+        ctxHandler.addServlet(sh, Constants.PATH_SPEC_ANY);
+
+        HttpServerUtil.constrainHttpMethods(ctxHandler, servlet.getConfiguration()
+                .getBoolean(Constants.REST_HTTP_ALLOW_OPTIONS_METHOD,
+                        Constants.REST_HTTP_ALLOW_OPTIONS_METHOD_DEFAULT));
+
+        // Put up info server.
+        int port = conf.getInt(Constants.PHOENIX_DDB_REST_INFO_PORT, Constants.DEFAULT_INFO_PORT);
+        if (port >= 0) {
+            final long startCode = EnvironmentEdgeManager.currentTime();
+            this.serverName = ServerName.valueOf(getHostName(conf), servicePort, startCode);
+            String addr =
+                    conf.get(Constants.PHOENIX_DDB_REST_INFO_BIND_ADDRESS, Constants.DEFAULT_HOST);
+            //            this.infoServer = new InfoServer(REST_SERVER, addr, port, false, conf);
+            //            this.infoServer.setAttribute(REST_SERVER, this);
+            //            this.infoServer.start();
+        }
+        // start server
+        server.start();
+    }
+
+    private static String getHostName(Configuration conf) throws UnknownHostException {
+        return Strings.domainNamePointerToHostName(
+                DNS.getDefaultHost(conf.get(Constants.REST_DNS_INTERFACE, "default"),
+                        conf.get(Constants.REST_DNS_NAMESERVER, "default")));
+    }
+
+    public synchronized void join() throws Exception {
+        if (server == null) {
+            throw new IllegalStateException("Server is not running");
+        }
+        server.join();
+    }
+
+    public synchronized void stop() throws Exception {
+        if (server == null) {
+            throw new IllegalStateException("Server is not running");
+        }
+        server.stop();
+        server = null;
+        RESTServlet.stop();
+    }
+
+    public synchronized int getPort() {
+        if (server == null) {
+            throw new IllegalStateException("Server is not running");
+        }
+        return ((ServerConnector) server.getConnectors()[0]).getLocalPort();
+    }
+
+    public String getServerAddress() {
+        return serverName.getAddress().toString();
+    }
+
+    public Configuration getConf() {
+        return conf;
+    }
+
+    /**
+     * The main method for the Phoenix DynamoDB rest server.
+     *
+     * @param args command-line arguments
+     * @throws Exception exception
+     */
+    public static void main(String[] args) throws Exception {
+        LOG.info("***** STARTING service '" + RESTServer.class.getSimpleName() + "' *****");
+        final Configuration conf = HBaseConfiguration.create();
+
+        String zkQuorum = System.getenv("ZOO_KEEPER_QUORUM");
+        conf.set(Constants.PHOENIX_DDB_ZK_QUORUM, zkQuorum);
+
+        parseCommandLine(args, conf);
+        RESTServer server = new RESTServer(conf);
+
+        try {
+            server.run();
+            server.join();
+        } catch (Exception e) {
+            LOG.error(HBaseMarkers.FATAL, "Failed to start server", e);
+            System.exit(1);
+        }
+
+        LOG.info("***** STOPPING service '" + RESTServer.class.getSimpleName() + "' *****");
+    }
+}

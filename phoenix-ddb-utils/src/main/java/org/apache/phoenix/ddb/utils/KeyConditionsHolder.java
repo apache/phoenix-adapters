@@ -21,10 +21,10 @@ import java.util.regex.Pattern;
  */
 public class KeyConditionsHolder {
 
-    private final String KEY_REGEX
-            = "([#\\w]+)\\s*=\\s*(:?\\w+)(?:\\s+AND\\s+(?:begins_with\\s*\\(\\s*([#\\w]+)\\s*,\\s*(:?\\w+)\\s*\\)|([#\\w]+)\\s*(=|>|<|<=|>=|BETWEEN)\\s*(:?\\w+)(?:\\s+AND\\s*(:?\\w+))?))?";
+    private static final String KEY_REGEX =
+            "([#\\w]+)\\s*=\\s*(:?\\w+)(?:\\s+AND\\s+(?:begins_with\\s*\\(\\s*([#\\w]+)\\s*,\\s*(:?\\w+)\\s*\\)|([#\\w]+)\\s*(=|>|<|<=|>=|BETWEEN)\\s*(:?\\w+)(?:\\s+AND\\s*(:?\\w+))?))?";
 
-    private final Pattern KEY_PATTERN = Pattern.compile(KEY_REGEX);
+    private static final Pattern KEY_PATTERN = Pattern.compile(KEY_REGEX);
     private String keyCondExpr;
     private Map<String, String> exprAttrNames;
     private List<PColumn> pkCols;

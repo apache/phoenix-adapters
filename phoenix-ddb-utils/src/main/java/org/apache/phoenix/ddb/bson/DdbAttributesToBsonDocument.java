@@ -18,9 +18,6 @@
 
 package org.apache.phoenix.ddb.bson;
 
-import java.math.BigDecimal;
-import java.text.NumberFormat;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -29,12 +26,8 @@ import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import org.bson.BsonArray;
 import org.bson.BsonBinary;
 import org.bson.BsonBoolean;
-import org.bson.BsonDecimal128;
 import org.bson.BsonDocument;
 import org.bson.BsonDocumentReader;
-import org.bson.BsonDouble;
-import org.bson.BsonInt32;
-import org.bson.BsonInt64;
 import org.bson.BsonNull;
 import org.bson.BsonNumber;
 import org.bson.BsonString;
@@ -42,7 +35,6 @@ import org.bson.BsonValue;
 import org.bson.RawBsonDocument;
 import org.bson.codecs.DecoderContext;
 import org.bson.codecs.RawBsonDocumentCodec;
-import org.bson.types.Decimal128;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -119,7 +111,7 @@ public class DdbAttributesToBsonDocument {
     } else if (attributeValue.hasNs()) {
       BsonDocument bsonDocument = new BsonDocument();
       List<BsonNumber> list = new ArrayList<>();
-      attributeValue.ns().forEach(val -> list.add(getBsonNumberFromNumber(val)));
+      attributeValue.ns().forEach(val -> list.add(BsonNumberConversionUtil.getBsonNumberFromNumber(val)));
       bsonDocument.put("$set", new BsonArray(list));
       return bsonDocument;
     } else if (attributeValue.hasBs()) {
@@ -135,55 +127,7 @@ public class DdbAttributesToBsonDocument {
 
   private static BsonNumber getBsonNumber(AttributeValue attributeValue) {
     String number = attributeValue.n();
-    return getBsonNumberFromNumber(number);
-  }
-
-  private static BsonNumber getBsonNumberFromNumber(String strNum) {
-    Number number = stringToNumber(strNum);
-    BsonNumber bsonNumber;
-    if (number instanceof Integer || number instanceof Short || number instanceof Byte) {
-      bsonNumber = new BsonInt32(number.intValue());
-    } else if (number instanceof Long) {
-      bsonNumber = new BsonInt64(number.longValue());
-    } else if (number instanceof Double || number instanceof Float) {
-      bsonNumber = new BsonDouble(number.doubleValue());
-    } else if (number instanceof BigDecimal) {
-      bsonNumber = new BsonDecimal128(new Decimal128((BigDecimal) number));
-    } else {
-      LOGGER.error("Error while converting {} into BsonNumber", strNum);
-      throw new IllegalArgumentException("Unsupported Number type: " + number);
-    }
-    return bsonNumber;
-  }
-
-  /**
-   * Convert the given String to Number.
-   *
-   * @param number The String represented numeric value.
-   * @return The Number object.
-   */
-  private static Number stringToNumber(String number) {
-    try {
-      return Integer.parseInt(number);
-    } catch (NumberFormatException e) {
-      // no-op
-    }
-    try {
-      return Long.parseLong(number);
-    } catch (NumberFormatException e) {
-      // no-op
-    }
-    try {
-      return Double.parseDouble(number);
-    } catch (NumberFormatException e) {
-      // no-op
-    }
-    try {
-      return NumberFormat.getInstance().parse(number);
-    } catch (ParseException e) {
-      LOGGER.error("Unable to parse number string {} to number", number);
-      return null;
-    }
+    return BsonNumberConversionUtil.getBsonNumberFromNumber(number);
   }
 
 }

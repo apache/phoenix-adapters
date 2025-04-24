@@ -30,6 +30,8 @@
   <name>Phoenix Shim Layers</name>
   <modules>
     <module>phoenix-ddb-shim</module>
+    <module>phoenix-ddb-rest</module>
+    <module>phoenix-ddb-utils</module>
   </modules>
 
   <groupId>org.apache.phoenixshim</groupId>
@@ -44,8 +46,9 @@
     <junit.version>4.13.1</junit.version>
     <jetty.version>9.4.53.v20231009</jetty.version>
     <javax.servlet-api.version>3.1.0</javax.servlet-api.version>
-    <hbase.version>2.5.10-hadoop3</hbase.version>
+    <hbase.version>2.5.11-hadoop3</hbase.version>
     <hbase.compat.version>2.5.4</hbase.compat.version>
+    <hbase-thirdparty.version>4.1.10</hbase-thirdparty.version>
     <reload4j.version>1.2.19</reload4j.version>
     <log4j2.version>2.18.0</log4j2.version>
     <zookeeper.version>3.8.4</zookeeper.version>
@@ -115,5 +118,24 @@
     </pluginManagement>
   </build>
 
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>org.apache.phoenixshim</groupId>
+        <artifactId>phoenix-ddb-utils</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.phoenixshim</groupId>
+        <artifactId>phoenix-ddb-rest</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.phoenixshim</groupId>
+        <artifactId>phoenix-ddb-shim</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
 
 </project>

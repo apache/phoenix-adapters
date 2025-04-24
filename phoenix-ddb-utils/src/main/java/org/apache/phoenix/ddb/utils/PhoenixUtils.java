@@ -27,13 +27,14 @@ import java.util.Properties;
 public class PhoenixUtils {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PhoenixUtils.class);
-    private static final String URL_PREFIX =
+
+    public static final String URL_PREFIX =
             PhoenixRuntime.JDBC_PROTOCOL + PhoenixRuntime.JDBC_PROTOCOL_SEPARATOR;
-    private static final String URL_ZK_PREFIX =
+    public static final String URL_ZK_PREFIX =
             PhoenixRuntime.JDBC_PROTOCOL_ZK + PhoenixRuntime.JDBC_PROTOCOL_SEPARATOR;
-    private static final String URL_MASTER_PREFIX =
+    public static final String URL_MASTER_PREFIX =
             PhoenixRuntime.JDBC_PROTOCOL_MASTER + PhoenixRuntime.JDBC_PROTOCOL_SEPARATOR;
-    private static final String URL_RPC_PREFIX =
+    public static final String URL_RPC_PREFIX =
             PhoenixRuntime.JDBC_PROTOCOL_RPC + PhoenixRuntime.JDBC_PROTOCOL_SEPARATOR;
 
     /**

@@ -19,13 +19,13 @@
 import java.util.HashMap;
 import java.util.Map;
 
-import software.amazon.awssdk.core.SdkBytes;
-import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import org.bson.BsonDocument;
 import org.junit.Assert;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.core.SdkBytes;
+import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.phoenix.ddb.bson.BsonDocumentToDdbAttributes;

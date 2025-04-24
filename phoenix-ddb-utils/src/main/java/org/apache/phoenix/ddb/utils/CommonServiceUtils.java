@@ -23,6 +23,7 @@ import software.amazon.awssdk.services.dynamodb.model.ScalarAttributeType;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.phoenix.ddb.bson.DdbAttributesToBsonDocument;
+import org.apache.phoenix.ddb.bson.MapToBsonDocument;
 import org.apache.phoenix.ddb.bson.UpdateExpressionDdbToBson;
 import org.apache.phoenix.schema.types.PDataType;
 import org.apache.phoenix.schema.types.PDecimal;
@@ -77,10 +78,6 @@ public class CommonServiceUtils {
                                                        Map<String, String> exprAttrNames,
                                                        Map<String, AttributeValue> exprAttrVals) {
 
-        // TODO: remove this when phoenix can support attribute_ prefix
-        condExpr = condExpr.replaceAll("attribute_exists", "field_exists");
-        condExpr = condExpr.replaceAll("attribute_not_exists", "field_not_exists");
-
         // plug expression attribute names in $EXPR
         condExpr = replaceExpressionAttributeNames(condExpr, exprAttrNames);
 
@@ -88,6 +85,24 @@ public class CommonServiceUtils {
         BsonDocument conditionDoc = new BsonDocument();
         conditionDoc.put("$EXPR", new BsonString(condExpr));
         conditionDoc.put("$VAL", DdbAttributesToBsonDocument.getBsonDocument(exprAttrVals));
+
+        return conditionDoc.toJson();
+    }
+
+    /**
+     * Return string representation of BSON Condition Expression based on dynamo condition
+     * expression, expression attribute names and expression attribute values.
+     */
+    public static String getBsonConditionExpressionFromMap(String condExpr,
+            Map<String, String> exprAttrNames, Map<String, Object> exprAttrVals) {
+
+        // plug expression attribute names in $EXPR
+        condExpr = replaceExpressionAttributeNames(condExpr, exprAttrNames);
+
+        // BSON_CONDITION_EXPRESSION
+        BsonDocument conditionDoc = new BsonDocument();
+        conditionDoc.put("$EXPR", new BsonString(condExpr));
+        conditionDoc.put("$VAL", MapToBsonDocument.getBsonDocument(exprAttrVals));
 
         return conditionDoc.toJson();
     }
