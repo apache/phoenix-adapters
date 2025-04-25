@@ -40,6 +40,7 @@ import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.phoenix.ddb.rest.RESTServer;
 import org.apache.phoenix.ddb.utils.PhoenixUtils;
 import org.apache.phoenix.end2end.ServerMetadataCacheTestImpl;
+import org.apache.phoenix.exception.PhoenixIOException;
 import org.apache.phoenix.jdbc.PhoenixConnection;
 import org.apache.phoenix.jdbc.PhoenixDriver;
 import org.apache.phoenix.schema.PColumn;
@@ -73,6 +74,7 @@ public class CreateTableIT {
     public static void initialize() throws Exception {
         tmpDir = System.getProperty("java.io.tmpdir");
         LocalDynamoDbTestBase.localDynamoDb().start();
+        validateRestServerInitFailure();
         Configuration conf = HBaseConfiguration.create();
         utility = new HBaseTestingUtility(conf);
         setUpConfigForMiniCluster(conf);
@@ -86,6 +88,16 @@ public class CreateTableIT {
 
         LOGGER.info("started {} on port {}", restServer.getClass().getName(), restServer.getPort());
         phoenixDBClientV2 = LocalDynamoDB.createV2Client("http://" + restServer.getServerAddress());
+    }
+
+    private static void validateRestServerInitFailure() throws Exception {
+        try {
+            restServer = new RESTServer(new Configuration());
+            restServer.run();
+            throw new RuntimeException("validation should fail");
+        } catch (PhoenixIOException e) {
+            // expected
+        }
     }
 
     @AfterClass

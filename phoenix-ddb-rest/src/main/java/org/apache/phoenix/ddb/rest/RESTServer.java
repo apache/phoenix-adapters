@@ -2,6 +2,10 @@ package org.apache.phoenix.ddb.rest;
 
 import java.lang.management.ManagementFactory;
 import java.net.UnknownHostException;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -22,6 +26,7 @@ import org.apache.hadoop.hbase.util.DNS;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.ReflectionUtils;
 import org.apache.hadoop.hbase.util.Strings;
+import org.apache.phoenix.ddb.utils.PhoenixUtils;
 
 import org.apache.hbase.thirdparty.com.fasterxml.jackson.jaxrs.json.JacksonJaxbJsonProvider;
 import org.apache.hbase.thirdparty.org.apache.commons.cli.CommandLine;
@@ -135,6 +140,13 @@ public class RESTServer {
             conf.set(Constants.PHOENIX_DDB_ZK_QUORUM, quorum);
         }
 
+        try {
+            validateConnection();
+        } catch (Exception e) {
+            LOG.error("Failed to validate connection, shutting down REST Server...", e);
+            throw e;
+        }
+
         RESTServlet servlet = RESTServlet.getInstance(conf, userProvider);
 
         // set up the Jersey servlet container for Jetty
@@ -226,6 +238,15 @@ public class RESTServer {
         }
         // start server
         server.start();
+    }
+
+    private void validateConnection() throws SQLException {
+        String jdbcUrl = PhoenixUtils.URL_ZK_PREFIX + conf.get(Constants.PHOENIX_DDB_ZK_QUORUM);
+        try (Connection connection = DriverManager.getConnection(jdbcUrl)) {
+            ResultSet resultSet = connection.createStatement()
+                    .executeQuery("SELECT * FROM SYSTEM.CATALOG LIMIT 1");
+            resultSet.next();
+        }
     }
 
     private static String getHostName(Configuration conf) throws UnknownHostException {
