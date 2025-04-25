@@ -20,6 +20,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Helper methods for Phoenix based functionality.
@@ -36,6 +38,8 @@ public class PhoenixUtils {
             PhoenixRuntime.JDBC_PROTOCOL_MASTER + PhoenixRuntime.JDBC_PROTOCOL_SEPARATOR;
     public static final String URL_RPC_PREFIX =
             PhoenixRuntime.JDBC_PROTOCOL_RPC + PhoenixRuntime.JDBC_PROTOCOL_SEPARATOR;
+    private static final Pattern BSON_VALUE_PATTERN_FOR_TTL = Pattern.compile(
+            "BSON_VALUE\\(\\s*COL\\s*,\\s*'([^']+)'\\s*,\\s*'BIGINT'\\s*\\)");
 
     /**
      * Check whether the connection url provided has the right format.
@@ -119,5 +123,18 @@ public class PhoenixUtils {
         Properties props = new Properties();
         props.put(QueryServices.COLLECT_REQUEST_LEVEL_METRICS, "true");
         return props;
+    }
+
+    /**
+     * Extract the attribute name from the given conditional TTL Expression
+     * of the form {@code BSON_VALUE_PATTERN_FOR_DDL}.
+     */
+    public static String extractAttributeFromTTLExpression(String ttlExpression) {
+        Matcher ttlAttrMatcher = BSON_VALUE_PATTERN_FOR_TTL.matcher(ttlExpression);
+        if (ttlAttrMatcher.find()) {
+            return ttlAttrMatcher.group(1);
+        } else {
+            throw new RuntimeException("Found invalid phoenix ttl expression: " + ttlExpression);
+        }
     }
 }

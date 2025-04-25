@@ -25,6 +25,7 @@ import org.apache.phoenix.ddb.service.CreateTableService;
 import org.apache.phoenix.ddb.service.PutItemService;
 import org.apache.phoenix.ddb.service.QueryService;
 import org.apache.phoenix.ddb.service.ScanService;
+import org.apache.phoenix.ddb.service.TTLService;
 import org.apache.phoenix.ddb.service.utils.TableDescriptorUtils;
 import org.apache.phoenix.ddb.service.utils.exceptions.ConditionCheckFailedException;
 import org.apache.phoenix.ddb.utils.PhoenixUtils;
@@ -98,6 +99,14 @@ public class RootResource {
                 }
                 case "DynamoDB_20120810.Scan": {
                     responseObject = ScanService.scan(request, jdbcConnectionUrl);
+                    break;
+                }
+                case "DynamoDB_20120810.UpdateTimeToLive": {
+                    responseObject = TTLService.updateTimeToLive(request, jdbcConnectionUrl);
+                    break;
+                }
+                case "DynamoDB_20120810.DescribeTimeToLive": {
+                    responseObject = TTLService.describeTimeToLive(request, jdbcConnectionUrl);
                     break;
                 }
                 default: {

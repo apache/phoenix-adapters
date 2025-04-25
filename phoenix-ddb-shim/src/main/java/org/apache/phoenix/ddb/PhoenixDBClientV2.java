@@ -9,6 +9,7 @@ import org.apache.phoenix.ddb.service.GetItemService;
 import org.apache.phoenix.ddb.service.PutItemService;
 import org.apache.phoenix.ddb.service.QueryService;
 import org.apache.phoenix.ddb.service.ScanService;
+import org.apache.phoenix.ddb.service.TTLService;
 import org.apache.phoenix.ddb.service.UpdateItemService;
 import org.apache.phoenix.ddb.utils.PhoenixUtils;
 import org.apache.phoenix.ddb.utils.TableDescriptorUtils;
@@ -27,6 +28,8 @@ import software.amazon.awssdk.services.dynamodb.model.DeleteTableRequest;
 import software.amazon.awssdk.services.dynamodb.model.DeleteTableResponse;
 import software.amazon.awssdk.services.dynamodb.model.DescribeTableRequest;
 import software.amazon.awssdk.services.dynamodb.model.DescribeTableResponse;
+import software.amazon.awssdk.services.dynamodb.model.DescribeTimeToLiveRequest;
+import software.amazon.awssdk.services.dynamodb.model.DescribeTimeToLiveResponse;
 import software.amazon.awssdk.services.dynamodb.model.GetItemRequest;
 import software.amazon.awssdk.services.dynamodb.model.GetItemResponse;
 import software.amazon.awssdk.services.dynamodb.model.PutItemRequest;
@@ -38,6 +41,8 @@ import software.amazon.awssdk.services.dynamodb.model.ScanResponse;
 import software.amazon.awssdk.services.dynamodb.model.TableDescription;
 import software.amazon.awssdk.services.dynamodb.model.UpdateItemRequest;
 import software.amazon.awssdk.services.dynamodb.model.UpdateItemResponse;
+import software.amazon.awssdk.services.dynamodb.model.UpdateTimeToLiveRequest;
+import software.amazon.awssdk.services.dynamodb.model.UpdateTimeToLiveResponse;
 
 public class PhoenixDBClientV2 implements DynamoDbClient {
     private static final Logger LOGGER = LoggerFactory.getLogger(PhoenixDBClientV2.class);
@@ -84,6 +89,10 @@ public class PhoenixDBClientV2 implements DynamoDbClient {
         return DescribeTableResponse.builder().table(tableDescription).build();
     }
 
+    public DescribeTimeToLiveResponse describeTimeToLive(DescribeTimeToLiveRequest describeTimeToLiveRequest) {
+        return TTLService.describeTimeToLive(describeTimeToLiveRequest, connectionUrl);
+    }
+
     public GetItemResponse getItem(GetItemRequest getItemRequest) {
         return GetItemService.getItem(getItemRequest, connectionUrl);
     }
@@ -102,5 +111,9 @@ public class PhoenixDBClientV2 implements DynamoDbClient {
 
     public UpdateItemResponse updateItem(UpdateItemRequest updateItemRequest) {
         return UpdateItemService.updateItem(updateItemRequest, connectionUrl);
+    }
+
+    public UpdateTimeToLiveResponse updateTimeToLive(UpdateTimeToLiveRequest updateTimeToLiveRequest) {
+        return TTLService.updateTimeToLive(updateTimeToLiveRequest, connectionUrl);
     }
 }
