@@ -52,7 +52,6 @@ public class RootResource {
         Configuration conf = servlet.getConfiguration();
         jdbcConnectionUrl = PhoenixUtils.URL_ZK_PREFIX + conf.get(Constants.PHOENIX_DDB_ZK_QUORUM);
         LOG.info("JDBC connection url: {}", jdbcConnectionUrl);
-        PhoenixUtils.registerDriver();
     }
 
     @POST

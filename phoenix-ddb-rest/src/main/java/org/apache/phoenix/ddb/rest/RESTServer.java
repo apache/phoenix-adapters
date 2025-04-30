@@ -56,6 +56,7 @@ public class RESTServer {
     public RESTServer(Configuration conf) {
         this.conf = conf;
         this.userProvider = UserProvider.instantiate(conf);
+        PhoenixUtils.registerDriver();
     }
 
     private static void printUsageAndExit(Options options, int exitCode) {
