@@ -20,6 +20,12 @@ There are 2 ways someone can use Phoenix-Shim to port their DynamoDB based servi
 
 2. A **RESTful API Server** that accepts JSON payloads similar to DynamoDB.
 
+By using REST Service, client applications already using any AWS SDKs to connect with DynamoDB
+does not need to perform any code change. The client application only needs to update the REST
+endpoint.
+
+![Alt text](src/images/phoenix_dynamodb_rest.jpeg)
+
 #### Supported APIs
 - **DDL**: CreateTable, DeleteTable DescribeTable, UpdateTimeToLive, DescribeTimeToLive
 - **DQL**: Query, Scan, BatchGetItem
