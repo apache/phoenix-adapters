@@ -10,6 +10,7 @@ import org.junit.Test;
 import org.junit.rules.TestName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import software.amazon.awssdk.services.dynamodb.model.CreateTableRequest;
@@ -219,6 +220,56 @@ public class QueryIT {
         Map<String, AttributeValue> exprAttrVal = new HashMap<>();
         exprAttrVal.put(":v0", AttributeValue.builder().s("B").build());
         exprAttrVal.put(":v1", AttributeValue.builder().s("Title4").build());
+        qr.expressionAttributeValues(exprAttrVal);
+
+        // query result, should return 1 item
+        QueryResponse phoenixResult = phoenixDBClientV2.query(qr.build());
+        QueryResponse dynamoResult = dynamoDbClient.query(qr.build());
+        Assert.assertTrue(dynamoResult.count() == 1);
+        Assert.assertEquals(dynamoResult.count(), phoenixResult.count());
+        Assert.assertEquals(dynamoResult.items().get(0), phoenixResult.items().get(0));
+        Assert.assertEquals(dynamoResult.scannedCount(), phoenixResult.scannedCount());
+    }
+
+    @Test(timeout = 120000)
+    public void queryBinaryBeginsWithTest() throws Exception {
+        //create table
+        final String tableName = testName.getMethodName().toUpperCase();
+        CreateTableRequest createTableRequest =
+                DDLTestUtils.getCreateTableRequest(tableName, "attr_0",
+                        ScalarAttributeType.S, "title", ScalarAttributeType.B);
+        phoenixDBClientV2.createTable(createTableRequest);
+        dynamoDbClient.createTable(createTableRequest);
+
+        //put
+        Map<String, AttributeValue> item1 = new HashMap<>();
+        item1.put("attr_0", AttributeValue.builder().s("pk1").build());
+        item1.put("title", AttributeValue.builder().b(SdkBytes.fromByteArray(
+                new byte[] {1,2,3,4,5})).build());
+        item1.put("val", AttributeValue.builder().n("100").build());
+        Map<String, AttributeValue> item2 = new HashMap<>();
+        item2.put("attr_0", AttributeValue.builder().s("pk1").build());
+        item2.put("title", AttributeValue.builder().b(SdkBytes.fromByteArray(
+                new byte[] {5,4,3,2,1})).build());
+        item2.put("val", AttributeValue.builder().n("300").build());
+        PutItemRequest putItemRequest1 = PutItemRequest.builder().tableName(tableName).item(item1).build();
+        PutItemRequest putItemRequest2 = PutItemRequest.builder().tableName(tableName).item(item2).build();
+        phoenixDBClientV2.putItem(putItemRequest1);
+        phoenixDBClientV2.putItem(putItemRequest2);
+        dynamoDbClient.putItem(putItemRequest1);
+        dynamoDbClient.putItem(putItemRequest2);
+
+        //query request
+        QueryRequest.Builder qr = QueryRequest.builder().tableName(tableName);
+        qr.keyConditionExpression("#0 = :v0 AND begins_with(#1, :v1)");
+        Map<String, String> exprAttrNames = new HashMap<>();
+        exprAttrNames.put("#0", "attr_0");
+        exprAttrNames.put("#1", "title");
+        qr.expressionAttributeNames(exprAttrNames);
+        Map<String, AttributeValue> exprAttrVal = new HashMap<>();
+        exprAttrVal.put(":v0", AttributeValue.builder().s("pk1").build());
+        exprAttrVal.put(":v1", AttributeValue.builder().b(SdkBytes.fromByteArray(
+                new byte[] {1,2,3})).build());
         qr.expressionAttributeValues(exprAttrVal);
 
         // query result, should return 1 item

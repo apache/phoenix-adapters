@@ -132,6 +132,7 @@ public class QueryService {
                 Map<String, Object> sortAttrVal = (Map<String, Object>) exprAttrVals.get(
                         keyConditions.getBeginsWithSortKeyVal());
                 DQLUtils.setKeyValueOnStatement(stmt, index++, sortAttrVal, true);
+                index++; // we set 2 parameters for SUBSTR/SUBBINARY
             } else {
                 Map<String, Object> sortAttrVal1 =
                         (Map<String, Object>) exprAttrVals.get(keyConditions.getSortKeyValue1());

@@ -168,16 +168,26 @@ public class DQLUtils {
      * Set the given AttributeValue on the PreparedStatement at the given index based on type.
      */
     public static void setKeyValueOnStatement(PreparedStatement stmt, int index,
-            Map<String, Object> attrVal, boolean isLike) throws SQLException {
-        // TODO: does LIKE work with varbinary_encoded
+            Map<String, Object> attrVal, boolean isBeginsWith) throws SQLException {
         if (attrVal.containsKey("N")) {
             stmt.setDouble(index, Double.parseDouble((String) attrVal.get("N")));
         } else if (attrVal.containsKey("S")) {
             String val = (String) attrVal.get("S");
-            String stringVal = isLike ? val + "%" : val;
-            stmt.setString(index, stringVal);
+            if (isBeginsWith) { // SUBSTR(column, 0, val_length) = val
+                stmt.setInt(index, val.length());
+                stmt.setString(index+1, val);
+            } else {
+                stmt.setString(index, val);
+            }
         } else if (attrVal.containsKey("B")) {
-            stmt.setBytes(index, Base64.getDecoder().decode((String) attrVal.get("B")));
+            byte[] val = Base64.getDecoder().decode((String) attrVal.get("B"));
+            if (isBeginsWith) { // SUBBINARY(column, 0, val_length) = val
+                stmt.setInt(index, val.length);
+                stmt.setBytes(index+1, val);
+            } else {
+                stmt.setBytes(index, val);
+            }
+
         }
     }
 

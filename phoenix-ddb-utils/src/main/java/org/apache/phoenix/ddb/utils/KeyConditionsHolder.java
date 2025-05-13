@@ -1,6 +1,8 @@
 package org.apache.phoenix.ddb.utils;
 
 import org.apache.phoenix.schema.PColumn;
+import org.apache.phoenix.schema.types.PVarbinaryEncoded;
+import org.apache.phoenix.schema.types.PVarchar;
 
 import java.util.HashMap;
 import java.util.List;
@@ -124,10 +126,15 @@ public class KeyConditionsHolder {
         // PK1 = ? (AND PK2 op val1 [val2])
         if (hasSortKey()) {
             sb.append(" AND ");
-            sb.append(sortKeyName + " ");
+
             if (hasBeginsWith()) {
-                sb.append(" LIKE ?");
+                if (this.pkCols.get(1).getDataType() instanceof PVarchar) {
+                    sb.append(" SUBSTR( " + sortKeyName + ", 0, ?) = ? ");
+                } else if (this.pkCols.get(1).getDataType() instanceof PVarbinaryEncoded) {
+                    sb.append(" SUBBINARY( " + sortKeyName + ", 0, ?) = ?");
+                }
             } else {
+                sb.append(sortKeyName + " ");
                 sb.append(sortKeyOperator);
                 sb.append(" ? ");
                 if (hasBetween()) {

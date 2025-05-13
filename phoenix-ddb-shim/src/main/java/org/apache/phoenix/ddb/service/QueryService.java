@@ -130,6 +130,7 @@ public class QueryService {
             if (keyConditions.hasBeginsWith()) {
                 AttributeValue sortAttrVal = exprAttrVals.get(keyConditions.getBeginsWithSortKeyVal());
                 DQLUtils.setKeyValueOnStatement(stmt, index++, sortAttrVal, true);
+                index++; // we set 2 parameters for SUBSTR/SUBBINARY
             } else {
                 AttributeValue sortAttrVal1 = exprAttrVals.get(keyConditions.getSortKeyValue1());
                 DQLUtils.setKeyValueOnStatement(stmt, index++, sortAttrVal1, false);
