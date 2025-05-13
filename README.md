@@ -37,7 +37,9 @@ TBD
 
 ### How to bring up REST Server in dev env?
 
-1. Clone phoenix-shim repo.
+1. Bring up HBase cluster locally. Refer to https://hbase.apache.org/book.html#quickstart
+2. Bring up Phoenix system tables using sqlline (bin/sqlline.py). Refer to https://phoenix.apache.org/installation.html.
+2. Clone phoenix-shim repo.
 2. Build the project with: `mvn clean install -DskipTests`
 3. Start the REST Server with: `bin/phoenix-shim rest start -p <port> -z <zk-quorum>`
    e.g. `bin/phoenix-shim rest start -p 8842 -z localhost:2181` to start the server at
