@@ -9,10 +9,14 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.hadoop.hbase.zookeeper.ZKConfig;
 import org.apache.phoenix.ddb.rest.util.Constants;
 
+import org.apache.phoenix.ddb.utils.IndexBuildingActivator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -142,6 +146,7 @@ public class RESTServer {
 
         try {
             validateConnection();
+            startIndexBuildingActivator();
         } catch (Exception e) {
             LOG.error("Failed to validate connection, shutting down REST Server...", e);
             throw e;
@@ -247,6 +252,19 @@ public class RESTServer {
                     .executeQuery("SELECT * FROM SYSTEM.CATALOG LIMIT 1");
             resultSet.next();
         }
+    }
+
+    private void startIndexBuildingActivator() {
+        String jdbcUrl = PhoenixUtils.URL_ZK_PREFIX + conf.get(Constants.PHOENIX_DDB_ZK_QUORUM);
+        ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+        scheduler.scheduleAtFixedRate(() -> {
+            try (Connection connection = DriverManager.getConnection(jdbcUrl)) {
+                IndexBuildingActivator.activateIndexesForBuilding(connection, 1800000);
+            } catch (SQLException e) {
+                LOG.info("Error while running IndexBuildingActivator. ", e);
+            }
+        }, 0, 15, TimeUnit.MINUTES);
+        LOG.info("Scheduled IndexBuildingActivator.");
     }
 
     private static String getHostName(Configuration conf) throws UnknownHostException {

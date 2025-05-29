@@ -62,8 +62,7 @@ public class CreateTableService {
                 "TableDescription");
     }
 
-    public static void addIndexDDL(Map<String, Object> request,
-            Set<String> pkCols, List<Map<String, Object>> keySchemaElements,
+    public static void addIndexDDL(String tableName, List<Map<String, Object>> keySchemaElements,
             List<Map<String, Object>> attributeDefinitions, List<String> indexDDLs,
             String indexName) {
         final StringBuilder indexOn = new StringBuilder();
@@ -151,13 +150,13 @@ public class CreateTableService {
         }
 
         indexDDLs.add(
-                "CREATE INDEX \"" + indexName + "\" ON \"" + request.get("TableName")
+                "CREATE INDEX \"" + indexName + "\" ON \"" + tableName
                         + "\" (" + indexOn + ") INCLUDE (COL) WHERE " + indexHashKey + " IS NOT " +
                         "NULL" + ((indexSortKey != null) ? " AND " + indexSortKey + " IS NOT " +
                         "NULL" : ""));
     }
 
-    public static List<String> getIndexDDLs(Map<String, Object> request, Set<String> pkCols) {
+    public static List<String> getIndexDDLs(Map<String, Object> request) {
         final List<String> indexDDLs = new ArrayList<>();
         List<Map<String, Object>> attributeDefinitions =
                 (List<Map<String, Object>>) request.get("AttributeDefinitions");
@@ -168,7 +167,7 @@ public class CreateTableService {
                 final String indexName = (String) globalSecondaryIndex.get("IndexName");
                 final List<Map<String, Object>> keySchemaElements =
                         (List<Map<String, Object>>) globalSecondaryIndex.get("KeySchema");
-                addIndexDDL(request, pkCols, keySchemaElements,
+                addIndexDDL((String)request.get("TableName"), keySchemaElements,
                         attributeDefinitions, indexDDLs, indexName);
             }
         }
@@ -179,7 +178,7 @@ public class CreateTableService {
                 final String indexName = (String) localSecondaryIndex.get("IndexName");
                 final List<Map<String, Object>> keySchemaElements =
                         (List<Map<String, Object>>) localSecondaryIndex.get("KeySchema");
-                addIndexDDL(request, pkCols, keySchemaElements,
+                addIndexDDL((String)request.get("TableName"), keySchemaElements,
                         attributeDefinitions, indexDDLs, indexName);
             }
         }
@@ -307,7 +306,7 @@ public class CreateTableService {
                     "CREATE TABLE \"" + tableName + "\" (" + cols + ") " + PhoenixUtils.getTableOptions();
             LOGGER.info("Create Table Query: {}", createTableDDL);
 
-            List<String> createIndexDDLs = getIndexDDLs(request, pkColsSet);
+            List<String> createIndexDDLs = getIndexDDLs(request);
             for (String createIndexDDL : createIndexDDLs) {
                 LOGGER.info("Create Index Query: " + createIndexDDL);
             }

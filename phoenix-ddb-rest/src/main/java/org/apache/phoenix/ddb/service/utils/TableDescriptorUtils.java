@@ -30,21 +30,28 @@ import java.util.Set;
 
 import org.apache.phoenix.ddb.utils.CommonServiceUtils;
 import org.apache.phoenix.ddb.utils.DDBShimCDCUtils;
+import org.apache.phoenix.schema.PIndexState;
 import software.amazon.awssdk.services.dynamodb.model.AttributeDefinition;
-import software.amazon.awssdk.services.dynamodb.model.IndexStatus;
 import software.amazon.awssdk.services.dynamodb.model.KeyType;
 import software.amazon.awssdk.services.dynamodb.model.TableStatus;
 
 import org.apache.phoenix.jdbc.PhoenixConnection;
 import org.apache.phoenix.schema.PColumn;
 import org.apache.phoenix.schema.PTable;
-import org.apache.phoenix.schema.PTableKey;
 import org.apache.phoenix.util.CDCUtil;
 
 /**
  * Utilities to build TableDescriptor object for the given Phoenix table object.
  */
 public class TableDescriptorUtils {
+
+    private static final Map<PIndexState, String> indexStateMap = new HashMap<PIndexState, String>()
+    {{
+        put(PIndexState.CREATE_DISABLE, "CREATING");
+        put(PIndexState.DISABLE, "DELETING");
+        put(PIndexState.ACTIVE, "ACTIVE");
+        put(PIndexState.BUILDING, "CREATING");
+    }};
 
     public static void updateTableDescriptorForIndexes(PTable table,
                                                        Map<String, Object> tableDescription,
@@ -120,7 +127,7 @@ public class TableDescriptorUtils {
                     Map<String, Object> localSecondaryIndexElement = new HashMap<>();
                     localSecondaryIndexElement.put("IndexName", index.getTableName().getString());
                     localSecondaryIndexElement.put("KeySchema", keySchemaList);
-                    localSecondaryIndexElement.put("IndexStatus", IndexStatus.ACTIVE.toString());
+                    localSecondaryIndexElement.put("IndexStatus", indexStateMap.get(index.getIndexState()));
                     localSecondaryIndexes.add(localSecondaryIndexElement);
                 } else {
                     tableDescription.putIfAbsent("GlobalSecondaryIndexes",
@@ -131,7 +138,7 @@ public class TableDescriptorUtils {
                     Map<String, Object> globalSecondaryIndexElement = new HashMap<>();
                     globalSecondaryIndexElement.put("IndexName", index.getTableName().getString());
                     globalSecondaryIndexElement.put("KeySchema", keySchemaList);
-                    globalSecondaryIndexElement.put("IndexStatus", IndexStatus.ACTIVE.toString());
+                    globalSecondaryIndexElement.put("IndexStatus", indexStateMap.get(index.getIndexState()));
                     globalSecondaryIndexes.add(globalSecondaryIndexElement);
                 }
             }
@@ -143,8 +150,7 @@ public class TableDescriptorUtils {
         Set<AttributeDefinition> attributeDefinitionSet = new LinkedHashSet<>();
         try (Connection connection = DriverManager.getConnection(connectionUrl)) {
             PhoenixConnection phoenixConnection = connection.unwrap(PhoenixConnection.class);
-            PTable table = phoenixConnection.getTable(
-                    new PTableKey(phoenixConnection.getTenantId(), tableName));
+            PTable table = phoenixConnection.getTableNoCache(phoenixConnection.getTenantId(), tableName);
             List<PColumn> respPkColumns = table.getPKColumns();
 
             Map<String, Object> tableDescriptionResponse = new HashMap<>();

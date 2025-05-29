@@ -16,6 +16,7 @@ import org.apache.phoenix.ddb.service.GetShardIteratorService;
 import org.apache.phoenix.ddb.service.ListStreamsService;
 
 import org.apache.phoenix.ddb.service.ListTablesService;
+import org.apache.phoenix.ddb.service.UpdateTableService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -96,6 +97,10 @@ public class RootResource {
                 }
                 case "DynamoDB_20120810.ListTables": {
                     responseObject = ListTablesService.listTables(request, jdbcConnectionUrl);
+                    break;
+                }
+                case "DynamoDB_20120810.UpdateTable": {
+                    responseObject = UpdateTableService.updateTable(request, jdbcConnectionUrl);
                     break;
                 }
                 case "DynamoDB_20120810.PutItem": {

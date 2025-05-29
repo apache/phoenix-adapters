@@ -144,6 +144,6 @@ public class PhoenixUtils {
         return "MERGE_ENABLED=false" + "," +
                 "REPLICATION_SCOPE=0" + "," +
                 "DISABLE_TABLE_SOR=true" + "," +
-                "UPDATE_CACHE_FREQUENCY=7200000";
+                "UPDATE_CACHE_FREQUENCY=1800000";
     }
 }
