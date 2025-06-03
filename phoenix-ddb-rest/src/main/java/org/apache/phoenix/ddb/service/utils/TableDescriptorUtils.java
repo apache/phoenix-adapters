@@ -32,9 +32,6 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.phoenix.ddb.utils.CommonServiceUtils;
 import org.apache.phoenix.ddb.utils.DDBShimCDCUtils;
 import org.apache.phoenix.schema.PIndexState;
-import software.amazon.awssdk.services.dynamodb.model.AttributeDefinition;
-import software.amazon.awssdk.services.dynamodb.model.KeyType;
-import software.amazon.awssdk.services.dynamodb.model.TableStatus;
 
 import org.apache.phoenix.jdbc.PhoenixConnection;
 import org.apache.phoenix.schema.PColumn;
@@ -56,7 +53,7 @@ public class TableDescriptorUtils {
 
     public static void updateTableDescriptorForIndexes(PTable table,
                                                        Map<String, Object> tableDescription,
-                                                       Set<AttributeDefinition> attributeDefinitionSet) {
+                                                       Set<Map<String, Object>> attributeDefinitionSet) {
         if (table.getIndexes() != null && !table.getIndexes().isEmpty()) {
             for (PTable index : table.getIndexes()) {
                 String indexName = index.getName().getString();
@@ -73,24 +70,16 @@ public class TableDescriptorUtils {
                 hashKeyName = CommonServiceUtils.getKeyNameFromBsonValueFunc(hashKeyName);
                 Map<String, Object> hashKeyElement = new HashMap<>();
                 hashKeyElement.put("AttributeName", hashKeyName);
-                hashKeyElement.put("KeyType", KeyType.HASH.toString());
+                hashKeyElement.put("KeyType", "HASH");
                 keySchemaList.add(hashKeyElement);
 
-                AttributeDefinition hashAttr = AttributeDefinition.builder().attributeName(hashKeyName)
-                        .attributeType(CommonServiceUtils.getScalarAttributeFromPDataType(respPkColumns.get(0).getDataType()))
-                        .build();
+                Map<String, Object> hashAttr = getAttributeDefinitionMap(hashKeyName,
+                        CommonServiceUtils.getScalarAttributeFromPDataType(respPkColumns.get(0).getDataType()).toString());
                 if (!attributeDefinitionSet.contains(hashAttr)) {
                     attributeDefinitionSet.add(hashAttr);
-
                     List<Map<String, Object>> attributeDefinitionsList =
                             (List<Map<String, Object>>) tableDescription.get("AttributeDefinitions");
-
-                    Map<String, Object> attributeDefinitionElement = new HashMap<>();
-                    attributeDefinitionElement.put("AttributeName", hashAttr.attributeName());
-                    attributeDefinitionElement.put("AttributeType",
-                            hashAttr.attributeType().toString());
-
-                    attributeDefinitionsList.add(attributeDefinitionElement);
+                    attributeDefinitionsList.add(hashAttr);
                 }
                 if (respPkColumns.size() - table.getPKColumns().size() > 1 || (
                         respPkColumns.size() > 1 && respPkColumns.get(1).getName().getString()
@@ -100,25 +89,17 @@ public class TableDescriptorUtils {
 
                     Map<String, Object> sortKeyElement = new HashMap<>();
                     sortKeyElement.put("AttributeName", sortKeyName);
-                    sortKeyElement.put("KeyType", KeyType.RANGE.toString());
+                    sortKeyElement.put("KeyType", "RANGE");
                     keySchemaList.add(sortKeyElement);
 
-                    AttributeDefinition sortAttr = AttributeDefinition.builder().attributeName(sortKeyName)
-                            .attributeType(CommonServiceUtils.getScalarAttributeFromPDataType(respPkColumns.get(1).getDataType()))
-                            .build();
+                    Map<String, Object> sortAttr =  getAttributeDefinitionMap(sortKeyName,
+                            CommonServiceUtils.getScalarAttributeFromPDataType(respPkColumns.get(1).getDataType()).toString());
 
                     if (!attributeDefinitionSet.contains(sortAttr)) {
                         attributeDefinitionSet.add(sortAttr);
-
                         List<Map<String, Object>> attributeDefinitionsList =
                                 (List<Map<String, Object>>) tableDescription.get("AttributeDefinitions");
-
-                        Map<String, Object> attributeDefinitionElement = new HashMap<>();
-                        attributeDefinitionElement.put("AttributeName", sortAttr.attributeName());
-                        attributeDefinitionElement.put("AttributeType",
-                                sortAttr.attributeType().toString());
-
-                        attributeDefinitionsList.add(attributeDefinitionElement);
+                        attributeDefinitionsList.add(sortAttr);
                     }
                 }
                 if (hashKeyName.equals(table.getPKColumns().get(0).getName().getString())) {
@@ -150,19 +131,18 @@ public class TableDescriptorUtils {
 
     public static Map<String, Object> getTableDescription(String tableName, String connectionUrl,
                                                           String topResponseAttribute) {
-        Set<AttributeDefinition> attributeDefinitionSet = new LinkedHashSet<>();
+        Set<Map<String, Object>> attributeDefinitionSet = new LinkedHashSet<>();
         try (Connection connection = DriverManager.getConnection(connectionUrl)) {
             PhoenixConnection phoenixConnection = connection.unwrap(PhoenixConnection.class);
             PTable table = phoenixConnection.getTableNoCache(phoenixConnection.getTenantId(),
                     "DDB." + tableName);
-            List<PColumn> respPkColumns = table.getPKColumns();
 
             Map<String, Object> tableDescriptionResponse = new HashMap<>();
             tableDescriptionResponse.put(topResponseAttribute, new HashMap<String, Object>());
             Map<String, Object> tableDescription =
                     (Map<String, Object>) tableDescriptionResponse.get(topResponseAttribute);
             tableDescription.put("TableName", table.getTableName().getString());
-            tableDescription.put("TableStatus", TableStatus.ACTIVE.toString());
+            tableDescription.put("TableStatus", "ACTIVE");
             tableDescription.put("KeySchema", getKeySchemaList(table.getPKColumns()));
             tableDescription.put("AttributeDefinitions", getAttributeDefs(table, attributeDefinitionSet));
             tableDescription.put("CreationDateTime", table.getTimeStamp()/1000);
@@ -177,35 +157,22 @@ public class TableDescriptorUtils {
     }
 
     private static List<Map<String, Object>> getAttributeDefs(PTable table,
-                                                              Set<AttributeDefinition> attributeDefinitionSet) {
+                                                              Set<Map<String, Object>> attributeDefinitionSet) {
         List<Map<String, Object>> response = new ArrayList<>();
         List<PColumn> respPkColumns = table.getPKColumns();
 
-        AttributeDefinition hashAttribute =
-                AttributeDefinition.builder()
-                        .attributeName(respPkColumns.get(0).getName().getString())
-                        .attributeType(CommonServiceUtils.getScalarAttributeFromPDataType(respPkColumns.get(0).getDataType()))
-                        .build();
-        Map<String, Object> hashAttributeMap = new HashMap<>();
-        hashAttributeMap.put("AttributeName", respPkColumns.get(0).getName().getString());
-        hashAttributeMap.put("AttributeType", CommonServiceUtils.getScalarAttributeFromPDataType(
-                respPkColumns.get(0).getDataType()).toString());
+        Map<String, Object> hashAttributeMap = getAttributeDefinitionMap(
+                respPkColumns.get(0).getName().getString(),
+                CommonServiceUtils.getScalarAttributeFromPDataType(respPkColumns.get(0).getDataType()).toString());
         response.add(hashAttributeMap);
-        attributeDefinitionSet.add(hashAttribute);
+        attributeDefinitionSet.add(hashAttributeMap);
 
         if (respPkColumns.size() == 2) {
-            AttributeDefinition sortAttribute =
-                    AttributeDefinition.builder()
-                            .attributeName(respPkColumns.get(1).getName().getString())
-                            .attributeType(CommonServiceUtils.getScalarAttributeFromPDataType(respPkColumns.get(1).getDataType()))
-                            .build();
-            Map<String, Object> sortAttributeMap = new HashMap<>();
-            sortAttributeMap.put("AttributeName", respPkColumns.get(1).getName().getString());
-            sortAttributeMap.put("AttributeType", CommonServiceUtils
-                    .getScalarAttributeFromPDataType(respPkColumns.get(1).getDataType())
-                    .toString());
+            Map<String, Object> sortAttributeMap = getAttributeDefinitionMap(
+                    respPkColumns.get(1).getName().getString(),
+                    CommonServiceUtils.getScalarAttributeFromPDataType(respPkColumns.get(1).getDataType()).toString());
             response.add(sortAttributeMap);
-            attributeDefinitionSet.add(sortAttribute);
+            attributeDefinitionSet.add(sortAttributeMap);
         }
         return response;
     }
@@ -214,15 +181,22 @@ public class TableDescriptorUtils {
         List<Map<String, Object>> response = new ArrayList<>();
         Map<String, Object> hashKeySchema = new HashMap<>();
         hashKeySchema.put("AttributeName", pkColumns.get(0).getName().getString());
-        hashKeySchema.put("KeyType", KeyType.HASH.toString());
+        hashKeySchema.put("KeyType", "HASH");
         response.add(hashKeySchema);
         if (pkColumns.size() == 2) {
             Map<String, Object> sortKeySchema = new HashMap<>();
             sortKeySchema.put("AttributeName", pkColumns.get(1).getName().getString());
-            sortKeySchema.put("KeyType", KeyType.RANGE.toString());
+            sortKeySchema.put("KeyType", "RANGE");
             response.add(sortKeySchema);
         }
         return response;
+    }
+
+    private static Map<String, Object> getAttributeDefinitionMap(String name, String type) {
+        Map<String, Object> attrDef = new HashMap<>();
+        attrDef.put("AttributeName", name);
+        attrDef.put("AttributeType", type);
+        return attrDef;
     }
 
     /**
