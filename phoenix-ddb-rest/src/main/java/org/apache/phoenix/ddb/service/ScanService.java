@@ -8,6 +8,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.phoenix.ddb.service.utils.ApiMetadata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,11 +31,11 @@ public class ScanService {
     public static Map<String, Object> scan(Map<String, Object> request, String connectionUrl) {
         // phoenix does not support parallel scans from the client so
         // we will return all items in the first segment and no items in all other segments
-        if (request.get("Segment") != null && (Integer) request.get("Segment") > 0) {
+        if (request.get(ApiMetadata.SEGMENT) != null && (Integer) request.get(ApiMetadata.SEGMENT) > 0) {
             return Collections.emptyMap();
         }
-        String tableName = (String) request.get("TableName");
-        String indexName = (String) request.get("IndexName");
+        String tableName = (String) request.get(ApiMetadata.TABLE_NAME);
+        String indexName = (String) request.get(ApiMetadata.INDEX_NAME);
         boolean useIndex = !StringUtils.isEmpty(indexName);
         List<PColumn> tablePKCols, indexPKCols = null;
         try (Connection connection = DriverManager.getConnection(connectionUrl,
@@ -64,30 +65,30 @@ public class ScanService {
         if (useIndex) {
             sortKeyPKCol = (indexPKCols.size() == 2) ? indexPKCols.get(1) : null;
         }
-        String tableName = (String) request.get("TableName");
-        String indexName = (String) request.get("IndexName");
+        String tableName = (String) request.get(ApiMetadata.TABLE_NAME);
+        String indexName = (String) request.get(ApiMetadata.INDEX_NAME);
         Map<String, String> exprAttrNames =
-                (Map<String, String>) request.get("ExpressionAttributeNames");
+                (Map<String, String>) request.get(ApiMetadata.EXPRESSION_ATTRIBUTE_NAMES);
         Map<String, Object> exprAttrValues =
-                (Map<String, Object>) request.get("ExpressionAttributeValues");
+                (Map<String, Object>) request.get(ApiMetadata.EXPRESSION_ATTRIBUTE_VALUES);
 
         StringBuilder queryBuilder = StringUtils.isEmpty(indexName) ?
                 new StringBuilder(String.format(SELECT_QUERY, "DDB", tableName)) :
                 new StringBuilder(
                         String.format(SELECT_QUERY_WITH_INDEX_HINT, "DDB", tableName, indexName,
                                 "DDB", tableName));
-        String filterExpr = (String) request.get("FilterExpression");
+        String filterExpr = (String) request.get(ApiMetadata.FILTER_EXPRESSION);
         Map<String, Object> exclusiveStartKey =
-                (Map<String, Object>) request.get("ExclusiveStartKey");
+                (Map<String, Object>) request.get(ApiMetadata.EXCLUSIVE_START_KEY);
         if (!StringUtils.isEmpty(filterExpr) || (exclusiveStartKey != null
                 && !exclusiveStartKey.isEmpty())) {
             queryBuilder.append(" WHERE ");
         }
-        DQLUtils.addFilterCondition(false, queryBuilder, (String) request.get("FilterExpression"),
+        DQLUtils.addFilterCondition(false, queryBuilder, (String) request.get(ApiMetadata.FILTER_EXPRESSION),
                 exprAttrNames, exprAttrValues);
         DQLUtils.addExclusiveStartKeyCondition(false, !StringUtils.isEmpty(filterExpr),
                 queryBuilder, exclusiveStartKey, useIndex, partitionKeyPKCol, sortKeyPKCol);
-        DQLUtils.addLimit(queryBuilder, (Integer) request.get("Limit"), MAX_SCAN_LIMIT);
+        DQLUtils.addLimit(queryBuilder, (Integer) request.get(ApiMetadata.LIMIT), MAX_SCAN_LIMIT);
         //TODO : extract PKs from filterExpression and append to WHERE clause
         LOGGER.info("Query for Scan: " + queryBuilder);
 
@@ -103,7 +104,7 @@ public class ScanService {
             Map<String, Object> request, boolean useIndex, PColumn partitionKeyPKCol,
             PColumn sortKeyPKCol) throws SQLException {
         Map<String, Object> exclusiveStartKey =
-                (Map<String, Object>) request.get("ExclusiveStartKey");
+                (Map<String, Object>) request.get(ApiMetadata.EXCLUSIVE_START_KEY);
         if (exclusiveStartKey != null && !exclusiveStartKey.isEmpty()) {
             String name = partitionKeyPKCol.getName().toString();
             name = (useIndex) ? CommonServiceUtils.getKeyNameFromBsonValueFunc(name) : name;
@@ -124,10 +125,10 @@ public class ScanService {
      * Return a list of attribute names to project.
      */
     private static List<String> getProjectionAttributes(Map<String, Object> request) {
-        List<String> attributesToGet = (List<String>) request.get("AttributesToGet");
-        String projExpr = (String) request.get("ProjectionExpression");
+        List<String> attributesToGet = (List<String>) request.get(ApiMetadata.ATTRIBUTES_TO_GET);
+        String projExpr = (String) request.get(ApiMetadata.PROJECTION_EXPRESSION);
         Map<String, String> exprAttrNames =
-                (Map<String, String>) request.get("ExpressionAttributeNames");
+                (Map<String, String>) request.get(ApiMetadata.EXPRESSION_ATTRIBUTE_NAMES);
         return DQLUtils.getProjectionAttributes(attributesToGet, projExpr, exprAttrNames);
     }
 }

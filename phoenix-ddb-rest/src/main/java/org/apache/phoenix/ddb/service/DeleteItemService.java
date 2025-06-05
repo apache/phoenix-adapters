@@ -7,6 +7,7 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.phoenix.ddb.service.utils.ApiMetadata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,17 +47,17 @@ public class DeleteItemService {
             Map<String, Object> request) throws SQLException {
         PhoenixConnection phoenixConnection = connection.unwrap(PhoenixConnection.class);
         PTable table = phoenixConnection.getTable(new PTableKey(phoenixConnection.getTenantId(),
-                "DDB." + request.get("TableName")));
+                "DDB." + request.get(ApiMetadata.TABLE_NAME)));
         // get PKs from phoenix
         List<PColumn> pkCols = table.getPKColumns();
         //build prepared statement and execute
         PreparedStatement stmt = getPreparedStatement(connection, request, pkCols);
 
-        DMLUtils.setKeysOnStatement(stmt, pkCols, (Map<String, Object>) request.get("Key"));
+        DMLUtils.setKeysOnStatement(stmt, pkCols, (Map<String, Object>) request.get(ApiMetadata.KEY));
         LOGGER.info("Delete Query for DeleteItem: {}", stmt);
-        return DMLUtils.executeUpdate(stmt, (String) request.get("ReturnValues"),
-                (String) request.get("ReturnValuesOnConditionCheckFailure"),
-                (String) request.get("ConditionExpression"), pkCols, true);
+        return DMLUtils.executeUpdate(stmt, (String) request.get(ApiMetadata.RETURN_VALUES),
+                (String) request.get(ApiMetadata.RETURN_VALUES_ON_CONDITION_CHECK_FAILURE),
+                (String) request.get(ApiMetadata.CONDITION_EXPRESSION), pkCols, true);
     }
 
     /**
@@ -65,14 +66,14 @@ public class DeleteItemService {
      */
     public static PreparedStatement getPreparedStatement(Connection conn,
             Map<String, Object> request, List<PColumn> pkCols) throws SQLException {
-        String tableName = (String) request.get("TableName");
-        String condExpr = (String) request.get("ConditionExpression");
+        String tableName = (String) request.get(ApiMetadata.TABLE_NAME);
+        String condExpr = (String) request.get(ApiMetadata.CONDITION_EXPRESSION);
         String partitionKeyPKCol = pkCols.get(0).toString();
         String sortKeyPKCol = null;
         Map<String, String> exprAttrNames =
-                (Map<String, String>) request.get("ExpressionAttributeNames");
+                (Map<String, String>) request.get(ApiMetadata.EXPRESSION_ATTRIBUTE_NAMES);
         Map<String, Object> exprAttrVals =
-                (Map<String, Object>) request.get("ExpressionAttributeValues");
+                (Map<String, Object>) request.get(ApiMetadata.EXPRESSION_ATTRIBUTE_VALUES);
         PreparedStatement stmt;
 
         if (pkCols.size() > 1) {

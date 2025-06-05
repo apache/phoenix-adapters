@@ -7,6 +7,7 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.phoenix.ddb.service.utils.ApiMetadata;
 import org.bson.BsonDocument;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,12 +57,12 @@ public class PutItemService {
 
     public static Map<String, Object> putItemWithConn(Connection connection,
             Map<String, Object> request) throws SQLException {
-        Map<String, Object> item = (Map<String, Object>) request.get("Item");
+        Map<String, Object> item = (Map<String, Object>) request.get(ApiMetadata.ITEM);
         BsonDocument bsonDoc = MapToBsonDocument.getBsonDocument(item);
         // get PTable and PK PColumns
         PhoenixConnection phoenixConnection = connection.unwrap(PhoenixConnection.class);
         PTable table = phoenixConnection.getTable(new PTableKey(phoenixConnection.getTenantId(),
-                "DDB." + request.get("TableName")));
+                "DDB." + request.get(ApiMetadata.TABLE_NAME)));
         List<PColumn> pkCols = table.getPKColumns();
 
         //create statement based on PKs and conditional expression
@@ -73,9 +74,9 @@ public class PutItemService {
 
         //execute, auto commit is on
         LOGGER.info("Upsert Query for PutItem: {}", stmt);
-        return DMLUtils.executeUpdate(stmt, (String) request.get("ReturnValues"),
-                (String) request.get("ReturnValuesOnConditionCheckFailure"),
-                (String) request.get("ConditionExpression"), pkCols, false);
+        return DMLUtils.executeUpdate(stmt, (String) request.get(ApiMetadata.RETURN_VALUES),
+                (String) request.get(ApiMetadata.RETURN_VALUES_ON_CONDITION_CHECK_FAILURE),
+                (String) request.get(ApiMetadata.CONDITION_EXPRESSION), pkCols, false);
     }
 
     /**
@@ -85,12 +86,12 @@ public class PutItemService {
     private static PreparedStatement getPreparedStatement(Connection conn,
             Map<String, Object> request, List<PColumn> pkCols) throws SQLException {
         PreparedStatement stmt;
-        String tableName = (String) request.get("TableName");
-        String condExpr = (String) request.get("ConditionExpression");
+        String tableName = (String) request.get(ApiMetadata.TABLE_NAME);
+        String condExpr = (String) request.get(ApiMetadata.CONDITION_EXPRESSION);
         Map<String, String> exprAttrNames =
-                (Map<String, String>) request.get("ExpressionAttributeNames");
+                (Map<String, String>) request.get(ApiMetadata.EXPRESSION_ATTRIBUTE_NAMES);
         Map<String, Object> exprAttrVals =
-                (Map<String, Object>) request.get("ExpressionAttributeValues");
+                (Map<String, Object>) request.get(ApiMetadata.EXPRESSION_ATTRIBUTE_VALUES);
         if (!StringUtils.isEmpty(condExpr)) {
             String bsonCondExpr =
                     CommonServiceUtils.getBsonConditionExpressionFromMap(condExpr, exprAttrNames,

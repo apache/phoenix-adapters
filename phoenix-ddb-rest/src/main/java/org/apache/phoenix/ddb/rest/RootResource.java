@@ -36,6 +36,7 @@ import org.apache.phoenix.ddb.service.ListStreamsService;
 
 import org.apache.phoenix.ddb.service.ListTablesService;
 import org.apache.phoenix.ddb.service.UpdateTableService;
+import org.apache.phoenix.ddb.service.utils.ApiMetadata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -114,7 +115,7 @@ public class RootResource {
                 }
                 case "DynamoDB_20120810.DescribeTable": {
                     responseObject = TableDescriptorUtils.getTableDescription(
-                            (String) request.get("TableName"), jdbcConnectionUrl, "Table");
+                            (String) request.get(ApiMetadata.TABLE_NAME), jdbcConnectionUrl, "Table");
                     break;
                 }
                 case "DynamoDB_20120810.ListTables": {

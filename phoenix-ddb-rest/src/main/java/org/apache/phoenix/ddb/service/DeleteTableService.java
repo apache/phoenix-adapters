@@ -22,6 +22,7 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.Map;
 
+import org.apache.phoenix.ddb.service.utils.ApiMetadata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,7 +34,7 @@ public class DeleteTableService {
 
     public static Map<String, Object> deleteTable(Map<String, Object> deleteTableRequest,
             final String connectionUrl) {
-        String tableName = (String) deleteTableRequest.get("TableName");
+        String tableName = (String) deleteTableRequest.get(ApiMetadata.TABLE_NAME);
         Map<String, Object> tableDescription =
                 TableDescriptorUtils.getTableDescription(tableName, connectionUrl,
                         "TableDescription");

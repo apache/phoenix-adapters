@@ -1,5 +1,6 @@
 package org.apache.phoenix.ddb.service;
 
+import org.apache.phoenix.ddb.service.utils.ApiMetadata;
 import org.apache.phoenix.ddb.utils.DDBShimCDCUtils;
 import org.apache.phoenix.util.EnvironmentEdgeManager;
 
@@ -18,16 +19,16 @@ public class GetShardIteratorService {
                                                        String connectionUrl) {
         Map<String, Object> result = new HashMap<>();
         try (Connection conn = DriverManager.getConnection(connectionUrl)) {
-            String streamArn = (String) request.get("StreamArn");
-            String shardId = (String) request.get("ShardId");
-            String seqNum = (String) request.get("SequenceNumber");
-            String shardIterType = (String) request.get("ShardIteratorType");
+            String streamArn = (String) request.get(ApiMetadata.STREAM_ARN);
+            String shardId = (String) request.get(ApiMetadata.SHARD_ID);
+            String seqNum = (String) request.get(ApiMetadata.SEQUENCE_NUMBER);
+            String shardIterType = (String) request.get(ApiMetadata.SHARD_ITERATOR_TYPE);
             String tableName = DDBShimCDCUtils.getTableNameFromStreamName(streamArn);
             String cdcObj = DDBShimCDCUtils.getCDCObjectNameFromStreamName(streamArn);
             String startSeqNum = getStartingSequenceNumber(conn, tableName, streamArn, shardId,
                     seqNum, shardIterType);
             String streamType = DDBShimCDCUtils.getStreamType(conn, tableName);
-            result.put("ShardIterator", String.format(SHARD_ITERATOR_FORMAT, tableName,
+            result.put(ApiMetadata.SHARD_ITERATOR, String.format(SHARD_ITERATOR_FORMAT, tableName,
                     cdcObj, streamType, shardId, startSeqNum));
         } catch (SQLException e) {
             throw new RuntimeException(e);

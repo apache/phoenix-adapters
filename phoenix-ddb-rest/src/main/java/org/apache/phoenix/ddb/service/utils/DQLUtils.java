@@ -47,10 +47,10 @@ public class DQLUtils {
                     DQLUtils.getKeyFromDoc(lastBsonDoc, useIndex, tablePKCols, indexPKCols);
             int countRowsScanned = (int) PhoenixUtils.getRowsScanned(rs);
             Map<String, Object> response = new HashMap<>();
-            response.put("Items", items);
-            response.put("Count", count);
-            response.put("LastEvaluatedKey", lastKey);
-            response.put("ScannedCount", countRowsScanned);
+            response.put(ApiMetadata.ITEMS, items);
+            response.put(ApiMetadata.COUNT, count);
+            response.put(ApiMetadata.LAST_EVALUATED_KEY, lastKey);
+            response.put(ApiMetadata.SCANNED_COUNT, countRowsScanned);
             return response;
         }
     }

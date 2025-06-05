@@ -1,6 +1,7 @@
 package org.apache.phoenix.ddb.service;
 
 import org.apache.hadoop.hbase.HConstants;
+import org.apache.phoenix.ddb.service.utils.ApiMetadata;
 import org.apache.phoenix.ddb.utils.PhoenixUtils;
 import org.apache.phoenix.jdbc.PhoenixConnection;
 import org.apache.phoenix.schema.PTable;
@@ -21,10 +22,10 @@ public class TTLService {
 
     public static Map<String, Object> updateTimeToLive(Map<String, Object> request,
                                                        String connectionUrl) {
-        String tableName = (String) request.get("TableName");
-        Map<String, Object> ttlSpec = (Map<String, Object>) request.get("TimeToLiveSpecification");
-        String colName = (String) ttlSpec.get("AttributeName");
-        Boolean enabled = (Boolean) ttlSpec.get("Enabled");
+        String tableName = (String) request.get(ApiMetadata.TABLE_NAME);
+        Map<String, Object> ttlSpec = (Map<String, Object>) request.get(ApiMetadata.TIME_TO_LIVE_SPECIFICATION);
+        String colName = (String) ttlSpec.get(ApiMetadata.ATTRIBUTE_NAME);
+        Boolean enabled = (Boolean) ttlSpec.get(ApiMetadata.TIME_TO_LIVE_ENABLED);
         String alterStmt;
         if (enabled) {
             String ttlExpression = String.format(PhoenixUtils.TTL_EXPRESSION, colName, colName);
@@ -39,28 +40,28 @@ public class TTLService {
             throw new RuntimeException(e);
         }
         Map<String, Object> response = new HashMap<>();
-        response.put("TimeToLiveSpecification", ttlSpec);
+        response.put(ApiMetadata.TIME_TO_LIVE_SPECIFICATION, ttlSpec);
         return response;
     }
 
     public static Map<String, Object> describeTimeToLive(Map<String, Object> request,
                                                          String connectionUrl) {
-        String tableName = "DDB." + request.get("TableName");
+        String tableName = "DDB." + request.get(ApiMetadata.TABLE_NAME);
         Map<String, Object> ttlDesc = new HashMap<>();
         try (Connection connection = DriverManager.getConnection(connectionUrl)) {
             PTable pTable = connection.unwrap(PhoenixConnection.class).getTable(tableName);
             String ttlExpression = pTable.getTTLExpression().toString().trim();
             if (ttlExpression.contains("BSON_VALUE")) {
-                ttlDesc.put("TimeToLiveStatus", TimeToLiveStatus.ENABLED);
-                ttlDesc.put("AttributeName", PhoenixUtils.extractAttributeFromTTLExpression(ttlExpression));
+                ttlDesc.put(ApiMetadata.TIME_TO_LIVE_STATUS, TimeToLiveStatus.ENABLED);
+                ttlDesc.put(ApiMetadata.ATTRIBUTE_NAME, PhoenixUtils.extractAttributeFromTTLExpression(ttlExpression));
             } else {
-                ttlDesc.put("TimeToLiveStatus", TimeToLiveStatus.DISABLED);
+                ttlDesc.put(ApiMetadata.TIME_TO_LIVE_STATUS, TimeToLiveStatus.DISABLED);
             }
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
         Map<String, Object> response = new HashMap<>();
-        response.put("TimeToLiveDescription", ttlDesc);
+        response.put(ApiMetadata.TIME_TO_LIVE_DESCRIPTION, ttlDesc);
         return response;
     }
 }

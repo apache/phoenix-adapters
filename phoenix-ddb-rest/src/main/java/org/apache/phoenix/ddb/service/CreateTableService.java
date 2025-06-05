@@ -30,6 +30,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import org.apache.phoenix.ddb.service.utils.ApiMetadata;
 import org.apache.phoenix.ddb.utils.PhoenixUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -72,7 +73,7 @@ public class CreateTableService {
 
         Map<String, Object> hashKey = keySchemaElements.get(0);
         // re-arrange hash and sort keys if required
-        if ("RANGE".equals(hashKey.get("KeyType"))) {
+        if ("RANGE".equals(hashKey.get(ApiMetadata.KEY_TYPE))) {
             if (keySchemaElements.size() != 2) {
                 throw new IllegalArgumentException("Global Index Range key attribute present "
                         + "but key schema element size is not 2");
@@ -83,19 +84,20 @@ public class CreateTableService {
             keySchemaElements.add(hashKey);
             keySchemaElements.add(sortKey);
         }
-        Preconditions.checkArgument("HASH".equals(hashKey.get("KeyType")), "Hash key not present");
+        Preconditions.checkArgument("HASH".equals(hashKey.get(ApiMetadata.KEY_TYPE)), "Hash key not present");
 
         String hashKeyType = null;
         for (Map<String, Object> attributeDef : attributeDefinitions) {
-            if (hashKey.get("AttributeName").equals(attributeDef.get("AttributeName"))) {
-                hashKeyType = (String) attributeDef.get("AttributeType");
+            if (hashKey.get(ApiMetadata.ATTRIBUTE_NAME).equals(attributeDef.get(ApiMetadata.ATTRIBUTE_NAME))) {
+                hashKeyType = (String) attributeDef.get(ApiMetadata.ATTRIBUTE_TYPE);
                 break;
             }
         }
         Preconditions.checkArgument(hashKeyType != null, "Hash key attribute should be defined");
 
-        String hashKeyAttributeName = (String) hashKey.get("AttributeName");
+        String hashKeyAttributeName = (String) hashKey.get(ApiMetadata.ATTRIBUTE_NAME);
         final String hashKeyDataType;
+
         switch (hashKeyType) {
             case "S":
                 indexOn.append("BSON_VALUE(COL,'").append(hashKeyAttributeName)
@@ -124,15 +126,15 @@ public class CreateTableService {
 
             String rangeKeyType = null;
             for (Map<String, Object> attributeDef : attributeDefinitions) {
-                if (rangeKey.get("AttributeName").equals(attributeDef.get("AttributeName"))) {
-                    rangeKeyType = (String) attributeDef.get("AttributeType");
+                if (rangeKey.get(ApiMetadata.ATTRIBUTE_NAME).equals(attributeDef.get(ApiMetadata.ATTRIBUTE_NAME))) {
+                    rangeKeyType = (String) attributeDef.get(ApiMetadata.ATTRIBUTE_TYPE);
                     break;
                 }
             }
             Preconditions.checkArgument(rangeKeyType != null,
                     "Global Index Range key attribute should be defined");
 
-            String rangeKeyAttributeName = (String) rangeKey.get("AttributeName");
+            String rangeKeyAttributeName = (String) rangeKey.get(ApiMetadata.ATTRIBUTE_NAME);
             final String rangeKeyDataType;
             switch (rangeKeyType) {
                 case "S":
@@ -168,26 +170,26 @@ public class CreateTableService {
     public static List<String> getIndexDDLs(Map<String, Object> request) {
         final List<String> indexDDLs = new ArrayList<>();
         List<Map<String, Object>> attributeDefinitions =
-                (List<Map<String, Object>>) request.get("AttributeDefinitions");
+                (List<Map<String, Object>>) request.get(ApiMetadata.ATTRIBUTE_DEFINITIONS);
 
-        if (request.get("GlobalSecondaryIndexes") != null) {
+        if (request.get(ApiMetadata.GLOBAL_SECONDARY_INDEXES) != null) {
             for (Map<String, Object> globalSecondaryIndex : (List<Map<String, Object>>) request.get(
-                    "GlobalSecondaryIndexes")) {
-                final String indexName = (String) globalSecondaryIndex.get("IndexName");
+                    ApiMetadata.GLOBAL_SECONDARY_INDEXES)) {
+                final String indexName = (String) globalSecondaryIndex.get(ApiMetadata.INDEX_NAME);
                 final List<Map<String, Object>> keySchemaElements =
-                        (List<Map<String, Object>>) globalSecondaryIndex.get("KeySchema");
-                addIndexDDL((String)request.get("TableName"), keySchemaElements,
+                        (List<Map<String, Object>>) globalSecondaryIndex.get(ApiMetadata.KEY_SCHEMA);
+                addIndexDDL((String)request.get(ApiMetadata.TABLE_NAME), keySchemaElements,
                         attributeDefinitions, indexDDLs, indexName);
             }
         }
 
-        if (request.get("LocalSecondaryIndexes") != null) {
+        if (request.get(ApiMetadata.LOCAL_SECONDARY_INDEXES) != null) {
             for (Map<String, Object> localSecondaryIndex : (List<Map<String, Object>>) request.get(
-                    "LocalSecondaryIndexes")) {
-                final String indexName = (String) localSecondaryIndex.get("IndexName");
+                    ApiMetadata.LOCAL_SECONDARY_INDEXES)) {
+                final String indexName = (String) localSecondaryIndex.get(ApiMetadata.INDEX_NAME);
                 final List<Map<String, Object>> keySchemaElements =
-                        (List<Map<String, Object>>) localSecondaryIndex.get("KeySchema");
-                addIndexDDL((String)request.get("TableName"), keySchemaElements,
+                        (List<Map<String, Object>>) localSecondaryIndex.get(ApiMetadata.KEY_SCHEMA);
+                addIndexDDL((String)request.get(ApiMetadata.TABLE_NAME), keySchemaElements,
                         attributeDefinitions, indexDDLs, indexName);
             }
         }
@@ -201,10 +203,10 @@ public class CreateTableService {
      */
     public static List<String> getCdcDDL(Map<String, Object> request) {
         final List<String> cdcDDLs = new ArrayList<>();
-        Map<String, Object> streamSpec = (Map<String, Object>) request.get("StreamSpecification");
-        if (streamSpec != null && (Boolean) streamSpec.get("StreamEnabled")) {
-            String tableName = (String) request.get("TableName");
-            String streamType = (String) streamSpec.get("StreamViewType");
+        Map<String, Object> streamSpec = (Map<String, Object>) request.get(ApiMetadata.STREAM_SPECIFICATION);
+        if (streamSpec != null && (Boolean) streamSpec.get(ApiMetadata.STREAM_ENABLED)) {
+            String tableName = (String) request.get(ApiMetadata.TABLE_NAME);
+            String streamType = (String) streamSpec.get(ApiMetadata.STREAM_VIEW_TYPE);
             cdcDDLs.add(String.format(CREATE_CDC_DDL, tableName, "DDB", tableName));
             cdcDDLs.add(String.format(ALTER_TABLE_STREAM_TYPE_DDL, "DDB", tableName, streamType));
         }
@@ -213,16 +215,16 @@ public class CreateTableService {
 
     public static Map<String, Object> createTable(final Map<String, Object> request,
             final String connectionUrl) {
-        final String tableName = (String) request.get("TableName");
+        final String tableName = (String) request.get(ApiMetadata.TABLE_NAME);
 
         CREATE_TABLE_LOCKS.asMap().putIfAbsent(tableName, new ReentrantLock());
         CREATE_TABLE_LOCKS.asMap().get(tableName).lock();
         try {
 
             List<Map<String, Object>> keySchemaElements =
-                    (List<Map<String, Object>>) request.get("KeySchema");
+                    (List<Map<String, Object>>) request.get(ApiMetadata.KEY_SCHEMA);
             List<Map<String, Object>> attributeDefinitions =
-                    (List<Map<String, Object>>) request.get("AttributeDefinitions");
+                    (List<Map<String, Object>>) request.get(ApiMetadata.ATTRIBUTE_DEFINITIONS);
 
             StringBuilder cols = new StringBuilder();
             StringBuilder pkCols = new StringBuilder();
@@ -230,7 +232,7 @@ public class CreateTableService {
 
             Map<String, Object> hashKey = keySchemaElements.get(0);
             // re-arrange hash and sort keys if required
-            if ("RANGE".equals(hashKey.get("KeyType"))) {
+            if ("RANGE".equals(hashKey.get(ApiMetadata.KEY_TYPE))) {
                 if (keySchemaElements.size() != 2) {
                     throw new IllegalArgumentException(
                             "Range key attribute present but key schema element size is not 2");
@@ -241,25 +243,25 @@ public class CreateTableService {
                 keySchemaElements.add(hashKey);
                 keySchemaElements.add(sortKey);
             }
-            Preconditions.checkArgument("HASH".equals(hashKey.get("KeyType")),
+            Preconditions.checkArgument("HASH".equals(hashKey.get(ApiMetadata.KEY_TYPE)),
                     "Hash key not present");
 
             String hashKeyQuoted =
-                    CommonServiceUtils.getEscapedArgument((String) hashKey.get("AttributeName"));
+                    CommonServiceUtils.getEscapedArgument((String) hashKey.get(ApiMetadata.ATTRIBUTE_NAME));
             cols.append(hashKeyQuoted).append(" ");
             pkCols.append(hashKeyQuoted);
 
             String hashKeyType = null;
             for (Map<String, Object> attributeDef : attributeDefinitions) {
-                if (hashKey.get("AttributeName").equals(attributeDef.get("AttributeName"))) {
-                    hashKeyType = (String) attributeDef.get("AttributeType");
+                if (hashKey.get(ApiMetadata.ATTRIBUTE_NAME).equals(attributeDef.get(ApiMetadata.ATTRIBUTE_NAME))) {
+                    hashKeyType = (String) attributeDef.get(ApiMetadata.ATTRIBUTE_TYPE);
                     break;
                 }
             }
             Preconditions.checkArgument(hashKeyType != null,
                     "Hash key attribute should be defined");
 
-            pkColsSet.add((String) hashKey.get("AttributeName"));
+            pkColsSet.add((String) hashKey.get(ApiMetadata.ATTRIBUTE_NAME));
             switch (hashKeyType) {
                 case "S":
                     cols.append("VARCHAR NOT NULL");
@@ -279,21 +281,21 @@ public class CreateTableService {
                 cols.append(", ");
                 Map<String, Object> rangeKey = keySchemaElements.get(1);
                 String rangeKeyQuoted = CommonServiceUtils.getEscapedArgument(
-                        (String) rangeKey.get("AttributeName"));
+                        (String) rangeKey.get(ApiMetadata.ATTRIBUTE_NAME));
                 cols.append(rangeKeyQuoted).append(" ");
                 pkCols.append(",").append(rangeKeyQuoted);
 
                 String rangeKeyType = null;
                 for (Map<String, Object> attributeDef : attributeDefinitions) {
-                    if (rangeKey.get("AttributeName").equals(attributeDef.get("AttributeName"))) {
-                        rangeKeyType = (String) attributeDef.get("AttributeType");
+                    if (rangeKey.get(ApiMetadata.ATTRIBUTE_NAME).equals(attributeDef.get(ApiMetadata.ATTRIBUTE_NAME))) {
+                        rangeKeyType = (String) attributeDef.get(ApiMetadata.ATTRIBUTE_TYPE);
                         break;
                     }
                 }
                 Preconditions.checkArgument(rangeKeyType != null,
                         "Range key attribute should be defined");
 
-                pkColsSet.add((String) rangeKey.get("AttributeName"));
+                pkColsSet.add((String) rangeKey.get(ApiMetadata.ATTRIBUTE_NAME));
                 switch (rangeKeyType) {
                     case "S":
                         cols.append("VARCHAR NOT NULL");

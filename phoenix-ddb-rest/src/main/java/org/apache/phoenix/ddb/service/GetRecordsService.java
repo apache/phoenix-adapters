@@ -1,8 +1,10 @@
 package org.apache.phoenix.ddb.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.google.protobuf.Api;
 import org.apache.phoenix.ddb.bson.BsonDocumentToMap;
 import org.apache.phoenix.ddb.bson.CDCBsonUtil;
+import org.apache.phoenix.ddb.service.utils.ApiMetadata;
 import org.apache.phoenix.ddb.service.utils.DQLUtils;
 import org.apache.phoenix.ddb.utils.DDBShimCDCUtils;
 import org.apache.phoenix.ddb.utils.PhoenixShardIterator;
@@ -48,8 +50,8 @@ public class GetRecordsService {
      */
     public static Map<String, Object> getRecords(Map<String, Object> request, String connectionUrl) {
         PhoenixShardIterator pIter
-                = new PhoenixShardIterator((String) request.get("ShardIterator"));
-        Integer requestLimit = (Integer) request.get("Limit");
+                = new PhoenixShardIterator((String) request.get(ApiMetadata.SHARD_ITERATOR));
+        Integer requestLimit = (Integer) request.get(ApiMetadata.LIMIT);
         List<Map<String, Object>> records = new ArrayList<>();
         long lastTs = pIter.getTimestamp();
         int lastOffset = pIter.getOffset() - 1;
@@ -105,8 +107,8 @@ public class GetRecordsService {
 
         // if partition has closed and we returned all records, set nextShardIterator to null
         Map<String, Object> result = new HashMap<>();
-        result.put("Records", records);
-        result.put("NextShardIterator", (partitionEndTime > 0 && !hasMore) ? null : pIter.toString());
+        result.put(ApiMetadata.RECORDS, records);
+        result.put(ApiMetadata.NEXT_SHARD_ITERATOR, (partitionEndTime > 0 && !hasMore) ? null : pIter.toString());
         return result;
     }
 
@@ -142,13 +144,13 @@ public class GetRecordsService {
     private static Map<String, Object> getStreamRecord(ResultSet rs, String streamType, List<PColumn> pkCols,
                                           String seqNum) throws SQLException, JsonProcessingException {
         Map<String, Object> streamRecord = new HashMap<>();
-        streamRecord.put("StreamViewType", streamType);
-        streamRecord.put("SequenceNumber", seqNum);
+        streamRecord.put(ApiMetadata.STREAM_VIEW_TYPE, streamType);
+        streamRecord.put(ApiMetadata.SEQUENCE_NUMBER, seqNum);
 
         // creation DateTime
         long timestamp = rs.getDate(1).getTime();
         Instant instant = Instant.ofEpochMilli(timestamp);
-        streamRecord.put("ApproximateCreationDateTime", String.format("%.12e", instant.getEpochSecond() + instant.getNano() / 1_000_000_000.0));
+        streamRecord.put(ApiMetadata.APPROXIMATE_CREATION_DATE_TIME, String.format("%.12e", instant.getEpochSecond() + instant.getNano() / 1_000_000_000.0));
 
         //images
         String cdcJson = rs.getString(pkCols.size() + 2);
@@ -156,32 +158,32 @@ public class GetRecordsService {
         switch (streamType) {
             case OLD_IMAGE:
                 if (imagesBsonDoc[0] != null)
-                    streamRecord.put("OldImage", BsonDocumentToMap.getFullItem(imagesBsonDoc[0]));
+                    streamRecord.put(ApiMetadata.OLD_IMAGE, BsonDocumentToMap.getFullItem(imagesBsonDoc[0]));
                 break;
             case NEW_IMAGE:
                 if (imagesBsonDoc[1] != null)
-                    streamRecord.put("NewImage", BsonDocumentToMap.getFullItem(imagesBsonDoc[1]));
+                    streamRecord.put(ApiMetadata.NEW_IMAGE, BsonDocumentToMap.getFullItem(imagesBsonDoc[1]));
                 break;
             case NEW_AND_OLD_IMAGES:
                 if (imagesBsonDoc[0] != null)
-                    streamRecord.put("OldImage", BsonDocumentToMap.getFullItem(imagesBsonDoc[0]));
+                    streamRecord.put(ApiMetadata.OLD_IMAGE, BsonDocumentToMap.getFullItem(imagesBsonDoc[0]));
                 if (imagesBsonDoc[1] != null)
-                    streamRecord.put("NewImage", BsonDocumentToMap.getFullItem(imagesBsonDoc[1]));
+                    streamRecord.put(ApiMetadata.NEW_IMAGE, BsonDocumentToMap.getFullItem(imagesBsonDoc[1]));
                 break;
         }
         //always set keys
         RawBsonDocument image = (imagesBsonDoc[0] != null) ? imagesBsonDoc[0] : imagesBsonDoc[1];
-        streamRecord.put("Keys", DQLUtils.getKeyFromDoc(image, false, pkCols, null));
+        streamRecord.put(ApiMetadata.KEYS, DQLUtils.getKeyFromDoc(image, false, pkCols, null));
 
         // Record Name
         Map<String, Object> record = new HashMap<>();
-        record.put("dynamodb", streamRecord);
+        record.put(ApiMetadata.DYNAMODB, streamRecord);
         if (imagesBsonDoc[0] == null) {
-            record.put("eventName", "INSERT");
+            record.put(ApiMetadata.EVENT_NAME, "INSERT");
         } else if (imagesBsonDoc[1] == null) {
-            record.put("eventName", "REMOVE");
+            record.put(ApiMetadata.EVENT_NAME, "REMOVE");
         } else {
-            record.put("eventName", "MODIFY");
+            record.put(ApiMetadata.EVENT_NAME, "MODIFY");
         }
         return record;
     }

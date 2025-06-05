@@ -1,5 +1,6 @@
 package org.apache.phoenix.ddb.service;
 
+import org.apache.phoenix.ddb.service.utils.ApiMetadata;
 import org.apache.phoenix.ddb.service.utils.TableDescriptorUtils;
 import org.apache.phoenix.query.QueryServices;
 import org.apache.phoenix.schema.PIndexState;
@@ -20,25 +21,25 @@ public class UpdateTableService {
     private static String DROP_INDEX_SQL = "ALTER INDEX \"%s\" ON %s.\"%s\" DISABLE";
 
     public static Map<String, Object> updateTable(Map<String, Object> request, String connectionUrl) {
-        String tableName = (String) request.get("TableName");
+        String tableName = (String) request.get(ApiMetadata.TABLE_NAME);
         List<String> ddls = new ArrayList<>();
 
         // index updates
-        if (request.containsKey("GlobalSecondaryIndexUpdates")) {
-            List<Map<String, Object>> indexUpdates = (List<Map<String, Object>>) request.get("GlobalSecondaryIndexUpdates");
+        if (request.containsKey(ApiMetadata.GLOBAL_SECONDARY_INDEX_UPDATES)) {
+            List<Map<String, Object>> indexUpdates = (List<Map<String, Object>>) request.get(ApiMetadata.GLOBAL_SECONDARY_INDEX_UPDATES);
             for (Map<String, Object> indexUpdate : indexUpdates) {
-                if (indexUpdate.containsKey("Delete")) {
-                    Map<String, Object> deleteIndexUpdate = (Map<String, Object>) indexUpdate.get("Delete");
-                    String indexName = (String) deleteIndexUpdate.get("IndexName");
+                if (indexUpdate.containsKey(ApiMetadata.DELETE)) {
+                    Map<String, Object> deleteIndexUpdate = (Map<String, Object>) indexUpdate.get(ApiMetadata.DELETE);
+                    String indexName = (String) deleteIndexUpdate.get(ApiMetadata.INDEX_NAME);
                     String ddl = String.format(DROP_INDEX_SQL, indexName, "DDB", tableName);
                     LOGGER.info("DDL for Disable Index: {}", ddl);
                     ddls.add(ddl);
-                } else if (indexUpdate.containsKey("Create")) {
-                    Map<String, Object> createIndexUpdate = (Map<String, Object>) indexUpdate.get("Create");
-                    String indexName = (String) createIndexUpdate.get("IndexName");
+                } else if (indexUpdate.containsKey(ApiMetadata.CREATE)) {
+                    Map<String, Object> createIndexUpdate = (Map<String, Object>) indexUpdate.get(ApiMetadata.CREATE);
+                    String indexName = (String) createIndexUpdate.get(ApiMetadata.INDEX_NAME);
                     List<String> indexDDLs = new ArrayList<>();
-                    List<Map<String, Object>> attrDefs = (List<Map<String, Object>>) request.get("AttributeDefinitions");
-                    List<Map<String, Object>> keySchema = (List<Map<String, Object>>) createIndexUpdate.get("KeySchema");
+                    List<Map<String, Object>> attrDefs = (List<Map<String, Object>>) request.get(ApiMetadata.ATTRIBUTE_DEFINITIONS);
+                    List<Map<String, Object>> keySchema = (List<Map<String, Object>>) createIndexUpdate.get(ApiMetadata.KEY_SCHEMA);
                     CreateTableService.addIndexDDL(tableName, keySchema, attrDefs, indexDDLs, indexName);
                     String ddl = indexDDLs.get(0) + " ASYNC ";
                     LOGGER.info("DDL for Create Index: {}", ddl);
@@ -50,7 +51,7 @@ public class UpdateTableService {
         }
 
         //cdc
-        if (request.containsKey("StreamSpecification")) {
+        if (request.containsKey(ApiMetadata.STREAM_SPECIFICATION)) {
             List<String> cdcDDLs = CreateTableService.getCdcDDL(request);
             LOGGER.info("DDLs for Create CDC: {} ", cdcDDLs);
             ddls.addAll(cdcDDLs);
@@ -65,6 +66,6 @@ public class UpdateTableService {
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
-        return TableDescriptorUtils.getTableDescription(tableName, connectionUrl, "TableDescription");
+        return TableDescriptorUtils.getTableDescription(tableName, connectionUrl, ApiMetadata.TABLE_DESCRIPTION);
     }
 }

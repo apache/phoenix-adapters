@@ -7,6 +7,8 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 
+import com.google.protobuf.Api;
+import org.apache.phoenix.ddb.service.utils.ApiMetadata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,8 +30,8 @@ public class QueryService {
     private static final int MAX_QUERY_LIMIT = 500;
 
     public static Map<String, Object> query(Map<String, Object> request, String connectionUrl) {
-        String tableName = (String) request.get("TableName");
-        String indexName = (String) request.get("IndexName");
+        String tableName = (String) request.get(ApiMetadata.TABLE_NAME);
+        String indexName = (String) request.get(ApiMetadata.INDEX_NAME);
         boolean useIndex = !StringUtils.isEmpty(indexName);
         List<PColumn> tablePKCols, indexPKCols = null;
         try (Connection connection = DriverManager.getConnection(connectionUrl,
@@ -57,14 +59,14 @@ public class QueryService {
     public static PreparedStatement getPreparedStatement(Connection conn,
             Map<String, Object> request, boolean useIndex, List<PColumn> tablePKCols,
             List<PColumn> indexPKCols) throws SQLException {
-        String tableName = (String) request.get("TableName");
-        String indexName = (String) request.get("IndexName");
+        String tableName = (String) request.get(ApiMetadata.TABLE_NAME);
+        String indexName = (String) request.get(ApiMetadata.INDEX_NAME);
 
         Map<String, String> exprAttrNames =
-                (Map<String, String>) request.get("ExpressionAttributeNames");
+                (Map<String, String>) request.get(ApiMetadata.EXPRESSION_ATTRIBUTE_NAMES);
         Map<String, Object> exprAttrValues =
-                (Map<String, Object>) request.get("ExpressionAttributeValues");
-        String keyCondExpr = (String) request.get("KeyConditionExpression");
+                (Map<String, Object>) request.get(ApiMetadata.EXPRESSION_ATTRIBUTE_VALUES);
+        String keyCondExpr = (String) request.get(ApiMetadata.KEY_CONDITION_EXPRESSION);
 
         // build SQL query
         StringBuilder queryBuilder = StringUtils.isEmpty(indexName) ?
@@ -81,12 +83,12 @@ public class QueryService {
         // append all conditions for WHERE clause
         queryBuilder.append(keyConditions.getSQLWhereClause());
         DQLUtils.addExclusiveStartKeyCondition(true, false, queryBuilder,
-                (Map<String, Object>) request.get("ExclusiveStartKey"), useIndex, partitionKeyPKCol,
+                (Map<String, Object>) request.get(ApiMetadata.EXCLUSIVE_START_KEY), useIndex, partitionKeyPKCol,
                 sortKeyPKCol);
-        DQLUtils.addFilterCondition(true, queryBuilder, (String) request.get("FilterExpression"),
+        DQLUtils.addFilterCondition(true, queryBuilder, (String) request.get(ApiMetadata.FILTER_EXPRESSION),
                 exprAttrNames, exprAttrValues);
         addScanIndexForwardCondition(queryBuilder, request, useIndex, sortKeyPKCol);
-        DQLUtils.addLimit(queryBuilder, (Integer) request.get("Limit"), MAX_QUERY_LIMIT);
+        DQLUtils.addLimit(queryBuilder, (Integer) request.get(ApiMetadata.LIMIT), MAX_QUERY_LIMIT);
         LOGGER.info("SELECT Query: " + queryBuilder);
 
         // Set values on the PreparedStatement
@@ -102,7 +104,7 @@ public class QueryService {
      */
     private static void addScanIndexForwardCondition(StringBuilder queryBuilder,
             Map<String, Object> request, boolean useIndex, PColumn sortKeyPKCol) {
-        Boolean scanIndexForward = (Boolean) request.get("ScanIndexForward");
+        Boolean scanIndexForward = (Boolean) request.get(ApiMetadata.SCAN_INDEX_FORWARD);
         if (scanIndexForward != null && !scanIndexForward && sortKeyPKCol != null) {
             String name = sortKeyPKCol.getName().getString();
             name = (useIndex) ? name.substring(1) : CommonServiceUtils.getEscapedArgument(name);
@@ -121,9 +123,9 @@ public class QueryService {
             PColumn sortKeyPKCol) throws SQLException {
         int index = 1;
         Map<String, Object> exclusiveStartKey =
-                (Map<String, Object>) request.get("ExclusiveStartKey");
+                (Map<String, Object>) request.get(ApiMetadata.EXCLUSIVE_START_KEY);
         Map<String, Object> exprAttrVals =
-                (Map<String, Object>) request.get("ExpressionAttributeValues");
+                (Map<String, Object>) request.get(ApiMetadata.EXPRESSION_ATTRIBUTE_VALUES);
         Map<String, Object> partitionAttrVal =
                 (Map<String, Object>) exprAttrVals.get(keyConditions.getPartitionValue());
         DQLUtils.setKeyValueOnStatement(stmt, index++, partitionAttrVal, false);
@@ -156,10 +158,10 @@ public class QueryService {
      * Return a list of attribute names to project.
      */
     private static List<String> getProjectionAttributes(Map<String, Object> request) {
-        List<String> attributesToGet = (List<String>) request.get("AttributesToGet");
-        String projExpr = (String) request.get("ProjectionExpression");
+        List<String> attributesToGet = (List<String>) request.get(ApiMetadata.ATTRIBUTES_TO_GET);
+        String projExpr = (String) request.get(ApiMetadata.PROJECTION_EXPRESSION);
         Map<String, String> exprAttrNames =
-                (Map<String, String>) request.get("ExpressionAttributeNames");
+                (Map<String, String>) request.get(ApiMetadata.EXPRESSION_ATTRIBUTE_NAMES);
         return DQLUtils.getProjectionAttributes(attributesToGet, projExpr, exprAttrNames);
     }
 }

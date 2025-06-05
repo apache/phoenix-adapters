@@ -1,5 +1,6 @@
 package org.apache.phoenix.ddb.service;
 
+import org.apache.phoenix.ddb.service.utils.ApiMetadata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,8 +23,8 @@ public class ListTablesService {
                     + "TABLE_TYPE = 'u' %s LIMIT %d";
 
     public static Map<String, Object> listTables(Map<String, Object> request, String connectionUrl) {
-        String exclusiveStartTableName = (String) request.getOrDefault("ExclusiveStartTableName", null);
-        int limit = (int) request.getOrDefault("Limit", 100);
+        String exclusiveStartTableName = (String) request.getOrDefault(ApiMetadata.EXCLUSIVE_START_TABLE_NAME, null);
+        int limit = (int) request.getOrDefault(ApiMetadata.LIMIT, 100);
         String exclusiveStartTableNameClause = exclusiveStartTableName == null
                 ? ""
                 : " AND TABLE_NAME > '" + exclusiveStartTableName + "'";
@@ -41,8 +42,8 @@ public class ListTablesService {
             throw new RuntimeException(e);
         }
         Map<String, Object> response = new HashMap<>();
-        response.put("TableNames", tableNames);
-        response.put("LastEvaluatedTableName", lastEvaluatedTableName);
+        response.put(ApiMetadata.TABLE_NAMES, tableNames);
+        response.put(ApiMetadata.LAST_EVALUATED_TABLE_NAME, lastEvaluatedTableName);
         return response;
     }
 }

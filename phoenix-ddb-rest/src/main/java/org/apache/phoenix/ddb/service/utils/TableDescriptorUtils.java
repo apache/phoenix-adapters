@@ -28,7 +28,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.phoenix.ddb.utils.CommonServiceUtils;
 import org.apache.phoenix.ddb.utils.DDBShimCDCUtils;
 import org.apache.phoenix.schema.PIndexState;
@@ -69,8 +68,8 @@ public class TableDescriptorUtils {
                 String hashKeyName = respPkColumns.get(0).getName().getString();
                 hashKeyName = CommonServiceUtils.getKeyNameFromBsonValueFunc(hashKeyName);
                 Map<String, Object> hashKeyElement = new HashMap<>();
-                hashKeyElement.put("AttributeName", hashKeyName);
-                hashKeyElement.put("KeyType", "HASH");
+                hashKeyElement.put(ApiMetadata.ATTRIBUTE_NAME, hashKeyName);
+                hashKeyElement.put(ApiMetadata.KEY_TYPE, "HASH");
                 keySchemaList.add(hashKeyElement);
 
                 Map<String, Object> hashAttr = getAttributeDefinitionMap(hashKeyName,
@@ -78,7 +77,7 @@ public class TableDescriptorUtils {
                 if (!attributeDefinitionSet.contains(hashAttr)) {
                     attributeDefinitionSet.add(hashAttr);
                     List<Map<String, Object>> attributeDefinitionsList =
-                            (List<Map<String, Object>>) tableDescription.get("AttributeDefinitions");
+                            (List<Map<String, Object>>) tableDescription.get(ApiMetadata.ATTRIBUTE_DEFINITIONS);
                     attributeDefinitionsList.add(hashAttr);
                 }
                 if (respPkColumns.size() - table.getPKColumns().size() > 1 || (
@@ -88,8 +87,8 @@ public class TableDescriptorUtils {
                     sortKeyName = CommonServiceUtils.getKeyNameFromBsonValueFunc(sortKeyName);
 
                     Map<String, Object> sortKeyElement = new HashMap<>();
-                    sortKeyElement.put("AttributeName", sortKeyName);
-                    sortKeyElement.put("KeyType", "RANGE");
+                    sortKeyElement.put(ApiMetadata.ATTRIBUTE_NAME, sortKeyName);
+                    sortKeyElement.put(ApiMetadata.KEY_TYPE, "RANGE");
                     keySchemaList.add(sortKeyElement);
 
                     Map<String, Object> sortAttr =  getAttributeDefinitionMap(sortKeyName,
@@ -98,31 +97,31 @@ public class TableDescriptorUtils {
                     if (!attributeDefinitionSet.contains(sortAttr)) {
                         attributeDefinitionSet.add(sortAttr);
                         List<Map<String, Object>> attributeDefinitionsList =
-                                (List<Map<String, Object>>) tableDescription.get("AttributeDefinitions");
+                                (List<Map<String, Object>>) tableDescription.get(ApiMetadata.ATTRIBUTE_DEFINITIONS);
                         attributeDefinitionsList.add(sortAttr);
                     }
                 }
                 if (hashKeyName.equals(table.getPKColumns().get(0).getName().getString())) {
-                    tableDescription.putIfAbsent("LocalSecondaryIndexes",
+                    tableDescription.putIfAbsent(ApiMetadata.LOCAL_SECONDARY_INDEXES,
                             new ArrayList<Map<String, Object>>());
                     List<Map<String, Object>> localSecondaryIndexes =
-                            (List<Map<String, Object>>) tableDescription.get("LocalSecondaryIndexes");
+                            (List<Map<String, Object>>) tableDescription.get(ApiMetadata.LOCAL_SECONDARY_INDEXES);
 
                     Map<String, Object> localSecondaryIndexElement = new HashMap<>();
-                    localSecondaryIndexElement.put("IndexName", index.getTableName().getString());
-                    localSecondaryIndexElement.put("KeySchema", keySchemaList);
-                    localSecondaryIndexElement.put("IndexStatus", indexStateMap.get(index.getIndexState()));
+                    localSecondaryIndexElement.put(ApiMetadata.INDEX_NAME, index.getTableName().getString());
+                    localSecondaryIndexElement.put(ApiMetadata.KEY_SCHEMA, keySchemaList);
+                    localSecondaryIndexElement.put(ApiMetadata.INDEX_STATUS, indexStateMap.get(index.getIndexState()));
                     localSecondaryIndexes.add(localSecondaryIndexElement);
                 } else {
-                    tableDescription.putIfAbsent("GlobalSecondaryIndexes",
+                    tableDescription.putIfAbsent(ApiMetadata.GLOBAL_SECONDARY_INDEXES,
                             new ArrayList<Map<String, Object>>());
                     List<Map<String, Object>> globalSecondaryIndexes =
-                            (List<Map<String, Object>>) tableDescription.get("GlobalSecondaryIndexes");
+                            (List<Map<String, Object>>) tableDescription.get(ApiMetadata.GLOBAL_SECONDARY_INDEXES);
 
                     Map<String, Object> globalSecondaryIndexElement = new HashMap<>();
-                    globalSecondaryIndexElement.put("IndexName", index.getTableName().getString());
-                    globalSecondaryIndexElement.put("KeySchema", keySchemaList);
-                    globalSecondaryIndexElement.put("IndexStatus", indexStateMap.get(index.getIndexState()));
+                    globalSecondaryIndexElement.put(ApiMetadata.INDEX_NAME, index.getTableName().getString());
+                    globalSecondaryIndexElement.put(ApiMetadata.KEY_SCHEMA, keySchemaList);
+                    globalSecondaryIndexElement.put(ApiMetadata.INDEX_STATUS, indexStateMap.get(index.getIndexState()));
                     globalSecondaryIndexes.add(globalSecondaryIndexElement);
                 }
             }
@@ -141,11 +140,11 @@ public class TableDescriptorUtils {
             tableDescriptionResponse.put(topResponseAttribute, new HashMap<String, Object>());
             Map<String, Object> tableDescription =
                     (Map<String, Object>) tableDescriptionResponse.get(topResponseAttribute);
-            tableDescription.put("TableName", table.getTableName().getString());
-            tableDescription.put("TableStatus", "ACTIVE");
-            tableDescription.put("KeySchema", getKeySchemaList(table.getPKColumns()));
-            tableDescription.put("AttributeDefinitions", getAttributeDefs(table, attributeDefinitionSet));
-            tableDescription.put("CreationDateTime", table.getTimeStamp()/1000);
+            tableDescription.put(ApiMetadata.TABLE_NAME, table.getTableName().getString());
+            tableDescription.put(ApiMetadata.TABLE_STATUS, "ACTIVE");
+            tableDescription.put(ApiMetadata.KEY_SCHEMA, getKeySchemaList(table.getPKColumns()));
+            tableDescription.put(ApiMetadata.ATTRIBUTE_DEFINITIONS, getAttributeDefs(table, attributeDefinitionSet));
+            tableDescription.put(ApiMetadata.CREATION_DATE_TIME, table.getTimeStamp()/1000);
 
             updateTableDescriptorForIndexes(table, tableDescription, attributeDefinitionSet);
             updateStreamSpecification(table, tableDescription, phoenixConnection);
@@ -194,8 +193,8 @@ public class TableDescriptorUtils {
 
     private static Map<String, Object> getAttributeDefinitionMap(String name, String type) {
         Map<String, Object> attrDef = new HashMap<>();
-        attrDef.put("AttributeName", name);
-        attrDef.put("AttributeType", type);
+        attrDef.put(ApiMetadata.ATTRIBUTE_NAME, name);
+        attrDef.put(ApiMetadata.ATTRIBUTE_TYPE, type);
         return attrDef;
     }
 
@@ -212,14 +211,14 @@ public class TableDescriptorUtils {
         if (streamName != null && table.getSchemaVersion() != null) {
             long creationTS = DDBShimCDCUtils.getCDCIndexTimestampFromStreamName(streamName);
 
-            tableDescription.put("LatestStreamArn", streamName);
-            tableDescription.put("LatestStreamLabel", DDBShimCDCUtils.getStreamLabel(creationTS));
+            tableDescription.put(ApiMetadata.LATEST_STREAM_ARN, streamName);
+            tableDescription.put(ApiMetadata.LATEST_STREAM_LABEL, DDBShimCDCUtils.getStreamLabel(creationTS));
 
             Map<String, Object> streamSpecification = new HashMap<>();
-            streamSpecification.put("StreamEnabled", true);
-            streamSpecification.put("StreamViewType", table.getSchemaVersion());
+            streamSpecification.put(ApiMetadata.STREAM_ENABLED, true);
+            streamSpecification.put(ApiMetadata.STREAM_VIEW_TYPE, table.getSchemaVersion());
 
-            tableDescription.put("StreamSpecification", streamSpecification);
+            tableDescription.put(ApiMetadata.STREAM_SPECIFICATION, streamSpecification);
         }
     }
 }

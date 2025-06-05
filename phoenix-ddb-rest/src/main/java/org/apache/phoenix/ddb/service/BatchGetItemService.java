@@ -10,6 +10,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.phoenix.ddb.service.utils.ApiMetadata;
 import org.bson.RawBsonDocument;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,12 +44,12 @@ public class BatchGetItemService {
         try (Connection connection = DriverManager.getConnection(connectionUrl)) {
             //iterates over each table and executes SQL for all items to query per table
             for (Map.Entry<String, Object> tableEntry : ((Map<String, Object>) request.get(
-                    "RequestItems")).entrySet()) {
+                    ApiMetadata.REQUEST_ITEMS)).entrySet()) {
                 tablePKCols = PhoenixUtils.getPKColumns(connection, tableEntry.getKey());
 
                 //map which contains all keys to get extract values of
                 Map<String, Object> keysAndAttributes = (Map<String, Object>) tableEntry.getValue();
-                int numKeysToQuery = ((List<Object>) keysAndAttributes.get("Keys")).size();
+                int numKeysToQuery = ((List<Object>) keysAndAttributes.get(ApiMetadata.KEYS)).size();
                 //creating PreparedStatement and setting values on it
                 PreparedStatement stmt =
                         getPreparedStatement(connection, tableEntry.getKey(), tablePKCols,
@@ -63,25 +64,25 @@ public class BatchGetItemService {
                 //putting unexecuted keys for unprocessed key set
                 if (numKeysToQuery > QUERY_LIMIT) {
                     List<Map<String, Object>> keysAndAttributesList =
-                            ((List<Map<String, Object>>) keysAndAttributes.get("Keys"));
+                            ((List<Map<String, Object>>) keysAndAttributes.get(ApiMetadata.KEYS));
                     List<Map<String, Object>> unprocessedKeyList =
                             keysAndAttributesList.subList(QUERY_LIMIT,
                                     keysAndAttributesList.size());
                     Map<String, Object> unprocessedKeyMap = new HashMap<>();
-                    if (keysAndAttributes.containsKey("AttributesToGet")) {
-                        unprocessedKeyMap.put("AttributesToGet",
-                                keysAndAttributes.get("AttributesToGet"));
+                    if (keysAndAttributes.containsKey(ApiMetadata.ATTRIBUTES_TO_GET)) {
+                        unprocessedKeyMap.put(ApiMetadata.ATTRIBUTES_TO_GET,
+                                keysAndAttributes.get(ApiMetadata.ATTRIBUTES_TO_GET));
                     }
-                    if (keysAndAttributes.containsKey("ExpressionAttributeNames")) {
-                        unprocessedKeyMap.put("ExpressionAttributeNames",
-                                keysAndAttributes.get("ExpressionAttributeNames"));
+                    if (keysAndAttributes.containsKey(ApiMetadata.EXPRESSION_ATTRIBUTE_NAMES)) {
+                        unprocessedKeyMap.put(ApiMetadata.EXPRESSION_ATTRIBUTE_NAMES,
+                                keysAndAttributes.get(ApiMetadata.EXPRESSION_ATTRIBUTE_NAMES));
                     }
-                    unprocessedKeyMap.put("Keys", unprocessedKeyList);
+                    unprocessedKeyMap.put(ApiMetadata.KEYS, unprocessedKeyList);
                     unprocessed.put(tableEntry.getKey(), unprocessedKeyMap);
                 }
             }
-            finalResult.put("Responses", responses);
-            finalResult.put("UnprocessedKeys", unprocessed);
+            finalResult.put(ApiMetadata.RESPONSES, responses);
+            finalResult.put(ApiMetadata.UNPROCESSED_KEYS, unprocessed);
             return finalResult;
         } catch (SQLException e) {
             throw new RuntimeException(e);
@@ -153,13 +154,13 @@ public class BatchGetItemService {
         for (int j = 0; j < numKeysToQuery; j++) {
             Map<String, Object> valueForPartitionCol =
                     (Map<String, Object>) ((List<Map<String, Object>>) requestItemMap.get(
-                            "Keys")).get(j).get(partitionKeyPKCol);
+                            ApiMetadata.KEYS)).get(j).get(partitionKeyPKCol);
             DQLUtils.setKeyValueOnStatement(stmt, index++, valueForPartitionCol, false);
             if (tablePKCols.size() > 1) {
                 String sortKeyPKCol = tablePKCols.get(1).toString();
                 Map<String, Object> valueForSortCol =
                         (Map<String, Object>) ((List<Map<String, Object>>) requestItemMap.get(
-                                "Keys")).get(j).get(sortKeyPKCol);
+                                ApiMetadata.KEYS)).get(j).get(sortKeyPKCol);
                 DQLUtils.setKeyValueOnStatement(stmt, index++, valueForSortCol, false);
             }
         }
@@ -186,10 +187,10 @@ public class BatchGetItemService {
      * Return a list of attribute names to project.
      */
     private static List<String> getProjectionAttributes(Map<String, Object> requestItemMap) {
-        List<String> attributesToGet = (List<String>) requestItemMap.get("AttributesToGet");
-        String projExpr = (String) requestItemMap.get("ProjectionExpression");
+        List<String> attributesToGet = (List<String>) requestItemMap.get(ApiMetadata.ATTRIBUTES_TO_GET);
+        String projExpr = (String) requestItemMap.get(ApiMetadata.PROJECTION_EXPRESSION);
         Map<String, String> exprAttrNames =
-                (Map<String, String>) requestItemMap.get("ExpressionAttributeNames");
+                (Map<String, String>) requestItemMap.get(ApiMetadata.EXPRESSION_ATTRIBUTE_NAMES);
         return DQLUtils.getProjectionAttributes(attributesToGet, projExpr, exprAttrNames);
     }
 

@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.phoenix.ddb.service.utils.ApiMetadata;
 import org.bson.RawBsonDocument;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,7 +28,7 @@ public class GetItemService {
     private static final String CLAUSE_FOR_SORT_COL = "AND %s = ?";
 
     public static Map<String, Object> getItem(Map<String, Object> request, String connectionUrl) {
-        String tableName = (String) request.get("TableName");
+        String tableName = (String) request.get(ApiMetadata.TABLE_NAME);
         List<PColumn> tablePKCols = null;
         try (Connection connection = DriverManager.getConnection(connectionUrl)) {
             // get PKs from phoenix
@@ -71,7 +72,7 @@ public class GetItemService {
     private static void setPreparedStatementValues(PreparedStatement stmt,
             Map<String, Object> request, List<PColumn> tablePKCols) throws SQLException {
         String partitionKeyPKCol = tablePKCols.get(0).toString();
-        Map<String, Object> keyAttributes = (Map<String, Object>) request.get("Key");
+        Map<String, Object> keyAttributes = (Map<String, Object>) request.get(ApiMetadata.KEY);
         DQLUtils.setKeyValueOnStatement(stmt, 1,
                 (Map<String, Object>) keyAttributes.get(partitionKeyPKCol), false);
         if (tablePKCols.size() > 1) {
@@ -102,10 +103,10 @@ public class GetItemService {
      * Return a list of attribute names to project.
      */
     private static List<String> getProjectionAttributes(Map<String, Object> request) {
-        List<String> attributesToGet = (List<String>) request.get("AttributesToGet");
-        String projExpr = (String) request.get("ProjectionExpression");
+        List<String> attributesToGet = (List<String>) request.get(ApiMetadata.ATTRIBUTES_TO_GET);
+        String projExpr = (String) request.get(ApiMetadata.PROJECTION_EXPRESSION);
         Map<String, String> exprAttrNames =
-                (Map<String, String>) request.get("ExpressionAttributeNames");
+                (Map<String, String>) request.get(ApiMetadata.EXPRESSION_ATTRIBUTE_NAMES);
         return DQLUtils.getProjectionAttributes(attributesToGet, projExpr, exprAttrNames);
     }
 }

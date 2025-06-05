@@ -96,7 +96,7 @@ public class DMLUtils {
                 returnAttrs = BsonDocumentToMap.getFullItem(rawBsonDocument);
                 Map<String, Object> tmpReturnAttrs = returnAttrs;
                 returnAttrs = new HashMap<>();
-                returnAttrs.put("Attributes", tmpReturnAttrs);
+                returnAttrs.put(ApiMetadata.ATTRIBUTES, tmpReturnAttrs);
             }
         }
         return returnAttrs;
