@@ -39,7 +39,7 @@ public class PhoenixUtils {
     public static final String URL_RPC_PREFIX =
             PhoenixRuntime.JDBC_PROTOCOL_RPC + PhoenixRuntime.JDBC_PROTOCOL_SEPARATOR;
     public static final String TTL_EXPRESSION = "BSON_VALUE(COL, ''%s'', ''BIGINT'') IS NOT NULL " +
-            "AND TO_NUMBER(CURRENT_TIME()) > BSON_VALUE(COL, ''%s'', ''BIGINT'')";
+            "AND TO_NUMBER(CURRENT_TIME()) > BSON_VALUE(COL, ''%s'', ''BIGINT'') * 1000";
 
     /**
      * Check whether the connection url provided has the right format.
