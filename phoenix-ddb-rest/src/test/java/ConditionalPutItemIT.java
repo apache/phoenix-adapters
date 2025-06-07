@@ -28,6 +28,8 @@ import software.amazon.awssdk.services.dynamodb.model.QueryRequest;
 import software.amazon.awssdk.services.dynamodb.model.QueryResponse;
 import software.amazon.awssdk.services.dynamodb.model.ReturnValuesOnConditionCheckFailure;
 import software.amazon.awssdk.services.dynamodb.model.ScalarAttributeType;
+import software.amazon.awssdk.services.dynamodb.model.ScanRequest;
+import software.amazon.awssdk.services.dynamodb.model.ScanResponse;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -610,6 +612,75 @@ public class ConditionalPutItemIT {
             //Assert.assertEquals(dynamoItem, phoenixItem);
             //Assert.assertEquals(dynamoItem, indexRowItem);
         }
+    }
+
+    @Test
+    public void conditionExpressionOnPKTest() throws Exception {
+        final String tableName = testName.getMethodName();
+        CreateTableRequest createTableRequest =
+                DDLTestUtils.getCreateTableRequest(tableName, "attr_0", ScalarAttributeType.S, "attr_1", ScalarAttributeType.S);
+
+        phoenixDBClientV2.createTable(createTableRequest);
+        dynamoDbClient.createTable(createTableRequest);
+
+        Map<String, AttributeValue> item = new HashMap<>();
+        item.put("attr_0", AttributeValue.builder().s("str0").build());
+        item.put("attr_1", AttributeValue.builder().s("str1").build());
+        Map<String,String> exprAttrNames = new HashMap<>();
+        exprAttrNames.put("#0", "attr_0");
+        exprAttrNames.put("#1", "attr_1");
+        PutItemRequest pir = PutItemRequest.builder()
+                .tableName(tableName)
+                .item(item)
+                .expressionAttributeNames(exprAttrNames)
+                .conditionExpression("attribute_not_exists(#1) AND attribute_not_exists(#0)").build();
+        phoenixDBClientV2.putItem(pir);
+        dynamoDbClient.putItem(pir);
+
+        ScanRequest scanRequest = ScanRequest.builder().tableName(tableName).build();
+        ScanResponse ddbResponse = dynamoDbClient.scan(scanRequest);
+        ScanResponse phoenixResponse = phoenixDBClientV2.scan(scanRequest);
+        Assert.assertEquals(ddbResponse.items(), phoenixResponse.items());
+        Assert.assertEquals(ddbResponse.items().size(), phoenixResponse.items().size());
+
+        try {
+            dynamoDbClient.putItem(pir);
+            Assert.fail("PutItem should have thrown ConditionalCheckFailedException.");
+        } catch (ConditionalCheckFailedException e) {}
+        try {
+            phoenixDBClientV2.putItem(pir);
+            Assert.fail("PutItem should have thrown ConditionalCheckFailedException.");
+        } catch (ConditionalCheckFailedException e) {}
+
+        exprAttrNames.remove("#1");
+        pir = PutItemRequest.builder()
+                .tableName(tableName)
+                .item(item)
+                .expressionAttributeNames(exprAttrNames)
+                .conditionExpression("attribute_not_exists(#0)").build();
+        try {
+            dynamoDbClient.putItem(pir);
+            Assert.fail("PutItem should have thrown ConditionalCheckFailedException.");
+        } catch (ConditionalCheckFailedException e) {}
+        try {
+            phoenixDBClientV2.putItem(pir);
+            Assert.fail("PutItem should have thrown ConditionalCheckFailedException.");
+        } catch (ConditionalCheckFailedException e) {}
+
+        Map<String, AttributeValue> item2 = new HashMap<>();
+        item2.put("attr_0", AttributeValue.builder().s("str0").build());
+        item2.put("attr_1", AttributeValue.builder().s("str11").build());
+        pir = PutItemRequest.builder()
+                .tableName(tableName)
+                .item(item2)
+                .expressionAttributeNames(exprAttrNames)
+                .conditionExpression("attribute_not_exists(#0)").build();
+        phoenixDBClientV2.putItem(pir);
+        dynamoDbClient.putItem(pir);
+        ddbResponse = dynamoDbClient.scan(scanRequest);
+        phoenixResponse = phoenixDBClientV2.scan(scanRequest);
+        Assert.assertEquals(ddbResponse.items(), phoenixResponse.items());
+        Assert.assertEquals(ddbResponse.items().size(), phoenixResponse.items().size());
     }
 
 }
