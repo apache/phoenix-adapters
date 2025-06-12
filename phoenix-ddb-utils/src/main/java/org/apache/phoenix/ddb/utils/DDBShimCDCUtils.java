@@ -35,10 +35,13 @@ public class DDBShimCDCUtils {
     public static final int OFFSET_LENGTH = 5;
     public static final int MAX_NUM_CHANGES_AT_TIMESTAMP = (int) Math.pow(10, OFFSET_LENGTH);
 
-    // shardIterator-<tableName>-<cdcObject>-<streamType>-<partitionID>-<startSeqNum>
-    public static String SHARD_ITERATOR_FORMAT = "shardIterator-%s-%s-%s-%s-%s";
-    public static String SHARD_ITERATOR_DELIM = "-";
-    public static String STREAM_NAME_DELIM = "-";
+    // shardIterator/<tableName>/<cdcObject>/<streamType>/<partitionID>/<startSeqNum>
+    public static String SHARD_ITERATOR_FORMAT = "shardIterator/%s/%s/%s/%s/%s";
+    public static String SHARD_ITERATOR_DELIM = "/";
+    public static int SHARD_ITERATOR_NUM_PARTS = 6;
+    // phoenix/cdc/stream/{tableName}/{cdc object name}/{cdc index timestamp}
+    public static String STREAM_NAME_DELIM = "/";
+    public static int STREAM_NAME_NUM_PARTS = 6;
 
     private static final String STREAM_NAME_QUERY
             = "SELECT STREAM_NAME FROM " + SYSTEM_CDC_STREAM_STATUS_NAME
@@ -129,32 +132,24 @@ public class DDBShimCDCUtils {
      * Parse tableName from streamName.
      */
     public static String getTableNameFromStreamName(String streamName) {
-        // phoenix-cdc-stream-{tableName}-{cdc object name}-{cdc index timestamp}
-        String[] parts = streamName.split(STREAM_NAME_DELIM);
-        if (parts.length != 6) {
-            throw new IllegalArgumentException("Stream Name format is not correct.");
-        }
-        return parts[3];
+        // phoenix/cdc/stream/{tableName}/{cdc object name}/{cdc index timestamp}
+        return getStreamNameComponent(streamName, 3);
     }
 
     /**
      * Parse CDC Object name from streamName.
      */
     public static String getCDCObjectNameFromStreamName(String streamName) {
-        // phoenix-cdc-stream-{tableName}-{cdc object name}-{cdc index timestamp}
-        String[] parts = streamName.split(STREAM_NAME_DELIM);
-        if (parts.length != 6) {
-            throw new IllegalArgumentException("Stream Name format is not correct.");
-        }
-        return parts[4];
+        // phoenix/cdc/stream/{tableName}/{cdc object name}/{cdc index timestamp}
+        return getStreamNameComponent(streamName, 4);
     }
 
     /**
      * Parse CDC index creation time from streamName.
      */
     public static long getCDCIndexTimestampFromStreamName(String streamName) {
-        // phoenix-cdc-stream-{tableName}-{cdc object name}-{cdc index timestamp}
-        return Long.parseLong(streamName.substring(streamName.lastIndexOf(STREAM_NAME_DELIM)+1));
+        // phoenix/cdc/stream/{tableName}/{cdc object name}/{cdc index timestamp}
+        return Long.parseLong(getStreamNameComponent(streamName, 5));
     }
 
     /**
@@ -203,5 +198,19 @@ public class DDBShimCDCUtils {
      */
     public static String getSequenceNumber(long timestamp, int offset) {
         return timestamp + String.format("%0" + OFFSET_LENGTH + "d", offset);
+    }
+
+    /**
+     * Parse the provided stream name and return a particular component.
+     * @param streamName stream name
+     * @param index zero based index
+     * @return
+     */
+    private static String getStreamNameComponent(String streamName, int index) {
+        String[] parts = streamName.split(STREAM_NAME_DELIM);
+        if (parts.length != STREAM_NAME_NUM_PARTS) {
+            throw new IllegalArgumentException("Stream Name format is not correct: " + streamName);
+        }
+        return parts[index];
     }
 }

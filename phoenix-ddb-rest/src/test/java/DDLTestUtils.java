@@ -206,7 +206,7 @@ public class DDLTestUtils {
                                          String streamType)
             throws SQLException, ParseException {
         String tableName = td.tableName();
-        Assert.assertTrue(td.latestStreamArn().startsWith("phoenix-cdc-stream-"));
+        Assert.assertTrue(td.latestStreamArn().startsWith("phoenix/cdc/stream/"));
         Assert.assertTrue(td.latestStreamArn().contains(tableName));
 
         PTable dataTable = pconn.getTable("DDB." + tableName);

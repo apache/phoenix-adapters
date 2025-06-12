@@ -4,6 +4,7 @@ package org.apache.phoenix.ddb.utils;
 import static org.apache.phoenix.ddb.utils.DDBShimCDCUtils.OFFSET_LENGTH;
 import static org.apache.phoenix.ddb.utils.DDBShimCDCUtils.SHARD_ITERATOR_DELIM;
 import static org.apache.phoenix.ddb.utils.DDBShimCDCUtils.SHARD_ITERATOR_FORMAT;
+import static org.apache.phoenix.ddb.utils.DDBShimCDCUtils.SHARD_ITERATOR_NUM_PARTS;
 
 /**
  * Class to represent a shard iterator for Phoenix CDC queries.
@@ -22,7 +23,7 @@ public class PhoenixShardIterator {
 
     public PhoenixShardIterator(String shardIterator) {
         String[] shardIteratorComponents = shardIterator.split(SHARD_ITERATOR_DELIM);
-        if (shardIteratorComponents.length != 6) {
+        if (shardIteratorComponents.length != SHARD_ITERATOR_NUM_PARTS) {
             throw new IllegalArgumentException(shardIterator
                     + ": Provided shard iterator is not of the right format.");
         }

@@ -36,6 +36,7 @@ import java.sql.DriverManager;
 import java.util.Map;
 
 import static org.apache.phoenix.ddb.utils.DDBShimCDCUtils.MAX_NUM_CHANGES_AT_TIMESTAMP;
+import static org.apache.phoenix.ddb.utils.DDBShimCDCUtils.SHARD_ITERATOR_DELIM;
 import static org.apache.phoenix.query.BaseTest.setUpConfigForMiniCluster;
 import static software.amazon.awssdk.services.dynamodb.model.ShardIteratorType.AFTER_SEQUENCE_NUMBER;
 import static software.amazon.awssdk.services.dynamodb.model.ShardIteratorType.AT_SEQUENCE_NUMBER;
@@ -181,7 +182,7 @@ public class GetShardIteratorIT {
         request.shardIteratorType(LATEST);
         result = phoenixDBStreamsClientV2.getShardIterator(request.build());
         validateShardIterator(result.shardIterator(), tableName, "CDC_"+tableName, "OLD_IMAGE", shardId);
-        String shardIter[] = result.shardIterator().split("-");
+        String[] shardIter = result.shardIterator().split(SHARD_ITERATOR_DELIM);
         // shard iterator would be created after the current time we recorded here
         Assert.assertTrue(Long.parseLong(shardIter[shardIter.length-1]) > currentTime * MAX_NUM_CHANGES_AT_TIMESTAMP);
     }
