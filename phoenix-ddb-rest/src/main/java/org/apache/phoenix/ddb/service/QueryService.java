@@ -17,6 +17,7 @@ import org.apache.phoenix.ddb.utils.CommonServiceUtils;
 import org.apache.phoenix.ddb.utils.KeyConditionsHolder;
 import org.apache.phoenix.ddb.utils.PhoenixUtils;
 import org.apache.phoenix.schema.PColumn;
+import software.amazon.awssdk.services.dynamodb.model.QueryRequest;
 
 public class QueryService {
 
@@ -80,13 +81,17 @@ public class QueryService {
         PColumn partitionKeyPKCol = keyConditions.getPartitionKeyPKCol();
 
         // append all conditions for WHERE clause
+        // TODO: Validate exclusiveStartKey against sortKey range in key condition expression
         queryBuilder.append(keyConditions.getSQLWhereClause());
+        boolean scanIndexForward = doScanIndexForward(request);
         DQLUtils.addExclusiveStartKeyCondition(true, false, queryBuilder,
                 (Map<String, Object>) request.get(ApiMetadata.EXCLUSIVE_START_KEY), useIndex, partitionKeyPKCol,
-                sortKeyPKCol);
+                sortKeyPKCol, scanIndexForward);
         DQLUtils.addFilterCondition(true, queryBuilder, (String) request.get(ApiMetadata.FILTER_EXPRESSION),
                 exprAttrNames, exprAttrValues);
-        addScanIndexForwardCondition(queryBuilder, request, useIndex, sortKeyPKCol);
+        if (!scanIndexForward && sortKeyPKCol != null) {
+            addScanIndexForwardCondition(queryBuilder, useIndex, sortKeyPKCol);
+        }
         DQLUtils.addLimit(queryBuilder, (Integer) request.get(ApiMetadata.LIMIT), MAX_QUERY_LIMIT);
         LOGGER.info("SELECT Query: " + queryBuilder);
 
@@ -101,14 +106,10 @@ public class QueryService {
      * add an ORDER BY sortKey DESC clause to the query.
      * When using an index, use the BSON_VALUE expression.
      */
-    private static void addScanIndexForwardCondition(StringBuilder queryBuilder,
-            Map<String, Object> request, boolean useIndex, PColumn sortKeyPKCol) {
-        Boolean scanIndexForward = (Boolean) request.get(ApiMetadata.SCAN_INDEX_FORWARD);
-        if (scanIndexForward != null && !scanIndexForward && sortKeyPKCol != null) {
-            String name = sortKeyPKCol.getName().getString();
-            name = (useIndex) ? name.substring(1) : CommonServiceUtils.getEscapedArgument(name);
-            queryBuilder.append(" ORDER BY " + name + " DESC ");
-        }
+    private static void addScanIndexForwardCondition(StringBuilder queryBuilder, boolean useIndex, PColumn sortKeyPKCol) {
+        String name = sortKeyPKCol.getName().getString();
+        name = (useIndex) ? name.substring(1) : CommonServiceUtils.getEscapedArgument(name);
+        queryBuilder.append(" ORDER BY ").append(name).append(" DESC ");
     }
 
     /**
@@ -162,5 +163,10 @@ public class QueryService {
         Map<String, String> exprAttrNames =
                 (Map<String, String>) request.get(ApiMetadata.EXPRESSION_ATTRIBUTE_NAMES);
         return DQLUtils.getProjectionAttributes(attributesToGet, projExpr, exprAttrNames);
+    }
+
+    private static boolean doScanIndexForward(Map<String, Object> request) {
+        Boolean scanIndexForward = (Boolean) request.get(ApiMetadata.SCAN_INDEX_FORWARD);
+        return scanIndexForward == null || scanIndexForward;
     }
 }

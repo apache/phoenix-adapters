@@ -126,17 +126,17 @@ public class TestUtils {
     public static void waitForStream(DynamoDbStreamsClient client, String streamArn)
             throws InterruptedException {
         DescribeStreamRequest dsr = DescribeStreamRequest.builder().streamArn(streamArn).build();
-        StreamDescription phoenixStreamDesc = client.describeStream(dsr).streamDescription();
+        StreamDescription streamDesc = client.describeStream(dsr).streamDescription();
         int i = 0;
-        while (i < 20 && StreamStatus.ENABLING == phoenixStreamDesc.streamStatus()) {
-            phoenixStreamDesc = client.describeStream(dsr).streamDescription();
-            if (StreamStatus.ENABLED == phoenixStreamDesc.streamStatus()) {
+        while (i < 20 && StreamStatus.ENABLING == streamDesc.streamStatus()) {
+            streamDesc = client.describeStream(dsr).streamDescription();
+            if (StreamStatus.ENABLED == streamDesc.streamStatus()) {
                 break;
             }
             i++;
             Thread.sleep(1000);
         }
-        Assert.assertEquals(StreamStatus.ENABLED, phoenixStreamDesc.streamStatus());
+        Assert.assertEquals(StreamStatus.ENABLED, streamDesc.streamStatus());
     }
 
     /**

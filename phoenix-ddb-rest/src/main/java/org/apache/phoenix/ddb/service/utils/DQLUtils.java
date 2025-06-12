@@ -121,17 +121,22 @@ public class DQLUtils {
      */
     public static void addExclusiveStartKeyCondition(boolean isQuery, boolean isFilterAddedForScan,
             StringBuilder queryBuilder, Map<String, Object> exclusiveStartKey, boolean useIndex,
-            PColumn partitionKeyPKCol, PColumn sortKeyPKCol) {
+            PColumn partitionKeyPKCol, PColumn sortKeyPKCol, boolean scanIndexForward) {
         if (exclusiveStartKey != null && !exclusiveStartKey.isEmpty()) {
             // query, only sort key
             if (isQuery) {
+                String op = " > ";
+                // when using index and scanning backwards, flip the operator
+                if (useIndex && !scanIndexForward) {
+                    op = " < ";
+                }
                 if (sortKeyPKCol != null) {
                     //append sortKey condition if there is a sortKey
                     String name = sortKeyPKCol.getName().toString();
                     name = (useIndex) ?
                             name.substring(1) :
                             CommonServiceUtils.getEscapedArgument(name);
-                    queryBuilder.append(" AND " + name + " > ? ");
+                    queryBuilder.append(" AND " + name + op + " ? ");
                 }
             }
             // scan

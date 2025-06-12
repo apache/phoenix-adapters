@@ -87,7 +87,7 @@ public class ScanService {
         DQLUtils.addFilterCondition(false, queryBuilder, (String) request.get(ApiMetadata.FILTER_EXPRESSION),
                 exprAttrNames, exprAttrValues);
         DQLUtils.addExclusiveStartKeyCondition(false, !StringUtils.isEmpty(filterExpr),
-                queryBuilder, exclusiveStartKey, useIndex, partitionKeyPKCol, sortKeyPKCol);
+                queryBuilder, exclusiveStartKey, useIndex, partitionKeyPKCol, sortKeyPKCol, false);
         DQLUtils.addLimit(queryBuilder, (Integer) request.get(ApiMetadata.LIMIT), MAX_SCAN_LIMIT);
         //TODO : extract PKs from filterExpression and append to WHERE clause
         LOGGER.info("Query for Scan: " + queryBuilder);
