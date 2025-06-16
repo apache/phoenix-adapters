@@ -7,6 +7,7 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.phoenix.ddb.service.utils.ValidationUtil;
 import org.apache.phoenix.ddb.utils.ApiMetadata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,6 +34,7 @@ public class DeleteItemService {
 
     public static Map<String, Object> deleteItem(Map<String, Object> request,
             String connectionUrl) {
+        ValidationUtil.validateDeleteItemRequest(request);
         Map<String, Object> result;
         try (Connection connection = DriverManager.getConnection(connectionUrl)) {
             connection.setAutoCommit(true);

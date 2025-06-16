@@ -95,19 +95,12 @@ public class DQLUtils {
      * Use ExpressionAttributeNames to replace back any reserved keywords.
      * Return empty list if no projection expression is provided in the request.
      */
-    public static List<String> getProjectionAttributes(List<String> attributesToGet,
-            String projExpr, Map<String, String> exprAttrNames) {
-        List<String> projectionList = new ArrayList<>();
-        if (attributesToGet != null && !attributesToGet.isEmpty()) {
-            for (String s : attributesToGet) {
-                projectionList.add(
-                        CommonServiceUtils.replaceExpressionAttributeNames(s, exprAttrNames));
-            }
-            return projectionList;
-        }
+    public static List<String> getProjectionAttributes(String projExpr,
+                                                       Map<String, String> exprAttrNames) {
         if (StringUtils.isEmpty(projExpr)) {
             return null;
         }
+        List<String> projectionList = new ArrayList<>();
         projExpr = CommonServiceUtils.replaceExpressionAttributeNames(projExpr, exprAttrNames);
         String[] projectionArray = projExpr.split("\\s*,\\s*");
         projectionList.addAll(Arrays.asList(projectionArray));

@@ -1,5 +1,8 @@
 package org.apache.phoenix.ddb.utils;
 
+import java.util.Arrays;
+import java.util.List;
+
 /**
  * Request and Response parameters for various APIs.
  */
@@ -141,4 +144,18 @@ public class ApiMetadata {
     public static final String DESCRIBE_STREAM = "DescribeStream";
     public static final String GET_SHARD_ITERATOR = "GetShardIterator";
     public static final String GET_RECORDS = "GetRecords";
+
+    // Legacy parameters
+    public static final List<String> PUT_LEGACY_PARAMS
+            = Arrays.asList("ConditionalOperator", "Expected");
+    public static final List<String> UPDATE_LEGACY_PARAMS
+            = Arrays.asList("AttributeUpdates", "ConditionalOperator", "Expected");
+    public static final List<String> QUERY_LEGACY_PARAMS
+            = Arrays.asList("AttributesToGet", "ConditionalOperator", "KeyConditions", "QueryFilter");
+    public static final List<String> SCAN_LEGACY_PARAMS
+            = Arrays.asList("AttributesToGet", "ConditionalOperator", "ScanFilter");
+    public static final List<String> GET_LEGACY_PARAMS
+            = Arrays.asList("AttributesToGet");
+    public static final List<String> DELETE_LEGACY_PARAMS
+            = Arrays.asList("ConditionalOperator", "Expected");
 }

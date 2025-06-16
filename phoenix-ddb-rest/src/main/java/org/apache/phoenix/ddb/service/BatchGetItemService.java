@@ -187,11 +187,10 @@ public class BatchGetItemService {
      * Return a list of attribute names to project.
      */
     private static List<String> getProjectionAttributes(Map<String, Object> requestItemMap) {
-        List<String> attributesToGet = (List<String>) requestItemMap.get(ApiMetadata.ATTRIBUTES_TO_GET);
         String projExpr = (String) requestItemMap.get(ApiMetadata.PROJECTION_EXPRESSION);
         Map<String, String> exprAttrNames =
                 (Map<String, String>) requestItemMap.get(ApiMetadata.EXPRESSION_ATTRIBUTE_NAMES);
-        return DQLUtils.getProjectionAttributes(attributesToGet, projExpr, exprAttrNames);
+        return DQLUtils.getProjectionAttributes(projExpr, exprAttrNames);
     }
 
 }

@@ -8,6 +8,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.phoenix.ddb.service.utils.ValidationUtil;
 import org.apache.phoenix.ddb.utils.ApiMetadata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,6 +30,7 @@ public class ScanService {
     private static final int MAX_SCAN_LIMIT = 500;
 
     public static Map<String, Object> scan(Map<String, Object> request, String connectionUrl) {
+        ValidationUtil.validateScanRequest(request);
         // phoenix does not support parallel scans from the client so
         // we will return all items in the first segment and no items in all other segments
         if (request.get(ApiMetadata.SEGMENT) != null && (Integer) request.get(ApiMetadata.SEGMENT) > 0) {
@@ -126,10 +128,9 @@ public class ScanService {
      * Return a list of attribute names to project.
      */
     private static List<String> getProjectionAttributes(Map<String, Object> request) {
-        List<String> attributesToGet = (List<String>) request.get(ApiMetadata.ATTRIBUTES_TO_GET);
         String projExpr = (String) request.get(ApiMetadata.PROJECTION_EXPRESSION);
         Map<String, String> exprAttrNames =
                 (Map<String, String>) request.get(ApiMetadata.EXPRESSION_ATTRIBUTE_NAMES);
-        return DQLUtils.getProjectionAttributes(attributesToGet, projExpr, exprAttrNames);
+        return DQLUtils.getProjectionAttributes(projExpr, exprAttrNames);
     }
 }

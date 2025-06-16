@@ -29,6 +29,8 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
+import org.apache.commons.lang3.StringUtils;
+import org.apache.phoenix.ddb.service.exceptions.ValidationException;
 import org.apache.phoenix.ddb.utils.ApiMetadata;
 import org.apache.phoenix.ddb.utils.PhoenixUtils;
 import org.slf4j.Logger;
@@ -206,6 +208,9 @@ public class CreateTableService {
         if (streamSpec != null && (Boolean) streamSpec.get(ApiMetadata.STREAM_ENABLED)) {
             String tableName = (String) request.get(ApiMetadata.TABLE_NAME);
             String streamType = (String) streamSpec.get(ApiMetadata.STREAM_VIEW_TYPE);
+            if (StringUtils.isEmpty(streamType)) {
+                throw new ValidationException("STREAM_VIEW_TYPE attribute is required.");
+            }
             cdcDDLs.add(String.format(CREATE_CDC_DDL, tableName, "DDB", tableName));
             cdcDDLs.add(String.format(ALTER_TABLE_STREAM_TYPE_DDL, "DDB", tableName, streamType));
         }

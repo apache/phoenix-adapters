@@ -1,4 +1,4 @@
-package org.apache.phoenix.ddb.service.utils.exceptions;
+package org.apache.phoenix.ddb.service.exceptions;
 
 import java.util.Map;
 

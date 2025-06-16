@@ -7,6 +7,7 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.phoenix.ddb.service.utils.ValidationUtil;
 import org.apache.phoenix.ddb.utils.ApiMetadata;
 import org.bson.BsonDocument;
 import org.slf4j.Logger;
@@ -44,6 +45,7 @@ public class UpdateItemService {
 
     public static Map<String, Object> updateItem(Map<String, Object> request,
             String connectionUrl) {
+        ValidationUtil.validateUpdateItemRequest(request);
         try (Connection connection = DriverManager.getConnection(connectionUrl)) {
             connection.setAutoCommit(true);
             // get PTable and PK PColumns

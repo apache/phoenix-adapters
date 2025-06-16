@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.hadoop.hbase.util.Pair;
+import org.apache.phoenix.ddb.service.utils.ValidationUtil;
 import org.apache.phoenix.ddb.utils.ApiMetadata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,6 +31,7 @@ public class QueryService {
     private static final int MAX_QUERY_LIMIT = 500;
 
     public static Map<String, Object> query(Map<String, Object> request, String connectionUrl) {
+        ValidationUtil.validateQueryRequest(request);
         String tableName = (String) request.get(ApiMetadata.TABLE_NAME);
         String indexName = (String) request.get(ApiMetadata.INDEX_NAME);
         boolean useIndex = !StringUtils.isEmpty(indexName);
@@ -170,11 +172,10 @@ public class QueryService {
      * Return a list of attribute names to project.
      */
     private static List<String> getProjectionAttributes(Map<String, Object> request) {
-        List<String> attributesToGet = (List<String>) request.get(ApiMetadata.ATTRIBUTES_TO_GET);
         String projExpr = (String) request.get(ApiMetadata.PROJECTION_EXPRESSION);
         Map<String, String> exprAttrNames =
                 (Map<String, String>) request.get(ApiMetadata.EXPRESSION_ATTRIBUTE_NAMES);
-        return DQLUtils.getProjectionAttributes(attributesToGet, projExpr, exprAttrNames);
+        return DQLUtils.getProjectionAttributes(projExpr, exprAttrNames);
     }
 
     private static boolean doScanIndexForward(Map<String, Object> request) {

@@ -9,12 +9,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.phoenix.ddb.service.exceptions.ValidationException;
 import org.bson.RawBsonDocument;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.hbase.util.Pair;
 import org.apache.phoenix.ddb.bson.BsonDocumentToMap;
-import org.apache.phoenix.ddb.service.utils.exceptions.ConditionCheckFailedException;
+import org.apache.phoenix.ddb.service.exceptions.ConditionCheckFailedException;
 import org.apache.phoenix.ddb.utils.ApiMetadata;
 import org.apache.phoenix.jdbc.PhoenixPreparedStatement;
 import org.apache.phoenix.schema.PColumn;
@@ -120,6 +121,9 @@ public class DMLUtils {
      */
     private static boolean needReturnRow(String returnValue,
             String returnValuesOnConditionCheckFailure) {
+        if ("UPDATED_OLD".equals(returnValue) || "UPDATED_NEW".equals(returnValue)) {
+            throw new ValidationException("UPDATED_OLD or UPDATED_NEW is not supported for ReturnValue.");
+        }
         return (returnValue != null && !returnValue.equals(ApiMetadata.NONE)) || (
             returnValuesOnConditionCheckFailure != null
                 && !returnValuesOnConditionCheckFailure.equals(ApiMetadata.NONE));

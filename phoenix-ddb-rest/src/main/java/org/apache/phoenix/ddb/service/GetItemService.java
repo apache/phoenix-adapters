@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.phoenix.ddb.service.utils.ValidationUtil;
 import org.apache.phoenix.ddb.utils.ApiMetadata;
 import org.bson.RawBsonDocument;
 import org.slf4j.Logger;
@@ -28,6 +29,7 @@ public class GetItemService {
     private static final String CLAUSE_FOR_SORT_COL = "AND %s = ?";
 
     public static Map<String, Object> getItem(Map<String, Object> request, String connectionUrl) {
+        ValidationUtil.validateGetItemRequest(request);
         String tableName = (String) request.get(ApiMetadata.TABLE_NAME);
         List<PColumn> tablePKCols = null;
         try (Connection connection = DriverManager.getConnection(connectionUrl)) {
@@ -103,10 +105,9 @@ public class GetItemService {
      * Return a list of attribute names to project.
      */
     private static List<String> getProjectionAttributes(Map<String, Object> request) {
-        List<String> attributesToGet = (List<String>) request.get(ApiMetadata.ATTRIBUTES_TO_GET);
         String projExpr = (String) request.get(ApiMetadata.PROJECTION_EXPRESSION);
         Map<String, String> exprAttrNames =
                 (Map<String, String>) request.get(ApiMetadata.EXPRESSION_ATTRIBUTE_NAMES);
-        return DQLUtils.getProjectionAttributes(attributesToGet, projExpr, exprAttrNames);
+        return DQLUtils.getProjectionAttributes(projExpr, exprAttrNames);
     }
 }

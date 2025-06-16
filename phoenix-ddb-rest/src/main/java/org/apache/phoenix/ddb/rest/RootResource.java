@@ -36,6 +36,7 @@ import org.apache.phoenix.ddb.service.ListStreamsService;
 
 import org.apache.phoenix.ddb.service.ListTablesService;
 import org.apache.phoenix.ddb.service.UpdateTableService;
+import org.apache.phoenix.ddb.service.exceptions.ValidationException;
 import org.apache.phoenix.ddb.utils.ApiMetadata;
 
 import org.slf4j.Logger;
@@ -62,7 +63,7 @@ import org.apache.phoenix.ddb.service.ScanService;
 import org.apache.phoenix.ddb.service.TTLService;
 import org.apache.phoenix.ddb.service.UpdateItemService;
 import org.apache.phoenix.ddb.service.utils.TableDescriptorUtils;
-import org.apache.phoenix.ddb.service.utils.exceptions.ConditionCheckFailedException;
+import org.apache.phoenix.ddb.service.exceptions.ConditionCheckFailedException;
 import org.apache.phoenix.ddb.utils.PhoenixUtils;
 import org.apache.phoenix.schema.TableNotFoundException;
 
@@ -212,6 +213,8 @@ public class RootResource {
             ResponseBuilder response = Response.ok(responseObject);
             response.cacheControl(cacheControl);
             return response.build();
+        } catch (ValidationException e) {
+            return getResponseForValidationException(e);
         } catch (Exception e) {
             if (!isTableNotFoundError(e)) {
                 LOG.error("Error... Content Type: {}, api: {}, Request: {} ", contentType, api,
@@ -288,6 +291,14 @@ public class RootResource {
         if (item != null) {
             respObj.put("Item", item);
         }
+        return Response.status(Response.Status.BAD_REQUEST).entity(respObj).build();
+    }
+
+    private static Response getResponseForValidationException(ValidationException e) {
+        Map<String, Object> respObj = new HashMap<>();
+        respObj.put("__type",
+                "com.amazonaws.dynamodb.v20120810#ValidationException");
+        respObj.put("Message", e.getMessage());
         return Response.status(Response.Status.BAD_REQUEST).entity(respObj).build();
     }
 

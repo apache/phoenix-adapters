@@ -166,21 +166,6 @@ public class ScanTableIT {
             Assert.assertNotNull(item.get("Reviews").m().get("FiveStar").l().get(0).m().get("reviewer"));
             Assert.assertNotNull(item.get("title"));
         }
-
-        // test attributesToGet
-        sr.projectionExpression(null);
-        sr.expressionAttributeNames(null);
-        List<String> attrs = new ArrayList<>();
-        attrs.add("title");
-        attrs.add("Reviews.FiveStar[0].reviewer");
-        sr.attributesToGet(attrs);
-        phoenixResult = phoenixDBClientV2.scan(sr.build());
-        dynamoResult = dynamoDbClient.scan(sr.build());
-        Assert.assertEquals(dynamoResult.count(), phoenixResult.count());
-        for (Map<String, AttributeValue> item : phoenixResult.items()) {
-            Assert.assertNotNull(item.get("Reviews").m().get("FiveStar").l().get(0).m().get("reviewer"));
-            Assert.assertNotNull(item.get("title"));
-        }
         Assert.assertEquals(dynamoResult.scannedCount(), phoenixResult.scannedCount());
     }
 

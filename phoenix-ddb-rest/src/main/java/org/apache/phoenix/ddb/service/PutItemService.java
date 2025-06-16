@@ -7,6 +7,7 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.phoenix.ddb.service.utils.ValidationUtil;
 import org.apache.phoenix.ddb.utils.ApiMetadata;
 import org.bson.BsonDocument;
 import org.slf4j.Logger;
@@ -57,6 +58,7 @@ public class PutItemService {
 
     public static Map<String, Object> putItemWithConn(Connection connection,
             Map<String, Object> request) throws SQLException {
+        ValidationUtil.validatePutItemRequest(request);
         Map<String, Object> item = (Map<String, Object>) request.get(ApiMetadata.ITEM);
         BsonDocument bsonDoc = MapToBsonDocument.getBsonDocument(item);
         // get PTable and PK PColumns
