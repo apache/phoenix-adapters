@@ -90,7 +90,6 @@ public class GetRecordsIT {
         props.put(QueryServices.TASK_HANDLING_INITIAL_DELAY_MS_ATTRIB,
                 Long.toString(1000));
         props.put("hbase.coprocessor.master.classes", PhoenixMasterObserver.class.getName());
-        props.put(BaseScannerRegionObserverConstants.PHOENIX_MAX_LOOKBACK_AGE_CONF_KEY, Integer.toString(24*60*60));
         setUpConfigForMiniCluster(conf, new ReadOnlyProps(props.entrySet().iterator()));
 
         utility.startMiniCluster();

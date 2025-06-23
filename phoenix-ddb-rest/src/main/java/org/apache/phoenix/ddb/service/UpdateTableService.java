@@ -1,7 +1,9 @@
 package org.apache.phoenix.ddb.service;
 
+import org.apache.phoenix.ddb.service.exceptions.ValidationException;
 import org.apache.phoenix.ddb.utils.ApiMetadata;
 import org.apache.phoenix.ddb.service.utils.TableDescriptorUtils;
+import org.apache.phoenix.ddb.utils.PhoenixUtils;
 import org.apache.phoenix.query.QueryServices;
 import org.apache.phoenix.schema.PIndexState;
 import org.slf4j.Logger;
@@ -40,12 +42,11 @@ public class UpdateTableService {
                     List<String> indexDDLs = new ArrayList<>();
                     List<Map<String, Object>> attrDefs = (List<Map<String, Object>>) request.get(ApiMetadata.ATTRIBUTE_DEFINITIONS);
                     List<Map<String, Object>> keySchema = (List<Map<String, Object>>) createIndexUpdate.get(ApiMetadata.KEY_SCHEMA);
-                    CreateTableService.addIndexDDL(tableName, keySchema, attrDefs, indexDDLs, indexName);
-                    String ddl = indexDDLs.get(0) + " ASYNC ";
-                    LOGGER.info("DDL for Create Index: {}", ddl);
-                    ddls.add(ddl);
+                    CreateTableService.addIndexDDL(tableName, keySchema, attrDefs, indexDDLs, indexName, true);
+                    LOGGER.info("DDL for Create Index: {}", indexDDLs);
+                    ddls.addAll(indexDDLs);
                 } else {
-                    throw new IllegalArgumentException("Only Create and Delete index is supported in UpdateTable API.");
+                    throw new ValidationException("Only Create and Delete index is supported in UpdateTable API.");
                 }
             }
         }

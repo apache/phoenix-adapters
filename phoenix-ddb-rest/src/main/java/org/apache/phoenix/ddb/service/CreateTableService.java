@@ -66,7 +66,7 @@ public class CreateTableService {
 
     public static void addIndexDDL(String tableName, List<Map<String, Object>> keySchemaElements,
             List<Map<String, Object>> attributeDefinitions, List<String> indexDDLs,
-            String indexName) {
+            String indexName, boolean isAsync) {
         final StringBuilder indexOn = new StringBuilder();
 
         String indexHashKey = null;
@@ -165,7 +165,7 @@ public class CreateTableService {
                 "CREATE INDEX \"" + indexName + "\" ON DDB.\"" + tableName
                         + "\" (" + indexOn + ") INCLUDE (COL) WHERE " + indexHashKey + " IS NOT " +
                         "NULL" + ((indexSortKey != null) ? " AND " + indexSortKey + " IS NOT " +
-                        "NULL" : ""));
+                        "NULL" : "") + (isAsync ? " ASYNC " : "") + PhoenixUtils.getIndexOptions());
     }
 
     public static List<String> getIndexDDLs(Map<String, Object> request) {
@@ -180,7 +180,7 @@ public class CreateTableService {
                 final List<Map<String, Object>> keySchemaElements =
                         (List<Map<String, Object>>) globalSecondaryIndex.get(ApiMetadata.KEY_SCHEMA);
                 addIndexDDL((String)request.get(ApiMetadata.TABLE_NAME), keySchemaElements,
-                        attributeDefinitions, indexDDLs, indexName);
+                        attributeDefinitions, indexDDLs, indexName, false);
             }
         }
 
@@ -191,7 +191,7 @@ public class CreateTableService {
                 final List<Map<String, Object>> keySchemaElements =
                         (List<Map<String, Object>>) localSecondaryIndex.get(ApiMetadata.KEY_SCHEMA);
                 addIndexDDL((String)request.get(ApiMetadata.TABLE_NAME), keySchemaElements,
-                        attributeDefinitions, indexDDLs, indexName);
+                        attributeDefinitions, indexDDLs, indexName, false);
             }
         }
         return indexDDLs;

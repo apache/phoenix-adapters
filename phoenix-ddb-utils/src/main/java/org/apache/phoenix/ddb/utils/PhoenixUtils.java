@@ -141,9 +141,17 @@ public class PhoenixUtils {
      * Get the default table options when creating a new table.
      */
     public static String getTableOptions() {
-        return "MERGE_ENABLED=false" + "," +
+        return " MERGE_ENABLED=false" + "," +
                 "REPLICATION_SCOPE=0" + "," +
                 "DISABLE_TABLE_SOR=true" + "," +
-                "UPDATE_CACHE_FREQUENCY=1800000";
+                "UPDATE_CACHE_FREQUENCY=1800000" + "," +
+                "\"phoenix.max.lookback.age.seconds\"=129600";
+    }
+
+    /**
+     * Get the default index options when creating a new index.
+     */
+    public static String getIndexOptions() {
+        return " \"phoenix.max.lookback.age.seconds\"=129600";
     }
 }
