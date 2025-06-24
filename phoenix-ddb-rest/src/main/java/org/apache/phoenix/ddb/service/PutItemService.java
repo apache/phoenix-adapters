@@ -120,6 +120,7 @@ public class PutItemService {
     }
 
     private static boolean shouldUseIgnoreForAtomicUpsert(String condExpr, List<PColumn> pkCols) {
-            return condExpr.contains("attribute_not_exists(" + pkCols.get(0).getName().toString() + ")");
+            return condExpr.contains("attribute_not_exists(" + pkCols.get(0).getName().toString() + ")")
+                     || (pkCols.size() == 2 && condExpr.contains("attribute_not_exists(" + pkCols.get(1).getName().toString() + ")"));
     }
 }
