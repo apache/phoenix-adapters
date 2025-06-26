@@ -76,17 +76,31 @@ public class UpdateExpressionDdbToBson {
     if (!setString.isEmpty()) {
       BsonDocument setBsonDoc = new BsonDocument();
       String[] setExpressions = setString.split(",");
-      for (String setExpression : setExpressions) {
+      for (int i = 0; i < setExpressions.length; i++) {
+        String setExpression = setExpressions[i].trim();
         String[] keyVal = setExpression.split("\\s*=\\s*");
         if (keyVal.length == 2) {
           String attributeKey = keyVal[0].trim();
           String attributeVal = keyVal[1].trim();
-          if (!attributeVal.contains("+") && !attributeVal.contains("-")) {
-            setBsonDoc.put(attributeKey, comparisonValue.get(attributeVal));
-          } else {
+          if (attributeVal.contains("+") || attributeVal.contains("-")) {
             setBsonDoc.put(attributeKey, getArithmeticExpVal(attributeVal, comparisonValue));
+          } else if (attributeVal.startsWith("if_not_exists")) {
+            // attributeVal = if_not_exists ( path
+            String ifNotExistsPath = attributeVal.split("\\(")[1].trim();
+            // next setExpression = value)
+            String fallBackValue = setExpressions[i+1].split("\\)")[0].trim();
+            BsonValue fallBackValueBson = comparisonValue.get(fallBackValue);
+            BsonDocument fallBackDoc = new BsonDocument();
+            fallBackDoc.put(ifNotExistsPath, fallBackValueBson);
+            BsonDocument ifNotExistsDoc = new BsonDocument();
+            ifNotExistsDoc.put("$IF_NOT_EXISTS", fallBackDoc);
+            setBsonDoc.put(attributeKey, ifNotExistsDoc);
+            i++;
+          } else {
+            setBsonDoc.put(attributeKey, comparisonValue.get(attributeVal));
           }
-        } else {
+        }
+        else {
           throw new RuntimeException(
               "SET Expression " + setString + " does not include key value pairs separated by =");
         }

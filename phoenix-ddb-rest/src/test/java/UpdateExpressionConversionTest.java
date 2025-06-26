@@ -35,8 +35,8 @@ public class UpdateExpressionConversionTest {
   @Test(timeout = 120000)
   public void test1() {
 
-    String ddbUpdateExp = "SET Title = :newTitle, Id = :newId , " +
-        "NestedMap1.ColorList = :ColorList , "
+    String ddbUpdateExp = "SET Title = :newTitle, aCol = if_not_exists (aCol, :aCol) , "
+        + "Id = :newId , NestedMap1.ColorList = :ColorList , "
         + "Id1 = :Id1 , NestedMap1.NList1[0] = :NList1_0 , "
         + "NestedList1[2][1].ISBN = :NestedList1_ISBN , "
         + "NestedMap1.NestedMap2.NewID = :newId , "
@@ -53,6 +53,17 @@ public class UpdateExpressionConversionTest {
     String expectedBsonUpdateExpression = "{\n"
         + "  \"$SET\": {\n"
         + "    \"Title\": \"Cycle_1234_new\",\n"
+        + "    \"aCol\": {\n"
+        + "       \"$IF_NOT_EXISTS\": {\n"
+        + "         \"aCol\": {\n"
+        + "           \"$set\": [\n"
+        + "               1,\n"
+        + "               2,\n"
+        + "               3\n"
+        + "             ]\n"
+        + "           }\n"
+        + "         }\n"
+        + "    },\n"
         + "    \"Id\": \"12345\",\n"
         + "    \"NestedMap1.ColorList\": [\n"
         + "      \"Black\",\n"
@@ -165,8 +176,78 @@ public class UpdateExpressionConversionTest {
             getComparisonValuesMap()));
   }
 
+  @Test
+  public void test2() {
+    String ddbUpdateExp = "SET bCol = if_not_exists(bCol, :aCol)";
+    String expectedBsonUpdateExpression = "{\n" +
+            "  \"$SET\": {\n" +
+            "    \"bCol\": {\n" +
+            "      \"$IF_NOT_EXISTS\": {\n" +
+            "        \"bCol\": {\n" +
+            "          \"$set\": [\n" +
+            "            1,\n" +
+            "            2,\n" +
+            "            3\n" +
+            "          ]\n" +
+            "        }\n" +
+            "      }\n" +
+            "    }\n" +
+            "  }\n" +
+            "}";
+    Assert.assertEquals(RawBsonDocument.parse(expectedBsonUpdateExpression),
+            UpdateExpressionDdbToBson.getBsonDocumentForUpdateExpression(ddbUpdateExp,
+                    getComparisonValuesMap()));
+  }
+
+  @Test
+  public void test3() {
+    String ddbUpdateExp = "SET bCol = if_not_exists(bCol, :aCol)," +
+            "aCol=if_not_exists( aCol,:aCol ), cCol =if_not_exists (cCol, :aCol)";
+    String expectedBsonUpdateExpression = "{\n" +
+            "  \"$SET\": {\n" +
+            "    \"bCol\": {\n" +
+            "      \"$IF_NOT_EXISTS\": {\n" +
+            "        \"bCol\": {\n" +
+            "          \"$set\": [\n" +
+            "            1,\n" +
+            "            2,\n" +
+            "            3\n" +
+            "          ]\n" +
+            "        }\n" +
+            "      }\n" +
+            "    },\n" +
+            "    \"aCol\": {\n" +
+            "      \"$IF_NOT_EXISTS\": {\n" +
+            "        \"aCol\": {\n" +
+            "          \"$set\": [\n" +
+            "            1,\n" +
+            "            2,\n" +
+            "            3\n" +
+            "          ]\n" +
+            "        }\n" +
+            "      }\n" +
+            "    },\n" +
+            "    \"cCol\": {\n" +
+            "      \"$IF_NOT_EXISTS\": {\n" +
+            "        \"cCol\": {\n" +
+            "          \"$set\": [\n" +
+            "            1,\n" +
+            "            2,\n" +
+            "            3\n" +
+            "          ]\n" +
+            "        }\n" +
+            "      }\n" +
+            "    }\n" +
+            "  }\n" +
+            "}";
+    Assert.assertEquals(RawBsonDocument.parse(expectedBsonUpdateExpression),
+            UpdateExpressionDdbToBson.getBsonDocumentForUpdateExpression(ddbUpdateExp,
+                    getComparisonValuesMap()));
+  }
+
   private static BsonDocument getComparisonValuesMap() {
     Map<String, AttributeValue> attributeMap = new HashMap<>();
+    attributeMap.put(":aCol", AttributeValue.builder().ns("1", "2", "3").build());
     attributeMap.put(":newTitle", AttributeValue.builder().s("Cycle_1234_new").build());
     attributeMap.put(":newId", AttributeValue.builder().s("12345").build());
     attributeMap.put(":newIdNeg", AttributeValue.builder().n("-12345").build());
