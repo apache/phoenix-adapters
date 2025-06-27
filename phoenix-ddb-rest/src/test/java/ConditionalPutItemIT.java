@@ -793,9 +793,7 @@ public class ConditionalPutItemIT {
         /**
          * item does not exist, using attribute_exists(hk) and/or attribute_exists(sk)
          * should throw ConditionalCheckFailedException
-         * TODO: uncomment after phoenix fix
          */
-        /*
         Map<String, AttributeValue> item4 = new HashMap<>();
         item4.put("hk", AttributeValue.builder().s("str00").build());
         item4.put("sk", AttributeValue.builder().s("str12").build());
@@ -835,8 +833,6 @@ public class ConditionalPutItemIT {
             phoenixDBClientV2.putItem(pir);
             Assert.fail("PutItem should have thrown ConditionalCheckFailedException.");
         } catch (ConditionalCheckFailedException e) {}
-
-        */
     }
 
     @Test(timeout = 120000)
@@ -948,6 +944,172 @@ public class ConditionalPutItemIT {
 
         verifyItemExists(tableName, "val1", "999");
     }
+
+    @Test(timeout = 120000)
+    public void conditionalPutWhereItemDoesNotExistTest() {
+        final String tableName = testName.getMethodName();
+        CreateTableRequest createTableRequest =
+                DDLTestUtils.getCreateTableRequest(tableName, "hk", ScalarAttributeType.S, null,
+                        null);
+        phoenixDBClientV2.createTable(createTableRequest);
+        dynamoDbClient.createTable(createTableRequest);
+
+        Map<String, AttributeValue> item1 = new HashMap<>();
+        item1.put("hk", AttributeValue.builder().s("val1").build());
+        item1.put("payload", AttributeValue.builder().n("999").build());
+
+        PutItemRequest.Builder condPutRequest =
+                PutItemRequest.builder().tableName(tableName).item(item1);
+        condPutRequest.conditionExpression("attribute_exists(hk) AND attribute_not_exists(payload)");
+
+        try {
+            dynamoDbClient.putItem(condPutRequest.build());
+            Assert.fail("PutItem should have thrown ConditionalCheckFailedException" +
+                    " when item does not exist and condition expression has attribute_exists(key).");
+        } catch (ConditionalCheckFailedException e) {}
+        try {
+            phoenixDBClientV2.putItem(condPutRequest.build());
+            Assert.fail("PutItem should have thrown ConditionalCheckFailedException " +
+                    " when item does not exist and condition expression has attribute_exists(key).");
+        } catch (ConditionalCheckFailedException e) {}
+
+        Map<String, AttributeValue> exprAttrValues = new HashMap<>();
+        exprAttrValues.put(":p", AttributeValue.builder().n("999").build());
+        condPutRequest.conditionExpression("payload = :p");
+        condPutRequest.expressionAttributeValues(exprAttrValues);
+        try {
+            dynamoDbClient.putItem(condPutRequest.build());
+            Assert.fail("PutItem should have thrown ConditionalCheckFailedException" +
+                    " when item does not exist and condition expression has equality check for non key attr.");
+        } catch (ConditionalCheckFailedException e) {}
+        try {
+            phoenixDBClientV2.putItem(condPutRequest.build());
+            Assert.fail("PutItem should have thrown ConditionalCheckFailedException" +
+                    " when item does not exist and condition expression has equality check for non key attr.");
+        } catch (ConditionalCheckFailedException e) {}
+
+        // We need to let the upsert go through if the item does not exist and
+        // the condition expression does not have attribute_exists for a key and has
+        // attribute_not_exists for some other attribute.
+        // UPDATE_ONLY will not do the update and UPDATE will insert null
+        // because of ELSE COL in its case expression.
+        // TODO: uncomment after phoenix fix
+        /*
+        condPutRequest.conditionExpression("attribute_not_exists(payload)");
+        dynamoDbClient.putItem(condPutRequest.build());
+        phoenixDBClientV2.putItem(condPutRequest.build());
+        ScanRequest sr = ScanRequest.builder().tableName(tableName).build();
+        Assert.assertEquals(dynamoDbClient.scan(sr).items(), phoenixDBClientV2.scan(sr).items());
+        */
+    }
+
+    @Test(timeout = 120000)
+    public void conditionalPut() {
+        final String tableName = testName.getMethodName();
+        CreateTableRequest createTableRequest =
+                DDLTestUtils.getCreateTableRequest(tableName, "hk", ScalarAttributeType.S, "sk",
+                        ScalarAttributeType.S);
+        phoenixDBClientV2.createTable(createTableRequest);
+        dynamoDbClient.createTable(createTableRequest);
+
+        Map<String, AttributeValue> item0 = new HashMap<>();
+        item0.put("hk", AttributeValue.builder().s("foo").build());
+        item0.put("sk", AttributeValue.builder().s("bar").build());
+        item0.put("status", AttributeValue.builder().s("Active").build());
+        PutItemRequest pir = PutItemRequest.builder().tableName(tableName).item(item0).build();
+        dynamoDbClient.putItem(pir);
+        phoenixDBClientV2.putItem(pir);
+
+        Map<String, AttributeValue> item1 = new HashMap<>();
+        item1.put("hk", AttributeValue.builder().s("abc").build());
+        item1.put("sk", AttributeValue.builder().s("def").build());
+        item1.put("updateCount", AttributeValue.builder().n("1").build());
+        item1.put("status", AttributeValue.builder().s("Active").build());
+        pir = PutItemRequest.builder().tableName(tableName).item(item1).build();
+        dynamoDbClient.putItem(pir);
+        phoenixDBClientV2.putItem(pir);
+
+        Map<String, String> exprAttrNames = new HashMap<>();
+        exprAttrNames.put("#s", "status");
+        Map<String, AttributeValue> exprAttrValues = new HashMap<>();
+        exprAttrValues.put(":status", AttributeValue.builder().s("Active").build());
+        Map<String, AttributeValue> item2 = new HashMap<>();
+        item2.put("hk", AttributeValue.builder().s("xyz").build());
+        item2.put("sk", AttributeValue.builder().s("pqr").build());
+        item2.put("updateCount", AttributeValue.builder().n("2").build());
+        item2.put("status", AttributeValue.builder().s("Paused").build());
+
+        // item not does exist
+        pir = PutItemRequest.builder()
+                .tableName(tableName)
+                .item(item2)
+                .conditionExpression("attribute_exists(sk) and attribute_not_exists(updateCount) and #s = :status")
+                .expressionAttributeValues(exprAttrValues)
+                .expressionAttributeNames(exprAttrNames)
+                .build();
+        try {
+            dynamoDbClient.putItem(pir);
+            Assert.fail("PutItem should have thrown ConditionalCheckFailedException.");
+        } catch (ConditionalCheckFailedException e) {}
+        try {
+            phoenixDBClientV2.putItem(pir);
+            Assert.fail("PutItem should have thrown ConditionalCheckFailedException.");
+        } catch (ConditionalCheckFailedException e) {}
+
+        // item exists and updateCount attribute exists
+        item1.put("status", AttributeValue.builder().s("Paused").build());
+        pir = PutItemRequest.builder()
+                .tableName(tableName)
+                .item(item1)
+                .conditionExpression("attribute_exists(sk) and attribute_not_exists(updateCount) and #s = :status")
+                .expressionAttributeValues(exprAttrValues)
+                .expressionAttributeNames(exprAttrNames)
+                .build();
+        try {
+            dynamoDbClient.putItem(pir);
+            Assert.fail("PutItem should have thrown ConditionalCheckFailedException.");
+        } catch (ConditionalCheckFailedException e) {}
+        try {
+            phoenixDBClientV2.putItem(pir);
+            Assert.fail("PutItem should have thrown ConditionalCheckFailedException.");
+        } catch (ConditionalCheckFailedException e) {}
+
+        // item exists, updateCount attribute does not exist but status does not match
+        item0.put("status", AttributeValue.builder().s("Active").build());
+        exprAttrValues.put(":status", AttributeValue.builder().s("Paused").build());
+        pir = PutItemRequest.builder()
+                .tableName(tableName)
+                .item(item0)
+                .conditionExpression("attribute_exists(sk) and attribute_not_exists(updateCount) and #s = :status")
+                .expressionAttributeValues(exprAttrValues)
+                .expressionAttributeNames(exprAttrNames)
+                .build();
+        try {
+            dynamoDbClient.putItem(pir);
+            Assert.fail("PutItem should have thrown ConditionalCheckFailedException.");
+        } catch (ConditionalCheckFailedException e) {}
+        try {
+            phoenixDBClientV2.putItem(pir);
+            Assert.fail("PutItem should have thrown ConditionalCheckFailedException.");
+        } catch (ConditionalCheckFailedException e) {}
+
+        // item exists, updateCount attribute does not exist and status matches
+        exprAttrValues.put(":status", AttributeValue.builder().s("Active").build());
+        item0.put("status", AttributeValue.builder().s("Paused").build());
+        pir = PutItemRequest.builder()
+                .tableName(tableName)
+                .item(item0)
+                .conditionExpression("attribute_exists(sk) and attribute_not_exists(updateCount) and #s = :status")
+                .expressionAttributeValues(exprAttrValues)
+                .expressionAttributeNames(exprAttrNames)
+                .build();
+        dynamoDbClient.putItem(pir);
+        phoenixDBClientV2.putItem(pir);
+
+        ScanRequest scanRequest = ScanRequest.builder().tableName(tableName).build();
+        Assert.assertEquals(dynamoDbClient.scan(scanRequest).items(), phoenixDBClientV2.scan(scanRequest).items());
+    }
+
 
     @Test(timeout = 120000)
     public void conditionalPutWithReturnValuesAllOldComplexConditionTest() throws Exception {

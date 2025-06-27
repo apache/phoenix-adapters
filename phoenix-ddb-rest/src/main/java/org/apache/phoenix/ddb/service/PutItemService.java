@@ -30,12 +30,12 @@ public class PutItemService {
     private static final String PUT_WITH_HASH_SORT_KEY = "UPSERT INTO %s.\"%s\" VALUES (?,?,?)";
 
     private static final String CONDITIONAL_PUT_WITH_HASH_KEY = "UPSERT INTO %s.\"%s\" VALUES (?) " +
-            " ON DUPLICATE KEY UPDATE\n" +
+            " ON DUPLICATE KEY UPDATE_ONLY\n" +
             " COL = CASE WHEN BSON_CONDITION_EXPRESSION(COL,'%s') THEN ? \n" +
             " ELSE COL END";
 
     private static final String CONDITIONAL_PUT_WITH_HASH_SORT_KEY
-            = "UPSERT INTO %s.\"%s\" VALUES (?, ?) " + " ON DUPLICATE KEY UPDATE\n" +
+            = "UPSERT INTO %s.\"%s\" VALUES (?, ?) " + " ON DUPLICATE KEY UPDATE_ONLY\n" +
             " COL = CASE WHEN BSON_CONDITION_EXPRESSION(COL,'%s') THEN ? \n" +
             " ELSE COL END";
 
