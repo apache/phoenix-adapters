@@ -18,11 +18,9 @@
 
 package org.apache.phoenix.ddb.utils;
 
-import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import software.amazon.awssdk.services.dynamodb.model.ScalarAttributeType;
 
 import org.apache.commons.lang3.StringUtils;
-import org.apache.phoenix.ddb.bson.DdbAttributesToBsonDocument;
 import org.apache.phoenix.ddb.bson.MapToBsonDocument;
 import org.apache.phoenix.ddb.bson.UpdateExpressionDdbToBson;
 import org.apache.phoenix.schema.types.PDataType;
@@ -30,6 +28,7 @@ import org.apache.phoenix.schema.types.PDecimal;
 import org.apache.phoenix.schema.types.PDouble;
 import org.apache.phoenix.schema.types.PVarbinaryEncoded;
 import org.apache.phoenix.schema.types.PVarchar;
+
 import org.bson.BsonDocument;
 import org.bson.BsonString;
 
@@ -81,9 +80,22 @@ public class CommonServiceUtils {
      */
     public static String getBsonConditionExpressionFromMap(String condExpr,
             Map<String, String> exprAttrNames, Map<String, Object> exprAttrVals) {
+        BsonDocument exprAttrNamesDoc = getExpressionAttributeNamesDoc(exprAttrNames);
+        return getBsonConditionExpressionUtil(condExpr, exprAttrNamesDoc, exprAttrVals);
+    }
+
+    public static String getBsonConditionExpressionUtil(String condExpr,
+            BsonDocument exprAttrNamesDoc, Map<String, Object> exprAttrVals) {
         BsonDocument conditionDoc = new BsonDocument();
         conditionDoc.put("$EXPR", new BsonString(condExpr));
         conditionDoc.put("$VAL", MapToBsonDocument.getBsonDocument(exprAttrVals));
+        if (exprAttrNamesDoc != null) {
+            conditionDoc.put("$KEYS", exprAttrNamesDoc);
+        }
+        return conditionDoc.toJson();
+    }
+
+    public static BsonDocument getExpressionAttributeNamesDoc(Map<String, String> exprAttrNames) {
         if (exprAttrNames != null && !exprAttrNames.isEmpty()) {
             BsonDocument exprAttrNamesDoc = new BsonDocument();
             for (Map.Entry<String, String> entry : exprAttrNames.entrySet()) {
@@ -91,9 +103,9 @@ public class CommonServiceUtils {
                 String attrValue = entry.getValue();
                 exprAttrNamesDoc.put(attrName, new BsonString(attrValue));
             }
-            conditionDoc.put("$KEYS", exprAttrNamesDoc);
+            return exprAttrNamesDoc;
         }
-        return conditionDoc.toJson();
+        return null;
     }
 
     /**
@@ -120,7 +132,7 @@ public class CommonServiceUtils {
      * Replace all occurrences of aliases in the given String using expression attribute map.
      */
     public static String replaceExpressionAttributeNames(String s,
-                                                       Map<String, String> exprAttrNames) {
+            Map<String, String> exprAttrNames) {
         if (exprAttrNames == null || !s.contains(HASH)) {
             return s;
         }
@@ -133,12 +145,12 @@ public class CommonServiceUtils {
     public static Map<String, Object> getConsumedCapacity(final String tableName) {
         Map<String, Object> consumedCapacity = new HashMap<>();
         consumedCapacity.put(ApiMetadata.TABLE_NAME, tableName);
-        
+
         Map<String, Double> tableCapacity = new HashMap<>();
         tableCapacity.put(ApiMetadata.READ_CAPACITY_UNITS, 1.0);
         tableCapacity.put(ApiMetadata.WRITE_CAPACITY_UNITS, 1.0);
         tableCapacity.put(ApiMetadata.CAPACITY_UNITS, 2.0);
-        
+
         consumedCapacity.put(ApiMetadata.TABLE, tableCapacity);
         consumedCapacity.put(ApiMetadata.READ_CAPACITY_UNITS, 1.0);
         consumedCapacity.put(ApiMetadata.WRITE_CAPACITY_UNITS, 1.0);

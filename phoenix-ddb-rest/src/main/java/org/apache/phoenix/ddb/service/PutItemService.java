@@ -7,9 +7,13 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.hadoop.hbase.util.Pair;
 import org.apache.phoenix.ddb.service.utils.ValidationUtil;
 import org.apache.phoenix.ddb.utils.ApiMetadata;
+import org.apache.phoenix.expression.util.bson.SQLComparisonExpressionUtils;
+
 import org.bson.BsonDocument;
+import org.bson.RawBsonDocument;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,21 +33,28 @@ public class PutItemService {
     private static final String PUT_WITH_HASH_KEY = "UPSERT INTO %s.\"%s\" VALUES (?,?)";
     private static final String PUT_WITH_HASH_SORT_KEY = "UPSERT INTO %s.\"%s\" VALUES (?,?,?)";
 
-    private static final String CONDITIONAL_PUT_WITH_HASH_KEY = "UPSERT INTO %s.\"%s\" VALUES (?) " +
-            " ON DUPLICATE KEY UPDATE_ONLY\n" +
-            " COL = CASE WHEN BSON_CONDITION_EXPRESSION(COL,'%s') THEN ? \n" +
-            " ELSE COL END";
+    private static final String CONDITIONAL_PUT_UPDATE_ONLY_WITH_HASH_KEY =
+            "UPSERT INTO %s.\"%s\" VALUES (?) " + " ON DUPLICATE KEY UPDATE_ONLY\n"
+                    + " COL = CASE WHEN BSON_CONDITION_EXPRESSION(COL,'%s') THEN ? \n"
+                    + " ELSE COL END";
 
-    private static final String CONDITIONAL_PUT_WITH_HASH_SORT_KEY
-            = "UPSERT INTO %s.\"%s\" VALUES (?, ?) " + " ON DUPLICATE KEY UPDATE_ONLY\n" +
-            " COL = CASE WHEN BSON_CONDITION_EXPRESSION(COL,'%s') THEN ? \n" +
-            " ELSE COL END";
+    private static final String CONDITIONAL_PUT_UPDATE_ONLY_WITH_HASH_SORT_KEY =
+            "UPSERT INTO %s.\"%s\" VALUES (?, ?) " + " ON DUPLICATE KEY UPDATE_ONLY\n"
+                    + " COL = CASE WHEN BSON_CONDITION_EXPRESSION(COL,'%s') THEN ? \n"
+                    + " ELSE COL END";
 
-    private static final String CONDITIONAL_PUT_IGNORE_WITH_HASH_KEY
-            = "UPSERT INTO %s.\"%s\" VALUES (?, ?) ON DUPLICATE KEY IGNORE ";
+    private static final String CONDITIONAL_PUT_UPDATE_WITH_HASH_KEY =
+            "UPSERT INTO %s.\"%s\" VALUES (?, ?) " + " ON DUPLICATE KEY UPDATE\n"
+                    + " COL = CASE WHEN BSON_CONDITION_EXPRESSION(COL,'%s') THEN ? \n"
+                    + " ELSE COL END";
 
-    private static final String CONDITIONAL_PUT_IGNORE_WITH_HASH_SORT_KEY
-            = "UPSERT INTO %s.\"%s\" VALUES (?, ?, ?) ON DUPLICATE KEY IGNORE ";
+    private static final String CONDITIONAL_PUT_UPDATE_WITH_HASH_SORT_KEY =
+            "UPSERT INTO %s.\"%s\" VALUES (?, ?, ?) " + " ON DUPLICATE KEY UPDATE\n"
+                    + " COL = CASE WHEN BSON_CONDITION_EXPRESSION(COL,'%s') THEN ? \n"
+                    + " ELSE COL END";
+
+    private static final BsonDocument EMPTY_BSON_DOC = new BsonDocument();
+    private static final RawBsonDocument EMPTY_RAW_BSON_DOC = RawBsonDocument.parse("{}");
 
     public static Map<String, Object> putItem(Map<String, Object> request, String connectionUrl) {
         Map<String, Object> result;
@@ -68,11 +79,16 @@ public class PutItemService {
         List<PColumn> pkCols = table.getPKColumns();
 
         //create statement based on PKs and conditional expression
-        PreparedStatement stmt = getPreparedStatement(connection, request, pkCols);
+        Pair<Boolean, PreparedStatement> result = getPreparedStatement(connection, request, pkCols);
+        PreparedStatement stmt = result.getSecond();
         // extract PKs from item
         DMLUtils.setKeysOnStatement(stmt, pkCols, item);
         // set bson document of entire item
-        stmt.setObject(pkCols.size()+1, bsonDoc);
+        stmt.setObject(pkCols.size() + 1, bsonDoc);
+        if (result.getFirst()) {
+            // this is done for UPDATE where we provide full row in VALUES(), not for UPDATE_ONLY
+            stmt.setObject(pkCols.size() + 2, bsonDoc);
+        }
 
         //execute, auto commit is on
         LOGGER.info("Upsert Query for PutItem: {}", stmt);
@@ -82,12 +98,14 @@ public class PutItemService {
     }
 
     /**
-     * Return the corresponding PreparedStatement based on number of
-     * Primary Key columns and conditional expression.
+     * Return a pair of
+     * 1. boolean which is true when we are using UPDATE and need to set item twice on the statement.
+     * 2. PreparedStatement based on number of Primary Key columns and conditional expression.
      */
-    private static PreparedStatement getPreparedStatement(Connection conn,
+    private static Pair<Boolean, PreparedStatement> getPreparedStatement(Connection conn,
             Map<String, Object> request, List<PColumn> pkCols) throws SQLException {
         PreparedStatement stmt;
+        boolean setItemTwice = false;
         String tableName = (String) request.get(ApiMetadata.TABLE_NAME);
         String condExpr = (String) request.get(ApiMetadata.CONDITION_EXPRESSION);
         Map<String, String> exprAttrNames =
@@ -95,32 +113,40 @@ public class PutItemService {
         Map<String, Object> exprAttrVals =
                 (Map<String, Object>) request.get(ApiMetadata.EXPRESSION_ATTRIBUTE_VALUES);
         if (!StringUtils.isEmpty(condExpr)) {
+            BsonDocument exprAttrNamesDoc =
+                    CommonServiceUtils.getExpressionAttributeNamesDoc(exprAttrNames);
             String bsonCondExpr =
-                    CommonServiceUtils.getBsonConditionExpressionFromMap(condExpr, exprAttrNames,
+                    CommonServiceUtils.getBsonConditionExpressionUtil(condExpr, exprAttrNamesDoc,
                             exprAttrVals);
-            String replacedAliasCondExpr =
-                    CommonServiceUtils.replaceExpressionAttributeNames(condExpr, exprAttrNames);
-            // we do not want upsert to be performed if row already exists
-            if (shouldUseIgnoreForAtomicUpsert(replacedAliasCondExpr, pkCols)) {
-                String QUERY_FORMAT = (pkCols.size() == 1)
-                        ? CONDITIONAL_PUT_IGNORE_WITH_HASH_KEY : CONDITIONAL_PUT_IGNORE_WITH_HASH_SORT_KEY;
-                stmt = conn.prepareStatement(String.format(QUERY_FORMAT, "DDB", tableName));
+            if (shouldUseUpdateForAtomicPut(condExpr, exprAttrNamesDoc)) {
+                String QUERY_FORMAT = (pkCols.size() == 1) ?
+                        CONDITIONAL_PUT_UPDATE_WITH_HASH_KEY :
+                        CONDITIONAL_PUT_UPDATE_WITH_HASH_SORT_KEY;
+                stmt = conn.prepareStatement(
+                        String.format(QUERY_FORMAT, "DDB", tableName, bsonCondExpr));
+                setItemTwice = true;
             } else {
-                String QUERY_FORMAT = (pkCols.size() == 1)
-                        ? CONDITIONAL_PUT_WITH_HASH_KEY : CONDITIONAL_PUT_WITH_HASH_SORT_KEY;
+                String QUERY_FORMAT = (pkCols.size() == 1) ?
+                        CONDITIONAL_PUT_UPDATE_ONLY_WITH_HASH_KEY :
+                        CONDITIONAL_PUT_UPDATE_ONLY_WITH_HASH_SORT_KEY;
                 stmt = conn.prepareStatement(
                         String.format(QUERY_FORMAT, "DDB", tableName, bsonCondExpr));
             }
         } else {
-            String QUERY_FORMAT = (pkCols.size() == 1)
-                    ? PUT_WITH_HASH_KEY : PUT_WITH_HASH_SORT_KEY;
+            String QUERY_FORMAT = (pkCols.size() == 1) ? PUT_WITH_HASH_KEY : PUT_WITH_HASH_SORT_KEY;
             stmt = conn.prepareStatement(String.format(QUERY_FORMAT, "DDB", tableName));
         }
-        return stmt;
+        return new Pair<>(setItemTwice, stmt);
     }
 
-    private static boolean shouldUseIgnoreForAtomicUpsert(String condExpr, List<PColumn> pkCols) {
-            return condExpr.contains("attribute_not_exists(" + pkCols.get(0).getName().toString() + ")")
-                     || (pkCols.size() == 2 && condExpr.contains("attribute_not_exists(" + pkCols.get(1).getName().toString() + ")"));
+    /**
+     * Use UPDATE if condition expression can evaluate to true on an empty document
+     * (which is equivalent to item not already existing) because the insert should happen in that case.
+     * If it evaluates to false, we will use UPDATE_ONLY.
+     */
+    private static boolean shouldUseUpdateForAtomicPut(String condExpr,
+            BsonDocument exprAttrNamesDoc) {
+        return SQLComparisonExpressionUtils.evaluateConditionExpression(condExpr,
+                EMPTY_RAW_BSON_DOC, EMPTY_BSON_DOC, exprAttrNamesDoc);
     }
 }
