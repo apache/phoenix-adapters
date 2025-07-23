@@ -55,6 +55,37 @@ function add_size_suffix() {
     fi
 }
 
+function sighup_handler() {
+    # pass through SIGHUP if we can
+    if [ -f "$PHOENIX_SHIM_PID_DIR/$COMMAND.pid" ]; then
+        kill -s HUP "$(cat "$PHOENIX_SHIM_PID_DIR/$COMMAND.pid")"
+    fi
+}
+
+function sigterm_handler() {
+    if [ -f "$PHOENIX_SHIM_PID_DIR/$COMMAND.pid" ]; then
+        echo "Received termination signal, stopping $COMMAND..."
+        kill -s TERM "$(cat "$PHOENIX_SHIM_PID_DIR/$COMMAND.pid")"
+        # Wait for process to end gracefully
+        local pid="$(cat "$PHOENIX_SHIM_PID_DIR/$COMMAND.pid")"
+        local count=0
+        while kill -0 "$pid" 2>/dev/null && [ $count -lt 30 ]; do
+            sleep 1
+            count=$((count + 1))
+        done
+        # Force kill if still running
+        if kill -0 "$pid" 2>/dev/null; then
+            echo "Force killing $COMMAND (PID: $pid)"
+            kill -9 "$pid"
+        fi
+    fi
+    cleanAfterRun
+}
+
+function cleanAfterRun() {
+    rm -f "$PHOENIX_SHIM_PID_DIR/$COMMAND.pid" > /dev/null 2>&1
+}
+
 function validate_config() {
     if [ -z "$JAVA_HOME" ]; then
         echo "Error: JAVA_HOME is not set"
@@ -113,6 +144,37 @@ function start_daemon() {
     echo "Started $COMMAND daemon (pid: $!)"
 }
 
+function foreground_start() {
+    local args=("$@")
+
+    # Set up signal traps before starting
+    trap sighup_handler HUP
+    trap sigterm_handler INT TERM EXIT
+    
+    # Transform "foreground_start" to "start" for the Java process
+    local java_args=()
+    for arg in "${args[@]}"; do
+        if [ "$arg" = "foreground_start" ]; then
+            java_args+=("start")
+        else
+            java_args+=("$arg")
+        fi
+    done
+    
+    # Use start_daemon with transformed arguments
+    start_daemon "${java_args[@]}"
+    
+    # Wait for the process to complete
+    if [ -f "$PHOENIX_SHIM_PID_DIR/$COMMAND.pid" ]; then
+        local java_pid=$(cat "$PHOENIX_SHIM_PID_DIR/$COMMAND.pid")
+        echo "Running in foreground mode (PID: $java_pid). Press Ctrl+C to stop."
+        wait $java_pid
+    else
+        echo "Error: Could not find PID file after starting daemon"
+        exit 1
+    fi
+}
+
 function stop_daemon() {
     if [ -f "$PHOENIX_SHIM_PID_DIR/$COMMAND.pid" ]; then
         pid=$(cat "$PHOENIX_SHIM_PID_DIR/$COMMAND.pid")
@@ -150,14 +212,16 @@ function show_usage() {
   echo "    stop             Stop the REST server"
   echo "    status           Check REST server status"
   echo "    restart          Restart the REST server"
+  echo "    foreground_start Start the REST server in foreground"
   echo ""
   echo "  CLASSNAME          Run the class named CLASSNAME"
   echo ""
   echo "Examples:"
-  echo "  phoenix-shim rest start     # Start the REST server"
-  echo "  phoenix-shim rest stop      # Stop the REST server"
-  echo "  phoenix-shim rest status    # Check REST server status"
-  echo "  phoenix-shim rest restart   # Restart the REST server"
+  echo "  phoenix-shim rest start           # Start the REST server"
+  echo "  phoenix-shim rest stop            # Stop the REST server"
+  echo "  phoenix-shim rest status          # Check REST server status"
+  echo "  phoenix-shim rest restart         # Restart the REST server"
+  echo "  phoenix-shim rest foreground_start # Start the REST server in foreground"
   echo ""
   echo "Environment Variables:"
   echo "  JAVA_HOME                The java implementation to use"
@@ -305,6 +369,9 @@ if [ "$COMMAND" = "rest" ]; then
             sleep 2  # Give the process time to stop
             start_daemon "${REST_CMD_ARGS[@]}"
             ;;
+        foreground_start)
+            foreground_start "${REST_CMD_ARGS[@]}"
+            ;;
         *)
             echo "Unknown subcommand: $SUBCOMMAND"
             show_usage
@@ -329,6 +396,9 @@ else
             stop_daemon
             sleep 2
             start_daemon "${CMD_ARGS[@]}"
+            ;;
+        foreground_start)
+            foreground_start "${CMD_ARGS[@]}"
             ;;
         *)
             echo "Unknown command: $COMMAND"
