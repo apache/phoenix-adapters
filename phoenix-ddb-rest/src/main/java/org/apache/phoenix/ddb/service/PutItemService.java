@@ -91,7 +91,7 @@ public class PutItemService {
         }
 
         //execute, auto commit is on
-        LOGGER.info("Upsert Query for PutItem: {}", stmt);
+        LOGGER.debug("Upsert Query for PutItem: {}", stmt);
         return DMLUtils.executeUpdate(stmt, (String) request.get(ApiMetadata.RETURN_VALUES),
                 (String) request.get(ApiMetadata.RETURN_VALUES_ON_CONDITION_CHECK_FAILURE),
                 (String) request.get(ApiMetadata.CONDITION_EXPRESSION), pkCols, false);

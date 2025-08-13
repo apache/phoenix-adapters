@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -82,6 +83,7 @@ public class RESTServer {
     private Server server;
     //    private InfoServer infoServer;
     private ServerName serverName;
+    private ExecutorService indexBuildingActivator;
 
     public RESTServer(Configuration conf) {
         this.conf = conf;
@@ -159,7 +161,7 @@ public class RESTServer {
 
         try {
             validateConnection();
-            startIndexBuildingActivator();
+            indexBuildingActivator = startIndexBuildingActivator();
         } catch (Exception e) {
             LOG.error("Failed to validate connection, shutting down REST Server...", e);
             throw e;
@@ -281,7 +283,7 @@ public class RESTServer {
         }
     }
 
-    private void startIndexBuildingActivator() {
+    private ExecutorService startIndexBuildingActivator() {
         String jdbcUrl = PhoenixUtils.URL_ZK_PREFIX + conf.get(Constants.PHOENIX_DDB_ZK_QUORUM);
         ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
         scheduler.scheduleAtFixedRate(() -> {
@@ -292,6 +294,7 @@ public class RESTServer {
             }
         }, 0, 15, TimeUnit.MINUTES);
         LOG.info("Scheduled IndexBuildingActivator.");
+        return scheduler;
     }
 
     private static String getHostName(Configuration conf) throws UnknownHostException {
@@ -310,6 +313,9 @@ public class RESTServer {
     public synchronized void stop() throws Exception {
         if (server == null) {
             throw new IllegalStateException("Server is not running");
+        }
+        if (indexBuildingActivator != null) {
+            indexBuildingActivator.shutdown();
         }
         server.stop();
         server = null;

@@ -51,7 +51,7 @@ public class DescribeStreamService {
                 }
                 sb.append(" LIMIT ");
                 sb.append(limit);
-                LOGGER.info("Describe Stream Query: " + sb);
+                LOGGER.debug("Describe Stream Query: " + sb);
                 List<Map<String, Object>> shards = new ArrayList<>();
                 String lastEvaluatedShardId = null;
                 ResultSet rs = conn.createStatement().executeQuery(sb.toString());

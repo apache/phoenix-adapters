@@ -61,7 +61,7 @@ public class UpdateItemService {
             DMLUtils.setKeysOnStatement(stmt, pkCols, (Map<String, Object>) request.get(ApiMetadata.KEY));
 
             //execute, auto commit is on
-            LOGGER.info("Upsert Query for UpdateItem: {}", stmt);
+            LOGGER.debug("Upsert Query for UpdateItem: {}", stmt);
             Map<String, Object> returnAttrs =
                     DMLUtils.executeUpdate(stmt, (String) request.get(ApiMetadata.RETURN_VALUES),
                             (String) request.get(ApiMetadata.RETURN_VALUES_ON_CONDITION_CHECK_FAILURE),

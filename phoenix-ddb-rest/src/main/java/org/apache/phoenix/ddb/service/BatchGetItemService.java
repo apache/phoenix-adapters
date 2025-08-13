@@ -113,7 +113,7 @@ public class BatchGetItemService {
                             buildSQLQueryClause(numKeysToQuery, false)));
 
         }
-        LOGGER.info("SELECT Query: " + queryBuilder);
+        LOGGER.debug("SELECT Query: " + queryBuilder);
         PreparedStatement stmt = connection.prepareStatement(queryBuilder.toString());
         return stmt;
     }

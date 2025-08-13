@@ -243,7 +243,7 @@ public class ScanService {
         addKeyConditions(queryBuilder, config, hasFilter);
         addLimitClause(queryBuilder, config.limit);
         
-        LOGGER.info("Scan Query ({}): {}", config.type, queryBuilder);
+        LOGGER.debug("Scan Query ({}): {}", config.type, queryBuilder);
         
         PreparedStatement stmt = connection.prepareStatement(queryBuilder.toString());
         setQueryParameters(stmt, request, config);

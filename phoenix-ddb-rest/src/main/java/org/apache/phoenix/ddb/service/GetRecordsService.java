@@ -103,7 +103,7 @@ public class GetRecordsService {
                             "Index 0 out of bounds for length 0"))
                     || (isCauseMessageAvailable(e) && e.getCause().getMessage().contains(
                             "Index: 0, Size: 0"))) {
-                LOGGER.info("Hit end of region, avoiding offset bug.");
+                LOGGER.debug("Hit end of region, avoiding offset bug.");
             } else {
                 throw new RuntimeException(e);
             }
@@ -137,7 +137,7 @@ public class GetRecordsService {
         if (phoenixShardIterator.getOffset() > 0) {
             ps.setInt(4, phoenixShardIterator.getOffset());
         }
-        LOGGER.info("Query for getRecords: {}, Parameters: {}, {}, {}, {}",
+        LOGGER.debug("Query for getRecords: {}, Parameters: {}, {}, {}, {}",
                 ps, phoenixShardIterator.getPartitionId(), phoenixShardIterator.getTimestamp(),
                 limit, phoenixShardIterator.getOffset());
         return ps;

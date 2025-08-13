@@ -107,7 +107,7 @@ public class QueryService {
             addScanIndexForwardCondition(queryBuilder, useIndex, sortKeyPKCol);
         }
         DQLUtils.addLimit(queryBuilder, (Integer) request.get(ApiMetadata.LIMIT), MAX_QUERY_LIMIT);
-        LOGGER.info("SELECT Query: " + queryBuilder);
+        LOGGER.debug("SELECT Query: " + queryBuilder);
 
         // Set values on the PreparedStatement
         PreparedStatement stmt = conn.prepareStatement(queryBuilder.toString());

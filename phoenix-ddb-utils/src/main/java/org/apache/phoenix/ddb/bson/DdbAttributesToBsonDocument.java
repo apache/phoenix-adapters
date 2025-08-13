@@ -43,6 +43,8 @@ import org.slf4j.LoggerFactory;
  */
 public class DdbAttributesToBsonDocument {
 
+  private static final RawBsonDocumentCodec RAW_BSON_DOCUMENT_CODEC = new RawBsonDocumentCodec();
+
   private static final Logger LOGGER =
       LoggerFactory.getLogger(DdbAttributesToBsonDocument.class);
 
@@ -53,7 +55,7 @@ public class DdbAttributesToBsonDocument {
    * @return Corresponding RawBsonDocument.
    */
   public static RawBsonDocument getRawBsonDocument(final Map<String, AttributeValue> item) {
-    return new RawBsonDocumentCodec().decode(
+    return RAW_BSON_DOCUMENT_CODEC.decode(
         new BsonDocumentReader(getBsonDocument(item)),
         DecoderContext.builder().build());
   }

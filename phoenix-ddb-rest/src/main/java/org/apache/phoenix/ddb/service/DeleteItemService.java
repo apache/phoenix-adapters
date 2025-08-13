@@ -56,7 +56,7 @@ public class DeleteItemService {
         PreparedStatement stmt = getPreparedStatement(connection, request, pkCols);
 
         DMLUtils.setKeysOnStatement(stmt, pkCols, (Map<String, Object>) request.get(ApiMetadata.KEY));
-        LOGGER.info("Delete Query for DeleteItem: {}", stmt);
+        LOGGER.debug("Delete Query for DeleteItem: {}", stmt);
         return DMLUtils.executeUpdate(stmt, (String) request.get(ApiMetadata.RETURN_VALUES),
                 (String) request.get(ApiMetadata.RETURN_VALUES_ON_CONDITION_CHECK_FAILURE),
                 (String) request.get(ApiMetadata.CONDITION_EXPRESSION), pkCols, true);

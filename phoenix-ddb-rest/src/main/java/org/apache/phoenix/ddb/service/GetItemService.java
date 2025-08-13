@@ -60,7 +60,7 @@ public class GetItemService {
             queryBuilder.append(String.format(CLAUSE_FOR_SORT_COL,
                     CommonServiceUtils.getEscapedArgument(sortKeyPKCol)));
         }
-        LOGGER.info("SELECT Query: " + queryBuilder);
+        LOGGER.debug("SELECT Query: " + queryBuilder);
         PreparedStatement stmt = conn.prepareStatement(queryBuilder.toString());
         setPreparedStatementValues(stmt, request, tablePKCols);
         return stmt;

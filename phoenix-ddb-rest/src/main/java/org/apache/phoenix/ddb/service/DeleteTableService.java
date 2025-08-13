@@ -39,7 +39,7 @@ public class DeleteTableService {
                 TableDescriptorUtils.getTableDescription(tableName, connectionUrl,
                         "TableDescription");
         String deleteTableDDL = "DROP TABLE DDB.\"" + tableName + "\" CASCADE";
-        LOGGER.info("Delete Table Query: {}", deleteTableDDL);
+        LOGGER.debug("Delete Table Query: {}", deleteTableDDL);
 
         try (Connection connection = DriverManager.getConnection(connectionUrl)) {
             connection.createStatement().execute(deleteTableDDL);

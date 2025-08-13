@@ -31,7 +31,7 @@ public class ListTablesService {
                 ? ""
                 : " AND TABLE_NAME > '" + exclusiveStartTableName + "'";
         String query = String.format(SYSCAT_QUERY, exclusiveStartTableNameClause, limit);
-        LOGGER.info("Query for List Tables: {}", query);
+        LOGGER.debug("Query for List Tables: {}", query);
         List<String> tableNames = new ArrayList<>();
         String lastEvaluatedTableName = null;
         try (Connection connection = DriverManager.getConnection(connectionUrl)) {

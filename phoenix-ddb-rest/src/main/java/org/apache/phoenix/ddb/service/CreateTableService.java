@@ -319,16 +319,16 @@ public class CreateTableService {
 
             String createTableDDL = "CREATE TABLE DDB.\"" + tableName + "\" (" + cols + ") "
                     + PhoenixUtils.getTableOptions();
-            LOGGER.info("Create Table Query: {}", createTableDDL);
+            LOGGER.debug("Create Table Query: {}", createTableDDL);
 
             List<String> createIndexDDLs = getIndexDDLs(request);
             for (String createIndexDDL : createIndexDDLs) {
-                LOGGER.info("Create Index Query: " + createIndexDDL);
+                LOGGER.debug("Create Index Query: " + createIndexDDL);
             }
 
             List<String> createCdcDDLs = getCdcDDL(request);
             for (String ddl : createCdcDDLs) {
-                LOGGER.info("CDC DDL: " + ddl);
+                LOGGER.debug("CDC DDL: " + ddl);
             }
 
             try (Connection connection = DriverManager.getConnection(connectionUrl)) {

@@ -34,40 +34,40 @@ import org.apache.phoenix.expression.util.bson.UpdateExpressionUtils;
  */
 public class UpdateExpressionDdbToBson {
 
+  private static final String setRegExPattern = "SET\\s+(.+?)(?=\\s+(REMOVE|ADD|DELETE)\\b|$)";
+  private static final String removeRegExPattern = "REMOVE\\s+(.+?)(?=\\s+(SET|ADD|DELETE)\\b|$)";
+  private static final String addRegExPattern = "ADD\\s+(.+?)(?=\\s+(SET|REMOVE|DELETE)\\b|$)";
+  private static final String deleteRegExPattern = "DELETE\\s+(.+?)(?=\\s+(SET|REMOVE|ADD)\\b|$)";
+  private static final Pattern SET_PATTERN = Pattern.compile(setRegExPattern);
+  private static final Pattern REMOVE_PATTERN = Pattern.compile(removeRegExPattern);
+  private static final Pattern ADD_PATTERN = Pattern.compile(addRegExPattern);
+  private static final Pattern DELETE_PATTERN = Pattern.compile(deleteRegExPattern);
+
   public static BsonDocument getBsonDocumentForUpdateExpression(
       final String updateExpression,
       final BsonDocument comparisonValue) {
-
-    String setRegExPattern = "SET\\s+(.+?)(?=\\s+(REMOVE|ADD|DELETE)\\b|$)";
-    String removeRegExPattern = "REMOVE\\s+(.+?)(?=\\s+(SET|ADD|DELETE)\\b|$)";
-    String addRegExPattern = "ADD\\s+(.+?)(?=\\s+(SET|REMOVE|DELETE)\\b|$)";
-    String deleteRegExPattern = "DELETE\\s+(.+?)(?=\\s+(SET|REMOVE|ADD)\\b|$)";
 
     String setString = "";
     String removeString = "";
     String addString = "";
     String deleteString = "";
 
-    Pattern pattern = Pattern.compile(setRegExPattern);
-    Matcher matcher = pattern.matcher(updateExpression);
+    Matcher matcher = SET_PATTERN.matcher(updateExpression);
     if (matcher.find()) {
       setString = matcher.group(1).trim();
     }
 
-    pattern = Pattern.compile(removeRegExPattern);
-    matcher = pattern.matcher(updateExpression);
+    matcher = REMOVE_PATTERN.matcher(updateExpression);
     if (matcher.find()) {
       removeString = matcher.group(1).trim();
     }
 
-    pattern = Pattern.compile(addRegExPattern);
-    matcher = pattern.matcher(updateExpression);
+    matcher = ADD_PATTERN.matcher(updateExpression);
     if (matcher.find()) {
       addString = matcher.group(1).trim();
     }
 
-    pattern = Pattern.compile(deleteRegExPattern);
-    matcher = pattern.matcher(updateExpression);
+    matcher = DELETE_PATTERN.matcher(updateExpression);
     if (matcher.find()) {
       deleteString = matcher.group(1).trim();
     }

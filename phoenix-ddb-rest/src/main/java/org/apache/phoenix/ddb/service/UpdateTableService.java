@@ -34,7 +34,7 @@ public class UpdateTableService {
                     Map<String, Object> deleteIndexUpdate = (Map<String, Object>) indexUpdate.get(ApiMetadata.DELETE);
                     String indexName = (String) deleteIndexUpdate.get(ApiMetadata.INDEX_NAME);
                     String ddl = String.format(DROP_INDEX_SQL, indexName, "DDB", tableName);
-                    LOGGER.info("DDL for Disable Index: {}", ddl);
+                    LOGGER.debug("DDL for Disable Index: {}", ddl);
                     ddls.add(ddl);
                 } else if (indexUpdate.containsKey(ApiMetadata.CREATE)) {
                     Map<String, Object> createIndexUpdate = (Map<String, Object>) indexUpdate.get(ApiMetadata.CREATE);
@@ -43,7 +43,7 @@ public class UpdateTableService {
                     List<Map<String, Object>> attrDefs = (List<Map<String, Object>>) request.get(ApiMetadata.ATTRIBUTE_DEFINITIONS);
                     List<Map<String, Object>> keySchema = (List<Map<String, Object>>) createIndexUpdate.get(ApiMetadata.KEY_SCHEMA);
                     CreateTableService.addIndexDDL(tableName, keySchema, attrDefs, indexDDLs, indexName, true);
-                    LOGGER.info("DDL for Create Index: {}", indexDDLs);
+                    LOGGER.debug("DDL for Create Index: {}", indexDDLs);
                     ddls.addAll(indexDDLs);
                 } else {
                     throw new ValidationException("Only Create and Delete index is supported in UpdateTable API.");
@@ -54,7 +54,7 @@ public class UpdateTableService {
         //cdc
         if (request.containsKey(ApiMetadata.STREAM_SPECIFICATION)) {
             List<String> cdcDDLs = CreateTableService.getCdcDDL(request);
-            LOGGER.info("DDLs for Create CDC: {} ", cdcDDLs);
+            LOGGER.debug("DDLs for Create CDC: {} ", cdcDDLs);
             ddls.addAll(cdcDDLs);
         }
 
