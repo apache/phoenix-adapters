@@ -53,9 +53,6 @@ public class BatchWriteItemService {
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
-        if (unprocessedItems.isEmpty()) {
-            return Collections.emptyMap();
-        }
         Map<String, Object> unprocessedItemsMap = new HashMap<>();
         unprocessedItemsMap.put(ApiMetadata.UNPROCESSED_ITEMS, unprocessedItems);
         return unprocessedItemsMap;
