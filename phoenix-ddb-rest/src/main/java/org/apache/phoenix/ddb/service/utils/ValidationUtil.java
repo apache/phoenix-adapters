@@ -18,13 +18,11 @@
 
 package org.apache.phoenix.ddb.service.utils;
 
-import com.google.protobuf.Api;
+import java.util.Map;
+
 import org.apache.phoenix.ddb.rest.metrics.ApiOperation;
 import org.apache.phoenix.ddb.service.exceptions.ValidationException;
 import org.apache.phoenix.ddb.utils.ApiMetadata;
-
-import java.util.List;
-import java.util.Map;
 
 /**
  * Validation for various API requests.
