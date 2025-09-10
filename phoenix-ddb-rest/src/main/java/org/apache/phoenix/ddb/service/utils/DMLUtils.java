@@ -16,6 +16,7 @@ import org.apache.hadoop.hbase.util.Pair;
 import org.apache.phoenix.ddb.bson.BsonDocumentToMap;
 import org.apache.phoenix.ddb.service.exceptions.ConditionCheckFailedException;
 import org.apache.phoenix.ddb.utils.ApiMetadata;
+import org.apache.phoenix.ddb.rest.metrics.ApiOperation;
 import org.apache.phoenix.jdbc.PhoenixPreparedStatement;
 import org.apache.phoenix.schema.PColumn;
 import org.apache.phoenix.schema.types.PDataType;
@@ -25,11 +26,12 @@ import org.apache.phoenix.schema.types.PVarchar;
 
 public class DMLUtils {
 
+
     /**
      * Extract values for keys from the item and set them on the PreparedStatement.
      */
     public static void setKeysOnStatement(PreparedStatement stmt, List<PColumn> pkCols,
-            Map<String, Object> item) throws SQLException {
+        Map<String, Object> item) throws SQLException {
         for (int i = 0; i < pkCols.size(); i++) {
             PColumn pkCol = pkCols.get(i);
             String colName = pkCol.getName().toString();
@@ -47,7 +49,7 @@ public class DMLUtils {
                 stmt.setBytes(i + 1, b);
             } else {
                 throw new IllegalArgumentException(
-                        "Primary Key column type " + type + " is not " + "correct type");
+                    "Primary Key column type " + type + " is not " + "correct type");
             }
         }
     }
@@ -57,13 +59,13 @@ public class DMLUtils {
      *
      * If conditionExpression is given and it fails, throw ConditionalCheckFailedException.
      *  - if returnValuesOnConditionCheckFailure is ALL_OLD, set the item on the Exception
-     * If conditionExpression succeeds and returnValue is ALL_NEW, return the item.
+     * If conditionExpression succeeds return the item with type of returnValue.
      *
      * TODO: UPDATED_OLD | UPDATED_NEW
      */
     public static Map<String, Object> executeUpdate(PreparedStatement stmt, String returnValue,
-            String returnValuesOnConditionCheckFailure, boolean hasCondExp, List<PColumn> pkCols,
-            boolean isDelete) throws SQLException, ConditionCheckFailedException {
+        String returnValuesOnConditionCheckFailure, boolean hasCondExp, List<PColumn> pkCols,
+        ApiOperation apiOperation) throws SQLException, ConditionCheckFailedException {
         try {
             Map<String, Object> returnAttrs = Collections.emptyMap();
             if (!needReturnRow(returnValue, returnValuesOnConditionCheckFailure)) {
@@ -74,34 +76,36 @@ public class DMLUtils {
                 return null;
             }
             Pair<Integer, ResultSet> resultPair;
-            if (ApiMetadata.ALL_OLD.equals(returnValue) && !isDelete) {
-                resultPair = stmt.unwrap(PhoenixPreparedStatement.class)
-                        .executeAtomicUpdateReturnOldRow();
+            if (ApiMetadata.ALL_OLD.equals(returnValue)
+                && apiOperation != ApiOperation.DELETE_ITEM) {
+                resultPair =
+                    stmt.unwrap(PhoenixPreparedStatement.class).executeAtomicUpdateReturnOldRow();
             } else {
                 resultPair =
-                        stmt.unwrap(PhoenixPreparedStatement.class).executeAtomicUpdateReturnRow();
+                    stmt.unwrap(PhoenixPreparedStatement.class).executeAtomicUpdateReturnRow();
             }
             int returnStatus = resultPair.getFirst();
             ResultSet rs = resultPair.getSecond();
             RawBsonDocument rawBsonDocument =
-                    rs == null ? null : (RawBsonDocument) rs.getObject(pkCols.size() + 1);
-            if ((returnStatus == 0 && !isDelete) || (isDelete && rawBsonDocument == null)) {
+                rs == null ? null : (RawBsonDocument) rs.getObject(pkCols.size() + 1);
+            if ((returnStatus == 0 && apiOperation != ApiOperation.DELETE_ITEM) ||
+                (apiOperation == ApiOperation.DELETE_ITEM && rawBsonDocument == null)) {
                 if (hasCondExp) {
                     ConditionCheckFailedException conditionalCheckFailedException =
-                            new ConditionCheckFailedException();
-                    if (ApiMetadata.ALL_OLD.equals(returnValuesOnConditionCheckFailure)
-                            && !isDelete) {
+                        new ConditionCheckFailedException();
+                    if (ApiMetadata.ALL_OLD.equals(returnValuesOnConditionCheckFailure) &&
+                        apiOperation != ApiOperation.DELETE_ITEM) {
                         conditionalCheckFailedException.setItem(
-                                BsonDocumentToMap.getFullItem(rawBsonDocument));
+                            BsonDocumentToMap.getFullItem(rawBsonDocument));
                     }
                     throw conditionalCheckFailedException;
                 }
             } else {
                 boolean returnValuesInResponse = false;
-                if (!isDelete) {
+                if (apiOperation != ApiOperation.DELETE_ITEM) {
                     // TODO : reject UPDATED_OLD, UPDATED_NEW cases which are not supported
                     if (ApiMetadata.ALL_NEW.equals(returnValue) || ApiMetadata.ALL_OLD.equals(
-                            returnValue)) {
+                        returnValue)) {
                         returnValuesInResponse = true;
                     }
                 } else if (ApiMetadata.ALL_OLD.equals(returnValue)) {
@@ -117,7 +121,7 @@ public class DMLUtils {
             return returnAttrs;
         } catch (SQLException e) {
             if (e.getMessage() != null && e.getMessage()
-                    .contains("BsonUpdateInvalidArgumentException")) {
+                .contains("BsonUpdateInvalidArgumentException")) {
                 throw new ValidationException("Invalid document path used for update");
             }
             throw e;
@@ -131,10 +135,7 @@ public class DMLUtils {
      * returnValuesOnConditionCheckFailure is not empty/null and not NONE
      */
     private static boolean needReturnRow(String returnValue,
-            String returnValuesOnConditionCheckFailure) {
-        if ("UPDATED_OLD".equals(returnValue) || "UPDATED_NEW".equals(returnValue)) {
-            throw new ValidationException("UPDATED_OLD or UPDATED_NEW is not supported for ReturnValue.");
-        }
+        String returnValuesOnConditionCheckFailure) {
         return (returnValue != null && !returnValue.equals(ApiMetadata.NONE)) || (
             returnValuesOnConditionCheckFailure != null
                 && !returnValuesOnConditionCheckFailure.equals(ApiMetadata.NONE));

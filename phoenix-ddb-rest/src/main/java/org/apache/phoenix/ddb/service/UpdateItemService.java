@@ -19,6 +19,7 @@ import org.apache.phoenix.ddb.bson.MapToBsonDocument;
 import org.apache.phoenix.ddb.service.utils.DMLUtils;
 import org.apache.phoenix.ddb.service.utils.ValidationUtil;
 import org.apache.phoenix.ddb.utils.ApiMetadata;
+import org.apache.phoenix.ddb.rest.metrics.ApiOperation;
 import org.apache.phoenix.ddb.utils.CommonServiceUtils;
 import org.apache.phoenix.expression.util.bson.SQLComparisonExpressionUtils;
 import org.apache.phoenix.jdbc.PhoenixConnection;
@@ -93,7 +94,7 @@ public class UpdateItemService {
             Map<String, Object> returnAttrs = DMLUtils.executeUpdate(statementInfo.stmt,
                     (String) request.get(ApiMetadata.RETURN_VALUES),
                     (String) request.get(ApiMetadata.RETURN_VALUES_ON_CONDITION_CHECK_FAILURE),
-                    hasCondExp, pkCols, false);
+                    hasCondExp, pkCols, ApiOperation.UPDATE_ITEM);
             return returnAttrs;
         } catch (SQLException e) {
             throw new RuntimeException(e);

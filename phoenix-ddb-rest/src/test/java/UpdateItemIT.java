@@ -11,9 +11,11 @@ import org.junit.Test;
 import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import software.amazon.awssdk.services.dynamodb.model.ConditionalCheckFailedException;
+import software.amazon.awssdk.services.dynamodb.model.DynamoDbException;
 import software.amazon.awssdk.services.dynamodb.model.GetItemRequest;
 import software.amazon.awssdk.services.dynamodb.model.GetItemResponse;
 import software.amazon.awssdk.services.dynamodb.model.ReturnValue;
+import software.amazon.awssdk.services.dynamodb.model.ReturnValuesOnConditionCheckFailure;
 import software.amazon.awssdk.services.dynamodb.model.UpdateItemRequest;
 import software.amazon.awssdk.services.dynamodb.model.UpdateItemResponse;
 
@@ -473,6 +475,151 @@ public class UpdateItemIT extends UpdateItemBaseTests {
      * Test ADD operation with BinarySet on non-existing item.
      * DynamoDB semantics: ADD on non-existing item should create item with ADD value.
      */
+    @Test(timeout = 120000)
+    public void testUpdateItemReturnValuesValidation() {
+        final String tableName = testName.getMethodName().replaceAll("[\\[\\]]", "");
+        createTableAndPutItem(tableName, false);
+
+        Map<String, AttributeValue> key = getKey();
+        Map<String, AttributeValue> expressionAttributeValues = new HashMap<>();
+        expressionAttributeValues.put(":val", AttributeValue.builder().s("test").build());
+
+        // Test NONE - should succeed
+        UpdateItemRequest updateRequest = UpdateItemRequest.builder().tableName(tableName).key(key)
+            .updateExpression("SET stringField = :val")
+            .expressionAttributeValues(expressionAttributeValues).returnValues(ReturnValue.NONE)
+            .build();
+        UpdateItemResponse dynamoResult1 = dynamoDbClient.updateItem(updateRequest);
+        UpdateItemResponse phoenixResult1 = phoenixDBClientV2.updateItem(updateRequest);
+        Assert.assertEquals(dynamoResult1.attributes(), phoenixResult1.attributes());
+
+        // Test ALL_OLD - should succeed
+        updateRequest = UpdateItemRequest.builder().tableName(tableName).key(key)
+            .updateExpression("SET stringField = :val")
+            .expressionAttributeValues(expressionAttributeValues).returnValues(ReturnValue.ALL_OLD)
+            .build();
+        UpdateItemResponse dynamoResult2 = dynamoDbClient.updateItem(updateRequest);
+        UpdateItemResponse phoenixResult2 = phoenixDBClientV2.updateItem(updateRequest);
+        Assert.assertEquals(dynamoResult2.attributes(), phoenixResult2.attributes());
+
+        // Test ALL_NEW - should succeed
+        updateRequest = UpdateItemRequest.builder().tableName(tableName).key(key)
+            .updateExpression("SET stringField = :val")
+            .expressionAttributeValues(expressionAttributeValues).returnValues(ReturnValue.ALL_NEW)
+            .build();
+        UpdateItemResponse dynamoResult3 = dynamoDbClient.updateItem(updateRequest);
+        UpdateItemResponse phoenixResult3 = phoenixDBClientV2.updateItem(updateRequest);
+        Assert.assertEquals(dynamoResult3.attributes(), phoenixResult3.attributes());
+
+        // Test UPDATED_OLD - should fail with error status code in phoenixDBClientV2
+        updateRequest = UpdateItemRequest.builder().tableName(tableName).key(key)
+            .updateExpression("SET stringField = :val")
+            .expressionAttributeValues(expressionAttributeValues)
+            .returnValues(ReturnValue.UPDATED_OLD).build();
+
+        try {
+            phoenixDBClientV2.updateItem(updateRequest);
+            Assert.fail("Expected DynamoDbException for UPDATED_OLD");
+        } catch (DynamoDbException e) {
+            Assert.assertEquals(400, e.statusCode());
+            Assert.assertTrue(e.getMessage()
+                .contains("UPDATED_OLD or UPDATED_NEW is not supported for ReturnValue"));
+        }
+
+        // Test UPDATED_NEW - should fail with error status code in phoenixDBClientV2
+        updateRequest = UpdateItemRequest.builder().tableName(tableName).key(key)
+            .updateExpression("SET stringField = :val")
+            .expressionAttributeValues(expressionAttributeValues)
+            .returnValues(ReturnValue.UPDATED_NEW).build();
+
+        try {
+            phoenixDBClientV2.updateItem(updateRequest);
+            Assert.fail("Expected DynamoDbException for UPDATED_NEW");
+        } catch (DynamoDbException e) {
+            Assert.assertEquals(400, e.statusCode());
+            Assert.assertTrue(e.getMessage()
+                .contains("UPDATED_OLD or UPDATED_NEW is not supported for ReturnValue"));
+        }
+
+        // Test invalid value - should fail with same error status code in both clients
+        updateRequest = UpdateItemRequest.builder().tableName(tableName).key(key)
+            .updateExpression("SET stringField = :val")
+            .expressionAttributeValues(expressionAttributeValues).returnValues("INVALID_VALUE")
+            .build();
+
+        int phoenixStatusCode = -1;
+        int dynamoStatusCode = -1;
+        try {
+            dynamoDbClient.updateItem(updateRequest);
+            Assert.fail("Expected DynamoDbException for invalid value");
+        } catch (DynamoDbException e) {
+            dynamoStatusCode = e.statusCode();
+        }
+        try {
+            phoenixDBClientV2.updateItem(updateRequest);
+            Assert.fail("Expected DynamoDbException for invalid value");
+        } catch (DynamoDbException e) {
+            phoenixStatusCode = e.statusCode();
+            Assert.assertTrue(e.getMessage()
+                .contains("ReturnValues value 'INVALID_VALUE' is not valid for UpdateItem"));
+        }
+        Assert.assertEquals("Status codes should match for INVALID_VALUE validation error",
+            dynamoStatusCode, phoenixStatusCode);
+    }
+
+    @Test(timeout = 120000)
+    public void testUpdateItemReturnValuesOnConditionCheckFailureValidation() {
+        final String tableName = testName.getMethodName().replaceAll("[\\[\\]]", "");
+        createTableAndPutItem(tableName, false);
+
+        Map<String, AttributeValue> key = getKey();
+        Map<String, AttributeValue> expressionAttributeValues = new HashMap<>();
+        expressionAttributeValues.put(":val", AttributeValue.builder().s("test").build());
+
+        // Test NONE - should succeed (validation passes)
+        UpdateItemRequest updateRequest = UpdateItemRequest.builder().tableName(tableName).key(key)
+            .updateExpression("SET stringField = :val")
+            .expressionAttributeValues(expressionAttributeValues)
+            .returnValuesOnConditionCheckFailure(ReturnValuesOnConditionCheckFailure.NONE).build();
+        UpdateItemResponse dynamoResult1 = dynamoDbClient.updateItem(updateRequest);
+        UpdateItemResponse phoenixResult1 = phoenixDBClientV2.updateItem(updateRequest);
+        Assert.assertEquals(dynamoResult1.attributes(), phoenixResult1.attributes());
+
+        // Test ALL_OLD - should succeed (validation passes)
+        updateRequest = UpdateItemRequest.builder().tableName(tableName).key(key)
+            .updateExpression("SET stringField = :val")
+            .expressionAttributeValues(expressionAttributeValues)
+            .returnValuesOnConditionCheckFailure(ReturnValuesOnConditionCheckFailure.ALL_OLD)
+            .build();
+        UpdateItemResponse dynamoResult2 = dynamoDbClient.updateItem(updateRequest);
+        UpdateItemResponse phoenixResult2 = phoenixDBClientV2.updateItem(updateRequest);
+        Assert.assertEquals(dynamoResult2.attributes(), phoenixResult2.attributes());
+
+        // Test invalid value - should fail with same error status code in both clients
+        updateRequest = UpdateItemRequest.builder().tableName(tableName).key(key)
+            .updateExpression("SET stringField = :val")
+            .expressionAttributeValues(expressionAttributeValues)
+            .returnValuesOnConditionCheckFailure("INVALID_VALUE").build();
+        int dynamoStatusCode = -1;
+        int phoenixStatusCode = -1;
+        try {
+            dynamoDbClient.updateItem(updateRequest);
+            Assert.fail("Expected DynamoDbException for invalid value");
+        } catch (DynamoDbException e) {
+            dynamoStatusCode = e.statusCode();
+        }
+        try {
+            phoenixDBClientV2.updateItem(updateRequest);
+            Assert.fail("Expected DynamoDbException for invalid value");
+        } catch (DynamoDbException e) {
+            phoenixStatusCode = e.statusCode();
+            Assert.assertTrue(e.getMessage().contains(
+                "ReturnValuesOnConditionCheckFailure value 'INVALID_VALUE' is not valid"));
+        }
+        Assert.assertEquals("Status codes should match for INVALID_VALUE validation error",
+            dynamoStatusCode, phoenixStatusCode);
+    }
+
     @Test(timeout = 120000)
     public void testAddBinarySetOnNonExistingItem() {
         final String tableName = testName.getMethodName().replaceAll("[\\[\\]]", "");

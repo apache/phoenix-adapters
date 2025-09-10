@@ -26,9 +26,12 @@ import software.amazon.awssdk.services.dynamodb.model.ConditionalCheckFailedExce
 import software.amazon.awssdk.services.dynamodb.model.CreateTableRequest;
 import software.amazon.awssdk.services.dynamodb.model.DeleteItemRequest;
 import software.amazon.awssdk.services.dynamodb.model.DeleteItemResponse;
+import software.amazon.awssdk.services.dynamodb.model.DynamoDbException;
 import software.amazon.awssdk.services.dynamodb.model.GetItemRequest;
 import software.amazon.awssdk.services.dynamodb.model.GetItemResponse;
 import software.amazon.awssdk.services.dynamodb.model.PutItemRequest;
+import software.amazon.awssdk.services.dynamodb.model.ReturnValue;
+import software.amazon.awssdk.services.dynamodb.model.ReturnValuesOnConditionCheckFailure;
 import software.amazon.awssdk.services.dynamodb.model.ScalarAttributeType;
 
 import org.apache.hadoop.conf.Configuration;
@@ -386,6 +389,197 @@ public class DeleteItemIT {
         GetItemResponse dynamoResult2 = dynamoDbClient.getItem(gI.build());
         GetItemResponse phoenixResult2 = phoenixDBClientV2.getItem(gI.build());
         Assert.assertEquals(dynamoResult2.item(), phoenixResult2.item());
+    }
+
+    @Test(timeout = 120000)
+    public void testDeleteItemReturnValuesValidation() {
+        final String tableName = testName.getMethodName();
+        CreateTableRequest createTableRequest =
+            DDLTestUtils.getCreateTableRequest(tableName, "ForumName", ScalarAttributeType.S, null,
+                null);
+        phoenixDBClientV2.createTable(createTableRequest);
+        dynamoDbClient.createTable(createTableRequest);
+
+        // Put an item to delete
+        PutItemRequest putItemRequest =
+            PutItemRequest.builder().tableName(tableName).item(getItem1()).build();
+        phoenixDBClientV2.putItem(putItemRequest);
+        dynamoDbClient.putItem(putItemRequest);
+
+        Map<String, AttributeValue> key = new HashMap<>();
+        key.put("ForumName", AttributeValue.builder().s("Amazon RDS").build());
+
+        // Test NONE - should succeed
+        DeleteItemRequest deleteRequest =
+            DeleteItemRequest.builder().tableName(tableName).key(key).returnValues(ReturnValue.NONE)
+                .build();
+        DeleteItemResponse dynamoResult1 = dynamoDbClient.deleteItem(deleteRequest);
+        DeleteItemResponse phoenixResult1 = phoenixDBClientV2.deleteItem(deleteRequest);
+        Assert.assertEquals(dynamoResult1.attributes(), phoenixResult1.attributes());
+
+        // Put item again for next test
+        phoenixDBClientV2.putItem(putItemRequest);
+        dynamoDbClient.putItem(putItemRequest);
+
+        // Test ALL_OLD - should succeed
+        deleteRequest = DeleteItemRequest.builder().tableName(tableName).key(key)
+            .returnValues(ReturnValue.ALL_OLD).build();
+        DeleteItemResponse dynamoResult2 = dynamoDbClient.deleteItem(deleteRequest);
+        DeleteItemResponse phoenixResult2 = phoenixDBClientV2.deleteItem(deleteRequest);
+        Assert.assertEquals(dynamoResult2.attributes(), phoenixResult2.attributes());
+
+        // Put item again for next test
+        phoenixDBClientV2.putItem(putItemRequest);
+        dynamoDbClient.putItem(putItemRequest);
+
+        // Test ALL_NEW - should fail with same error status code in both clients
+        deleteRequest = DeleteItemRequest.builder().tableName(tableName).key(key)
+            .returnValues(ReturnValue.ALL_NEW).build();
+        int dynamoStatusCode = -1;
+        int phoenixStatusCode = -1;
+        try {
+            dynamoDbClient.deleteItem(deleteRequest);
+            Assert.fail("Expected DynamoDbException for ALL_NEW");
+        } catch (DynamoDbException e) {
+            dynamoStatusCode = e.statusCode();
+        }
+        try {
+            phoenixDBClientV2.deleteItem(deleteRequest);
+            Assert.fail("Expected DynamoDbException for ALL_NEW");
+        } catch (DynamoDbException e) {
+            phoenixStatusCode = e.statusCode();
+            Assert.assertTrue(e.getMessage()
+                .contains("ReturnValues value 'ALL_NEW' is not valid for DELETE_ITEM operation"));
+        }
+        Assert.assertEquals("Status codes should match for ALL_NEW validation error",
+            dynamoStatusCode, phoenixStatusCode);
+
+        // Test UPDATED_OLD - should fail with same error status code in both clients
+        deleteRequest = DeleteItemRequest.builder().tableName(tableName).key(key)
+            .returnValues(ReturnValue.UPDATED_OLD).build();
+        dynamoStatusCode = -1;
+        phoenixStatusCode = -1;
+        try {
+            dynamoDbClient.deleteItem(deleteRequest);
+            Assert.fail("Expected DynamoDbException for UPDATED_OLD");
+        } catch (DynamoDbException e) {
+            dynamoStatusCode = e.statusCode();
+        }
+        try {
+            phoenixDBClientV2.deleteItem(deleteRequest);
+            Assert.fail("Expected DynamoDbException for UPDATED_OLD");
+        } catch (DynamoDbException e) {
+            phoenixStatusCode = e.statusCode();
+            Assert.assertTrue(e.getMessage()
+                .contains("UPDATED_OLD or UPDATED_NEW is not supported for ReturnValue"));
+        }
+        Assert.assertEquals("Status codes should match for UPDATED_OLD validation error",
+            dynamoStatusCode, phoenixStatusCode);
+
+        // Test UPDATED_NEW - should fail with same error status code in both clients
+        deleteRequest = DeleteItemRequest.builder().tableName(tableName).key(key)
+            .returnValues(ReturnValue.UPDATED_NEW).build();
+        dynamoStatusCode = -1;
+        phoenixStatusCode = -1;
+        try {
+            dynamoDbClient.deleteItem(deleteRequest);
+            Assert.fail("Expected DynamoDbException for UPDATED_NEW");
+        } catch (DynamoDbException e) {
+            dynamoStatusCode = e.statusCode();
+        }
+        try {
+            phoenixDBClientV2.deleteItem(deleteRequest);
+            Assert.fail("Expected DynamoDbException for UPDATED_NEW");
+        } catch (DynamoDbException e) {
+            phoenixStatusCode = e.statusCode();
+            Assert.assertTrue(e.getMessage()
+                .contains("UPDATED_OLD or UPDATED_NEW is not supported for ReturnValue"));
+        }
+        Assert.assertEquals("Status codes should match for UPDATED_NEW validation error",
+            dynamoStatusCode, phoenixStatusCode);
+
+        // Test invalid value - should fail with same error status code in both clients
+        deleteRequest =
+            DeleteItemRequest.builder().tableName(tableName).key(key).returnValues("INVALID_VALUE")
+                .build();
+        dynamoStatusCode = -1;
+        phoenixStatusCode = -1;
+        try {
+            dynamoDbClient.deleteItem(deleteRequest);
+            Assert.fail("Expected DynamoDbException for invalid value");
+        } catch (DynamoDbException e) {
+            dynamoStatusCode = e.statusCode();
+        }
+        try {
+            phoenixDBClientV2.deleteItem(deleteRequest);
+            Assert.fail("Expected DynamoDbException for invalid value");
+        } catch (DynamoDbException e) {
+            phoenixStatusCode = e.statusCode();
+            Assert.assertTrue(e.getMessage().contains(
+                "ReturnValues value 'INVALID_VALUE' is not valid for DELETE_ITEM operation"));
+        }
+        Assert.assertEquals("Status codes should match for INVALID_VALUE validation error",
+            dynamoStatusCode, phoenixStatusCode);
+    }
+
+    @Test(timeout = 120000)
+    public void testDeleteItemReturnValuesOnConditionCheckFailureValidation() {
+        final String tableName = testName.getMethodName();
+        CreateTableRequest createTableRequest =
+            DDLTestUtils.getCreateTableRequest(tableName, "ForumName", ScalarAttributeType.S, null,
+                null);
+        phoenixDBClientV2.createTable(createTableRequest);
+        dynamoDbClient.createTable(createTableRequest);
+
+        // Put an item to delete
+        PutItemRequest putItemRequest =
+            PutItemRequest.builder().tableName(tableName).item(getItem1()).build();
+        phoenixDBClientV2.putItem(putItemRequest);
+        dynamoDbClient.putItem(putItemRequest);
+
+        Map<String, AttributeValue> key = new HashMap<>();
+        key.put("ForumName", AttributeValue.builder().s("Amazon RDS").build());
+
+        // Test NONE - should succeed (validation passes)
+        DeleteItemRequest deleteRequest = DeleteItemRequest.builder().tableName(tableName).key(key)
+            .returnValuesOnConditionCheckFailure(ReturnValuesOnConditionCheckFailure.NONE).build();
+        DeleteItemResponse dynamoResult1 = dynamoDbClient.deleteItem(deleteRequest);
+        DeleteItemResponse phoenixResult1 = phoenixDBClientV2.deleteItem(deleteRequest);
+        Assert.assertEquals(dynamoResult1.attributes(), phoenixResult1.attributes());
+
+        // Put item again for next test
+        phoenixDBClientV2.putItem(putItemRequest);
+        dynamoDbClient.putItem(putItemRequest);
+
+        // Test ALL_OLD - should succeed (validation passes)
+        deleteRequest = DeleteItemRequest.builder().tableName(tableName).key(key)
+            .returnValuesOnConditionCheckFailure(ReturnValuesOnConditionCheckFailure.ALL_OLD)
+            .build();
+        DeleteItemResponse dynamoResult2 = dynamoDbClient.deleteItem(deleteRequest);
+        DeleteItemResponse phoenixResult2 = phoenixDBClientV2.deleteItem(deleteRequest);
+        Assert.assertEquals(dynamoResult2.attributes(), phoenixResult2.attributes());
+
+        // Test invalid value - should fail with same error status code in both clients
+        deleteRequest = DeleteItemRequest.builder().tableName(tableName).key(key)
+            .returnValuesOnConditionCheckFailure("INVALID_VALUE").build();
+        int dynamoStatusCode = -1;
+        int phoenixStatusCode = -1;
+        try {
+            dynamoDbClient.deleteItem(deleteRequest);
+            Assert.fail("Expected DynamoDbException for invalid value");
+        } catch (DynamoDbException e) {
+            dynamoStatusCode = e.statusCode();
+        }
+        try {
+            phoenixDBClientV2.deleteItem(deleteRequest);
+            Assert.fail("Expected DynamoDbException for invalid value");
+        } catch (DynamoDbException e) {
+            phoenixStatusCode = e.statusCode();
+            Assert.assertTrue(e.getMessage().contains(
+                "ReturnValuesOnConditionCheckFailure value 'INVALID_VALUE' is not valid"));
+        }
+        Assert.assertEquals("Status codes should match for INVALID_VALUE validation error",
+            dynamoStatusCode, phoenixStatusCode);
     }
 
     @Test(timeout = 120000)

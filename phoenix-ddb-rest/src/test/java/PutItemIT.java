@@ -35,9 +35,13 @@ import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import software.amazon.awssdk.services.dynamodb.model.ConditionalCheckFailedException;
 import software.amazon.awssdk.services.dynamodb.model.CreateTableRequest;
+import software.amazon.awssdk.services.dynamodb.model.DynamoDbException;
 import software.amazon.awssdk.services.dynamodb.model.PutItemRequest;
+import software.amazon.awssdk.services.dynamodb.model.PutItemResponse;
 import software.amazon.awssdk.services.dynamodb.model.QueryRequest;
 import software.amazon.awssdk.services.dynamodb.model.QueryResponse;
+import software.amazon.awssdk.services.dynamodb.model.ReturnValue;
+import software.amazon.awssdk.services.dynamodb.model.ReturnValuesOnConditionCheckFailure;
 import software.amazon.awssdk.services.dynamodb.model.ScalarAttributeType;
 
 import org.apache.hadoop.conf.Configuration;
@@ -346,6 +350,174 @@ public class PutItemIT {
                     ItemComparator.areItemsEqual(conditionCheckFailedItem, e.item()));
         }
 
+    }
+
+    @Test(timeout = 120000)
+    public void testPutItemReturnValuesValidation() throws Exception {
+        final String tableName = testName.getMethodName();
+        CreateTableRequest createTableRequest =
+            DDLTestUtils.getCreateTableRequest(tableName, "attr_0", ScalarAttributeType.S, null,
+                null);
+        phoenixDBClientV2.createTable(createTableRequest);
+        dynamoDbClient.createTable(createTableRequest);
+
+        Map<String, AttributeValue> simpleItem = new HashMap<>();
+        simpleItem.put("attr_0", AttributeValue.builder().s("test_value").build());
+        simpleItem.put("simple_attr", AttributeValue.builder().s("simple_value").build());
+
+        // Test NONE - should succeed
+        PutItemRequest putItemRequest =
+            PutItemRequest.builder().tableName(tableName).item(simpleItem)
+                .returnValues(ReturnValue.NONE).build();
+        PutItemResponse dynamoResult1 = dynamoDbClient.putItem(putItemRequest);
+        PutItemResponse phoenixResult1 = phoenixDBClientV2.putItem(putItemRequest);
+        Assert.assertEquals(dynamoResult1.attributes(), phoenixResult1.attributes());
+
+        // Test ALL_OLD - should succeed (put the same item again to test returning old values)
+        putItemRequest = PutItemRequest.builder().tableName(tableName).item(simpleItem)
+            .returnValues(ReturnValue.ALL_OLD).build();
+        PutItemResponse dynamoResult2 = dynamoDbClient.putItem(putItemRequest);
+        PutItemResponse phoenixResult2 = phoenixDBClientV2.putItem(putItemRequest);
+        // Both should return the old item and should match exactly for simple data types
+        Assert.assertEquals("Both clients should return the same old item",
+            dynamoResult2.attributes(), phoenixResult2.attributes());
+
+        // Test ALL_NEW - should fail with same error status code in both clients
+        putItemRequest = PutItemRequest.builder().tableName(tableName).item(simpleItem)
+            .returnValues(ReturnValue.ALL_NEW).build();
+        int dynamoStatusCode = -1;
+        int phoenixStatusCode = -1;
+        try {
+            dynamoDbClient.putItem(putItemRequest);
+            Assert.fail("Expected DynamoDbException for ALL_NEW");
+        } catch (DynamoDbException e) {
+            dynamoStatusCode = e.statusCode();
+        }
+        try {
+            phoenixDBClientV2.putItem(putItemRequest);
+            Assert.fail("Expected DynamoDbException for ALL_NEW");
+        } catch (DynamoDbException e) {
+            phoenixStatusCode = e.statusCode();
+            Assert.assertTrue(e.getMessage()
+                .contains("ReturnValues value 'ALL_NEW' is not valid for PUT_ITEM operation"));
+        }
+        Assert.assertEquals("Status codes should match for ALL_NEW validation error",
+            dynamoStatusCode, phoenixStatusCode);
+
+        // Test UPDATED_OLD - should fail with same error status code in both clients
+        putItemRequest = PutItemRequest.builder().tableName(tableName).item(simpleItem)
+            .returnValues(ReturnValue.UPDATED_OLD).build();
+        dynamoStatusCode = -1;
+        phoenixStatusCode = -1;
+        try {
+            dynamoDbClient.putItem(putItemRequest);
+            Assert.fail("Expected DynamoDbException for UPDATED_OLD");
+        } catch (DynamoDbException e) {
+            dynamoStatusCode = e.statusCode();
+        }
+        try {
+            phoenixDBClientV2.putItem(putItemRequest);
+            Assert.fail("Expected DynamoDbException for UPDATED_OLD");
+        } catch (DynamoDbException e) {
+            phoenixStatusCode = e.statusCode();
+            Assert.assertTrue(e.getMessage()
+                .contains("UPDATED_OLD or UPDATED_NEW is not supported for ReturnValue"));
+        }
+        Assert.assertEquals("Status codes should match for UPDATED_OLD validation error",
+            dynamoStatusCode, phoenixStatusCode);
+
+        // Test UPDATED_NEW - should fail with same error status code in both clients
+        putItemRequest = PutItemRequest.builder().tableName(tableName).item(simpleItem)
+            .returnValues(ReturnValue.UPDATED_NEW).build();
+        dynamoStatusCode = -1;
+        phoenixStatusCode = -1;
+        try {
+            dynamoDbClient.putItem(putItemRequest);
+            Assert.fail("Expected DynamoDbException for UPDATED_NEW");
+        } catch (DynamoDbException e) {
+            dynamoStatusCode = e.statusCode();
+        }
+        try {
+            phoenixDBClientV2.putItem(putItemRequest);
+            Assert.fail("Expected DynamoDbException for UPDATED_NEW");
+        } catch (DynamoDbException e) {
+            phoenixStatusCode = e.statusCode();
+            Assert.assertTrue(e.getMessage()
+                .contains("UPDATED_OLD or UPDATED_NEW is not supported for ReturnValue"));
+        }
+        Assert.assertEquals("Status codes should match for UPDATED_NEW validation error",
+            dynamoStatusCode, phoenixStatusCode);
+
+        // Test invalid value - should fail with same error status code in both clients
+        putItemRequest = PutItemRequest.builder().tableName(tableName).item(simpleItem)
+            .returnValues("INVALID_VALUE").build();
+        dynamoStatusCode = -1;
+        phoenixStatusCode = -1;
+        try {
+            dynamoDbClient.putItem(putItemRequest);
+            Assert.fail("Expected DynamoDbException for invalid value");
+        } catch (DynamoDbException e) {
+            dynamoStatusCode = e.statusCode();
+        }
+        try {
+            phoenixDBClientV2.putItem(putItemRequest);
+            Assert.fail("Expected DynamoDbException for invalid value");
+        } catch (DynamoDbException e) {
+            phoenixStatusCode = e.statusCode();
+            Assert.assertTrue(e.getMessage().contains(
+                "ReturnValues value 'INVALID_VALUE' is not valid for PUT_ITEM operation"));
+        }
+        Assert.assertEquals("Status codes should match for INVALID_VALUE validation error",
+            dynamoStatusCode, phoenixStatusCode);
+    }
+
+    @Test(timeout = 120000)
+    public void testPutItemReturnValuesOnConditionCheckFailureValidation() throws Exception {
+        final String tableName = testName.getMethodName();
+        CreateTableRequest createTableRequest =
+            DDLTestUtils.getCreateTableRequest(tableName, "attr_0", ScalarAttributeType.S, null,
+                null);
+        phoenixDBClientV2.createTable(createTableRequest);
+        dynamoDbClient.createTable(createTableRequest);
+
+        Map<String, AttributeValue> item = DocumentDdbAttributesTest.getItem1();
+
+        // Test NONE - should succeed (validation passes)
+        PutItemRequest putItemRequest = PutItemRequest.builder().tableName(tableName).item(item)
+            .returnValuesOnConditionCheckFailure(ReturnValuesOnConditionCheckFailure.NONE).build();
+        PutItemResponse dynamoResult1 = dynamoDbClient.putItem(putItemRequest);
+        PutItemResponse phoenixResult1 = phoenixDBClientV2.putItem(putItemRequest);
+        Assert.assertEquals(dynamoResult1.attributes(), phoenixResult1.attributes());
+
+        // Test ALL_OLD - should succeed (validation passes)
+        putItemRequest = PutItemRequest.builder().tableName(tableName).item(item)
+            .returnValuesOnConditionCheckFailure(ReturnValuesOnConditionCheckFailure.ALL_OLD)
+            .build();
+        PutItemResponse dynamoResult2 = dynamoDbClient.putItem(putItemRequest);
+        PutItemResponse phoenixResult2 = phoenixDBClientV2.putItem(putItemRequest);
+        Assert.assertEquals(dynamoResult2.attributes(), phoenixResult2.attributes());
+
+        // Test invalid value - should fail with same error status code in both clients
+        putItemRequest = PutItemRequest.builder().tableName(tableName).item(item)
+            .returnValuesOnConditionCheckFailure("INVALID_VALUE").build();
+        int dynamoStatusCode = -1;
+        int phoenixStatusCode = -1;
+        try {
+            dynamoDbClient.putItem(putItemRequest);
+            Assert.fail("Expected DynamoDbException for invalid value");
+        } catch (DynamoDbException e) {
+            dynamoStatusCode = e.statusCode();
+        }
+        try {
+            phoenixDBClientV2.putItem(putItemRequest);
+            Assert.fail("Expected DynamoDbException for invalid value");
+        } catch (DynamoDbException e) {
+            phoenixStatusCode = e.statusCode();
+            Assert.assertTrue(e.getMessage().contains(
+                "ReturnValuesOnConditionCheckFailure value 'INVALID_VALUE' is not valid"));
+        }
+        Assert.assertEquals("Status codes should match for INVALID_VALUE validation error",
+            dynamoStatusCode, phoenixStatusCode);
     }
 
     @Test(timeout = 120000)

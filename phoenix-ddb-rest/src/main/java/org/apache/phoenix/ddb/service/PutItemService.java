@@ -10,6 +10,7 @@ import java.util.Map;
 
 import org.apache.phoenix.ddb.service.utils.ValidationUtil;
 import org.apache.phoenix.ddb.utils.ApiMetadata;
+import org.apache.phoenix.ddb.rest.metrics.ApiOperation;
 import org.apache.phoenix.expression.util.bson.SQLComparisonExpressionUtils;
 
 import org.bson.BsonDocument;
@@ -90,7 +91,7 @@ public class PutItemService {
         return DMLUtils.executeUpdate(stmtInfo.stmt,
                 (String) request.get(ApiMetadata.RETURN_VALUES),
                 (String) request.get(ApiMetadata.RETURN_VALUES_ON_CONDITION_CHECK_FAILURE),
-                hasCondExp, pkCols, false);
+                hasCondExp, pkCols, ApiOperation.PUT_ITEM);
     }
 
     private static StatementInfo getPreparedStatement(Connection conn, Map<String, Object> request,

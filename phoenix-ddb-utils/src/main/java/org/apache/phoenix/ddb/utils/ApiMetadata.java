@@ -102,6 +102,8 @@ public class ApiMetadata {
     public static final String ATTRIBUTES = "Attributes";
     public static final String ALL_OLD = "ALL_OLD";
     public static final String ALL_NEW = "ALL_NEW";
+    public static final String UPDATED_OLD = "UPDATED_OLD";
+    public static final String UPDATED_NEW = "UPDATED_NEW";
     public static final String NONE = "NONE";
 
     // ---------- BatchGetItem ----------

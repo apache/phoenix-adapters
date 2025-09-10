@@ -10,6 +10,7 @@ import java.util.Map;
 
 import org.apache.phoenix.ddb.service.utils.ValidationUtil;
 import org.apache.phoenix.ddb.utils.ApiMetadata;
+import org.apache.phoenix.ddb.rest.metrics.ApiOperation;
 import org.bson.BsonDocument;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -65,7 +66,7 @@ public class DeleteItemService {
         return DMLUtils.executeUpdate(stmtInfo.stmt,
                 (String) request.get(ApiMetadata.RETURN_VALUES),
                 (String) request.get(ApiMetadata.RETURN_VALUES_ON_CONDITION_CHECK_FAILURE),
-                hasCondExp, pkCols, true);
+                hasCondExp, pkCols, ApiOperation.DELETE_ITEM);
     }
 
     /**

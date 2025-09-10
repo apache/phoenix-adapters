@@ -18,6 +18,8 @@
 
 package org.apache.phoenix.ddb.service.utils;
 
+import com.google.protobuf.Api;
+import org.apache.phoenix.ddb.rest.metrics.ApiOperation;
 import org.apache.phoenix.ddb.service.exceptions.ValidationException;
 import org.apache.phoenix.ddb.utils.ApiMetadata;
 
@@ -38,10 +40,16 @@ public class ValidationUtil {
 
     public static void validatePutItemRequest(Map<String, Object> request) {
         validateLegacyParams(request, PUT_LEGACY_PARAMS);
+        ValidationUtil.validateReturnValuesRequest((String) request.get(ApiMetadata.RETURN_VALUES),
+            (String) request.get(ApiMetadata.RETURN_VALUES_ON_CONDITION_CHECK_FAILURE),
+            ApiOperation.PUT_ITEM);
     }
 
     public static void validateUpdateItemRequest(Map<String, Object> request) {
         validateLegacyParams(request, UPDATE_LEGACY_PARAMS);
+        ValidationUtil.validateReturnValuesRequest((String) request.get(ApiMetadata.RETURN_VALUES),
+            (String) request.get(ApiMetadata.RETURN_VALUES_ON_CONDITION_CHECK_FAILURE),
+            ApiOperation.UPDATE_ITEM);
         String updateExpression = (String) request.get(ApiMetadata.UPDATE_EXPRESSION);
         Map<String, Object> attributeUpdates =
                 (Map<String, Object>) request.get(ApiMetadata.ATTRIBUTE_UPDATES);
@@ -58,6 +66,9 @@ public class ValidationUtil {
 
     public static void validateDeleteItemRequest(Map<String, Object> request) {
         validateLegacyParams(request, DELETE_LEGACY_PARAMS);
+        ValidationUtil.validateReturnValuesRequest((String) request.get(ApiMetadata.RETURN_VALUES),
+            (String) request.get(ApiMetadata.RETURN_VALUES_ON_CONDITION_CHECK_FAILURE),
+            ApiOperation.DELETE_ITEM);
     }
 
     public static void validateGetItemRequest(Map<String, Object> request) {
@@ -120,5 +131,74 @@ public class ValidationUtil {
                 throw new ValidationException("Legacy parameter '" + param + "' is not supported.");
             }
         }
+    }
+
+    /**
+     * Validates the ReturnValues parameter based on DynamoDB API specifications.
+     * For PutItem: Only NONE and ALL_OLD are valid
+     * For DeleteItem: Only NONE and ALL_OLD are valid
+     * For UpdateItem: All values are valid (NONE, ALL_OLD, ALL_NEW, UPDATED_OLD, UPDATED_NEW)
+     *
+     * @throws ValidationException
+     */
+    public static void validateReturnValues(String returnValue, ApiOperation apiOperation) {
+        if (returnValue == null || returnValue.equals(ApiMetadata.NONE)) {
+            return;
+        }
+
+        switch (apiOperation) {
+            case PUT_ITEM:
+            case DELETE_ITEM:
+                // Only NONE and ALL_OLD are valid
+                if (!ApiMetadata.ALL_OLD.equals(returnValue)) {
+                    throw new ValidationException(String.format(
+                        "ReturnValues value '%s' is not valid for %s operation. Valid values are: "
+                            + "NONE, ALL_OLD", returnValue, apiOperation));
+                }
+                break;
+
+            case UPDATE_ITEM:
+                // All values are valid for UpdateItem
+                if (!ApiMetadata.ALL_OLD.equals(returnValue) && !ApiMetadata.ALL_NEW.equals(
+                    returnValue) && !ApiMetadata.UPDATED_OLD.equals(returnValue)
+                    && !ApiMetadata.UPDATED_NEW.equals(returnValue)) {
+                    throw new ValidationException(String.format(
+                        "ReturnValues value '%s' is not valid for UpdateItem. Valid "
+                            + "values are: NONE, ALL_OLD, ALL_NEW",
+                        returnValue));
+                }
+                break;
+        }
+    }
+
+    /**
+     * Validates the ReturnValuesOnConditionCheckFailure parameter.
+     * Only NONE and ALL_OLD are valid values.
+     *
+     * @throws ValidationException
+     */
+    public static void validateReturnValuesOnConditionCheckFailure(
+        String returnValuesOnConditionCheckFailure) {
+        if (returnValuesOnConditionCheckFailure == null
+            || returnValuesOnConditionCheckFailure.equals(ApiMetadata.NONE)) {
+            return;
+        }
+
+        if (!ApiMetadata.ALL_OLD.equals(returnValuesOnConditionCheckFailure)) {
+            throw new ValidationException(String.format(
+                "ReturnValuesOnConditionCheckFailure value '%s' is not valid. "
+                    + "Valid values are: NONE, ALL_OLD", returnValuesOnConditionCheckFailure));
+        }
+    }
+
+    public static void validateReturnValuesRequest(String returnValue,
+        String returnValuesOnConditionCheckFailure, ApiOperation apiOperation) {
+        if (ApiMetadata.UPDATED_OLD.equals(returnValue) || ApiMetadata.UPDATED_NEW.equals(
+            returnValue)) {
+            throw new ValidationException(
+                "UPDATED_OLD or UPDATED_NEW is not supported for ReturnValue.");
+        }
+        validateReturnValues(returnValue, apiOperation);
+        validateReturnValuesOnConditionCheckFailure(returnValuesOnConditionCheckFailure);
     }
 }
