@@ -18,12 +18,9 @@
 
 import java.sql.DriverManager;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -42,6 +39,7 @@ import software.amazon.awssdk.services.dynamodb.model.PutItemRequest;
 import software.amazon.awssdk.services.dynamodb.model.ScalarAttributeType;
 import software.amazon.awssdk.services.dynamodb.model.ScanRequest;
 import software.amazon.awssdk.services.dynamodb.model.ScanResponse;
+import software.amazon.awssdk.services.dynamodb.model.Select;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
@@ -105,6 +103,188 @@ public class ScanTableIT {
             ServerMetadataCacheTestImpl.resetCache();
         }
         System.setProperty("java.io.tmpdir", tmpDir);
+    }
+
+    @Test(timeout = 120000)
+    public void testScanSelectCount() {
+        //create table
+        final String tableName = testName.getMethodName();
+        CreateTableRequest createTableRequest =
+                DDLTestUtils.getCreateTableRequest(tableName, "attr_0",
+                        ScalarAttributeType.S, "attr_1", ScalarAttributeType.N);
+        phoenixDBClientV2.createTable(createTableRequest);
+        dynamoDbClient.createTable(createTableRequest);
+
+        //put
+        PutItemRequest putItemRequest1 = PutItemRequest.builder().tableName(tableName).item(getItem1()).build();
+        PutItemRequest putItemRequest2 = PutItemRequest.builder().tableName(tableName).item(getItem2()).build();
+        PutItemRequest putItemRequest3 = PutItemRequest.builder().tableName(tableName).item(getItem3()).build();
+        PutItemRequest putItemRequest4 = PutItemRequest.builder().tableName(tableName).item(getItem4()).build();
+        phoenixDBClientV2.putItem(putItemRequest1);
+        phoenixDBClientV2.putItem(putItemRequest2);
+        phoenixDBClientV2.putItem(putItemRequest3);
+        phoenixDBClientV2.putItem(putItemRequest4);
+        dynamoDbClient.putItem(putItemRequest1);
+        dynamoDbClient.putItem(putItemRequest2);
+        dynamoDbClient.putItem(putItemRequest3);
+        dynamoDbClient.putItem(putItemRequest4);
+
+        ScanRequest.Builder sr = ScanRequest.builder().tableName(tableName);
+        sr.filterExpression("#2 = :v2");
+        Map<String, String> exprAttrNames = new HashMap<>();
+        exprAttrNames.put("#2", "title");
+        sr.expressionAttributeNames(exprAttrNames);
+        Map<String, AttributeValue> exprAttrVal = new HashMap<>();
+        exprAttrVal.put(":v2", AttributeValue.builder().s("Title3").build());
+        sr.expressionAttributeValues(exprAttrVal);
+        sr.select("COUNT");
+        
+        ScanResponse phoenixResult = phoenixDBClientV2.scan(sr.build());
+        ScanResponse dynamoResult = dynamoDbClient.scan(sr.build());
+        Assert.assertEquals(dynamoResult.count(), phoenixResult.count());
+        Assert.assertEquals(1, phoenixResult.count().intValue());
+        Assert.assertTrue(phoenixResult.items().isEmpty());
+        Assert.assertTrue(dynamoResult.items().isEmpty());
+        Assert.assertEquals(dynamoResult.scannedCount(), phoenixResult.scannedCount());
+    }
+
+    @Test(timeout = 120000)
+    public void testScanSelectCountWithPagination() {
+        //create table
+        final String tableName = testName.getMethodName();
+        CreateTableRequest createTableRequest =
+                DDLTestUtils.getCreateTableRequest(tableName, "attr_0",
+                        ScalarAttributeType.S, "attr_1", ScalarAttributeType.N);
+        phoenixDBClientV2.createTable(createTableRequest);
+        dynamoDbClient.createTable(createTableRequest);
+
+        //put
+        PutItemRequest putItemRequest1 = PutItemRequest.builder().tableName(tableName).item(getItem1()).build();
+        PutItemRequest putItemRequest2 = PutItemRequest.builder().tableName(tableName).item(getItem2()).build();
+        PutItemRequest putItemRequest3 = PutItemRequest.builder().tableName(tableName).item(getItem3()).build();
+        PutItemRequest putItemRequest4 = PutItemRequest.builder().tableName(tableName).item(getItem4()).build();
+        phoenixDBClientV2.putItem(putItemRequest1);
+        phoenixDBClientV2.putItem(putItemRequest2);
+        phoenixDBClientV2.putItem(putItemRequest3);
+        phoenixDBClientV2.putItem(putItemRequest4);
+        dynamoDbClient.putItem(putItemRequest1);
+        dynamoDbClient.putItem(putItemRequest2);
+        dynamoDbClient.putItem(putItemRequest3);
+        dynamoDbClient.putItem(putItemRequest4);
+
+        ScanRequest.Builder sr = ScanRequest.builder().tableName(tableName);
+        sr.select("COUNT");
+        sr.limit(1);
+
+        int phoenixCount = 0;
+        ScanResponse phoenixResult;
+        do {
+            phoenixResult = phoenixDBClientV2.scan(sr.build());
+            Assert.assertTrue(phoenixResult.items().isEmpty());
+            phoenixCount += phoenixResult.count();
+            sr.exclusiveStartKey(phoenixResult.lastEvaluatedKey());
+        } while (phoenixResult.hasLastEvaluatedKey());
+        int ddbCount = 0;
+        ScanResponse ddbResult;
+        do {
+            ddbResult = dynamoDbClient.scan(sr.build());
+            Assert.assertTrue(ddbResult.items().isEmpty());
+            ddbCount += ddbResult.count();
+            sr.exclusiveStartKey(ddbResult.lastEvaluatedKey());
+        } while (ddbResult.hasLastEvaluatedKey());
+
+        Assert.assertEquals(ddbCount,phoenixCount);
+    }
+
+    @Test(timeout = 120000)
+    public void testScanSelectAllAttributes() {
+        //create table
+        final String tableName = testName.getMethodName();
+        CreateTableRequest createTableRequest =
+                DDLTestUtils.getCreateTableRequest(tableName, "attr_0",
+                        ScalarAttributeType.S, "attr_1", ScalarAttributeType.N);
+        phoenixDBClientV2.createTable(createTableRequest);
+        dynamoDbClient.createTable(createTableRequest);
+
+        //put
+        PutItemRequest putItemRequest1 = PutItemRequest.builder().tableName(tableName).item(getItem1()).build();
+        phoenixDBClientV2.putItem(putItemRequest1);
+        dynamoDbClient.putItem(putItemRequest1);
+
+        ScanRequest.Builder sr = ScanRequest.builder().tableName(tableName);
+        sr.select("ALL_ATTRIBUTES");
+        
+        ScanResponse phoenixResult = phoenixDBClientV2.scan(sr.build());
+        ScanResponse dynamoResult = dynamoDbClient.scan(sr.build());
+        Assert.assertEquals(dynamoResult.count(), phoenixResult.count());
+        Assert.assertEquals(1, phoenixResult.count().intValue());
+        // Should return all attributes
+        Assert.assertTrue(phoenixResult.items().get(0).size() > 1);
+        Assert.assertEquals(dynamoResult.items().get(0), phoenixResult.items().get(0));
+    }
+
+    @Test(timeout = 120000)
+    public void testScanSelectAllAttributesWithProjectionValidation() {
+        //create table
+        final String tableName = testName.getMethodName();
+        CreateTableRequest createTableRequest =
+                DDLTestUtils.getCreateTableRequest(tableName, "attr_0",
+                        ScalarAttributeType.S, null, null);
+        phoenixDBClientV2.createTable(createTableRequest);
+        dynamoDbClient.createTable(createTableRequest);
+
+        //put
+        PutItemRequest putItemRequest1 = PutItemRequest.builder().tableName(tableName).item(getItem1()).build();
+        phoenixDBClientV2.putItem(putItemRequest1);
+        dynamoDbClient.putItem(putItemRequest1);
+
+        ScanRequest.Builder sr = ScanRequest.builder().tableName(tableName);
+        sr.projectionExpression("attr_0"); // should cause validation error
+        sr.select("ALL_ATTRIBUTES");
+        try {
+            dynamoDbClient.scan(sr.build());
+            Assert.fail("Expected ValidationException");
+        } catch (DynamoDbException e) {
+            Assert.assertEquals(400, e.statusCode());
+        }
+        try {
+            phoenixDBClientV2.scan(sr.build());
+            Assert.fail("Expected ValidationException");
+        } catch (DynamoDbException e) {
+            Assert.assertEquals(400, e.statusCode());
+        }
+    }
+
+    @Test(timeout = 120000)
+    public void testScanSelectSpecificAttributesValidation() {
+        //create table
+        final String tableName = testName.getMethodName();
+        CreateTableRequest createTableRequest =
+                DDLTestUtils.getCreateTableRequest(tableName, "attr_0",
+                        ScalarAttributeType.S, null, null);
+        phoenixDBClientV2.createTable(createTableRequest);
+        dynamoDbClient.createTable(createTableRequest);
+
+        //put
+        PutItemRequest putItemRequest1 = PutItemRequest.builder().tableName(tableName).item(getItem1()).build();
+        phoenixDBClientV2.putItem(putItemRequest1);
+        dynamoDbClient.putItem(putItemRequest1);
+
+        ScanRequest.Builder sr = ScanRequest.builder().tableName(tableName);
+        sr.select("SPECIFIC_ATTRIBUTES");
+        // No projectionExpression set - should fail
+        try {
+            dynamoDbClient.scan(sr.build());
+            Assert.fail("Expected ValidationException");
+        } catch (DynamoDbException e) {
+            Assert.assertEquals(400, e.statusCode());
+        }
+        try {
+            phoenixDBClientV2.scan(sr.build());
+            Assert.fail("Expected ValidationException");
+        } catch (DynamoDbException e) {
+            Assert.assertEquals(400, e.statusCode());
+        }
     }
 
     @Test(timeout = 120000)
@@ -180,6 +360,7 @@ public class ScanTableIT {
         exprAttrNames.put("#1", "FiveStar");
         exprAttrNames.put("#2", "reviewer");
         sr.expressionAttributeNames(exprAttrNames);
+        sr.select(Select.SPECIFIC_ATTRIBUTES);
         ScanResponse phoenixResult = phoenixDBClientV2.scan(sr.build());
         ScanResponse dynamoResult = dynamoDbClient.scan(sr.build());
         // dynamo does not guarantee ordering of partition keys in Scan, so only check count
@@ -588,10 +769,8 @@ public class ScanTableIT {
         exprAttrVal7.put(":numPrefix", AttributeValue.builder().n("12").build());
         sr7.expressionAttributeValues(exprAttrVal7);
 
-        ScanResponse phoenixResult7;
-        ScanResponse dynamoResult7;
         try {
-            phoenixResult7 = phoenixDBClientV2.scan(sr7.build());
+            phoenixDBClientV2.scan(sr7.build());
             throw new RuntimeException("Should have thrown an exception for invalid data type");
         } catch (DynamoDbException e) {
             LOGGER.info("begins_with with Number data type failed as expected: {}", e.getMessage());
@@ -599,7 +778,7 @@ public class ScanTableIT {
         }
 
         try {
-            dynamoResult7 = dynamoDbClient.scan(sr7.build());
+            dynamoDbClient.scan(sr7.build());
             throw new RuntimeException("Should have thrown an exception for invalid data type");
         } catch (DynamoDbException e) {
             LOGGER.info("begins_with with Number data type failed as expected: {}", e.getMessage());
@@ -1451,12 +1630,6 @@ public class ScanTableIT {
         dynamoDbClient.putItem(putItemRequest8);
     }
 
-    private List<Map<String, AttributeValue>> sortItemsByPk(
-            List<Map<String, AttributeValue>> items, String pkName) {
-        return items.stream()
-                .sorted(Comparator.comparing(item -> item.get(pkName).s()))
-                .collect(Collectors.toList());
-    }
 
     private void assertScanResults(ScanRequest.Builder scanRequestBuilder, Integer expectedCount) {
         assertScanResults(scanRequestBuilder, expectedCount, "pk");
@@ -1476,8 +1649,8 @@ public class ScanTableIT {
         }
         Assert.assertEquals(dynamoResult.count(), phoenixResult.count());
         Assert.assertEquals(dynamoResult.scannedCount(), phoenixResult.scannedCount());
-        Assert.assertTrue(ItemComparator.areItemsEqual(sortItemsByPk(dynamoResult.items(), pkName),
-                sortItemsByPk(phoenixResult.items(), pkName)));
+        Assert.assertTrue(ItemComparator.areItemsEqual(TestUtils.sortItemsByPk(dynamoResult.items(), pkName),
+                TestUtils.sortItemsByPk(phoenixResult.items(), pkName)));
     }
 
     /**

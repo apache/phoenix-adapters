@@ -6,6 +6,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.Comparator;
 
 import org.bson.BsonDocument;
 import org.junit.Assert;
@@ -13,6 +15,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
+import software.amazon.awssdk.services.dynamodb.model.ScalarAttributeType;
 import software.amazon.awssdk.services.dynamodb.model.DescribeStreamRequest;
 import software.amazon.awssdk.services.dynamodb.model.GetRecordsRequest;
 import software.amazon.awssdk.services.dynamodb.model.GetRecordsResponse;
@@ -23,6 +26,7 @@ import software.amazon.awssdk.services.dynamodb.model.QueryRequest;
 import software.amazon.awssdk.services.dynamodb.model.QueryResponse;
 import software.amazon.awssdk.services.dynamodb.model.Record;
 import software.amazon.awssdk.services.dynamodb.model.ScanRequest;
+import software.amazon.awssdk.services.dynamodb.model.ScanResponse;
 import software.amazon.awssdk.services.dynamodb.model.ShardIteratorType;
 import software.amazon.awssdk.services.dynamodb.model.StreamDescription;
 import software.amazon.awssdk.services.dynamodb.model.StreamStatus;
@@ -306,5 +310,95 @@ public class TestUtils {
             qr.exclusiveStartKey(ddbResponse.lastEvaluatedKey());
         } while (ddbResponse.hasLastEvaluatedKey());
         Assert.assertEquals(ddbResult, phoenixResult);
+    }
+
+    public static void compareScanOutputs(ScanRequest.Builder sr,
+            DynamoDbClient phoenixDBClientV2, DynamoDbClient dynamoDbClient,
+            String partitionKeyName, String sortKeyName, ScalarAttributeType partitionKeyType,
+            ScalarAttributeType sortKeyType) {
+        List<Map<String, AttributeValue>> phoenixResult = new ArrayList<>();
+        ScanResponse phoenixResponse;
+        do {
+            phoenixResponse = phoenixDBClientV2.scan(sr.build());
+            phoenixResult.addAll(phoenixResponse.items());
+            sr.exclusiveStartKey(phoenixResponse.lastEvaluatedKey());
+        } while (phoenixResponse.hasLastEvaluatedKey());
+
+        List<Map<String, AttributeValue>> ddbResult = new ArrayList<>();
+        ScanResponse ddbResponse;
+        do {
+            ddbResponse = dynamoDbClient.scan(sr.build());
+            ddbResult.addAll(ddbResponse.items());
+            sr.exclusiveStartKey(ddbResponse.lastEvaluatedKey());
+        } while (ddbResponse.hasLastEvaluatedKey());
+        List<Map<String, AttributeValue>> sortedPhoenixItems =
+                TestUtils.sortItemsByPartitionAndSortKey(phoenixResult, partitionKeyName, sortKeyName, partitionKeyType, sortKeyType);
+        List<Map<String, AttributeValue>> sortedDynamoItems =
+                TestUtils.sortItemsByPartitionAndSortKey(ddbResult, partitionKeyName, sortKeyName, partitionKeyType, sortKeyType);
+        Assert.assertTrue(ItemComparator.areItemsEqual(sortedPhoenixItems, sortedDynamoItems));
+    }
+
+    /**
+     * Sort scan result items by partition key using string comparison.
+     * This is a simple version for cases where only partition key sorting is needed.
+     */
+    public static List<Map<String, AttributeValue>> sortItemsByPk(
+            List<Map<String, AttributeValue>> items, String pkName) {
+        return items.stream()
+                .sorted(Comparator.comparing(item -> item.get(pkName).s()))
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Sort scan result items by partition key and sort key, handling different data types.
+     * This is a comprehensive version that handles different attribute types properly.
+     */
+    public static List<Map<String, AttributeValue>> sortItemsByPartitionAndSortKey(
+            List<Map<String, AttributeValue>> items, String partitionKeyName, String sortKeyName,
+            ScalarAttributeType partitionKeyType, ScalarAttributeType sortKeyType) {
+        return items.stream().sorted((item1, item2) -> {
+            // Compare partition keys first
+            int partitionComparison = compareAttributeValues(
+                    item1.get(partitionKeyName), item2.get(partitionKeyName), partitionKeyType);
+            if (partitionComparison != 0) {
+                return partitionComparison;
+            }
+            // If partition keys are equal and sort key exists, compare sort keys
+            if (sortKeyName != null) {
+                AttributeValue sortKey1 = item1.get(sortKeyName);
+                AttributeValue sortKey2 = item2.get(sortKeyName);
+                if (sortKey1 != null && sortKey2 != null) {
+                    return compareAttributeValues(sortKey1, sortKey2, sortKeyType);
+                }
+            }
+            return 0;
+        }).collect(Collectors.toList());
+    }
+
+    /**
+     * Compare two AttributeValues based on their type.
+     */
+    @SuppressWarnings("unchecked")
+    public static int compareAttributeValues(AttributeValue attr1, AttributeValue attr2, ScalarAttributeType type) {
+        Comparable<Object> val1 = (Comparable<Object>) getComparableValue(attr1, type);
+        Comparable<Object> val2 = (Comparable<Object>) getComparableValue(attr2, type);
+        return val1.compareTo(val2);
+    }
+
+    /**
+     * Get a comparable value from an AttributeValue based on its type.
+     */
+    public static Comparable<?> getComparableValue(AttributeValue attr, ScalarAttributeType type) {
+        switch (type) {
+            case S:
+                return attr.s();
+            case N:
+                return Double.parseDouble(attr.n());
+            case B:
+                // For binary data, convert to string for comparison
+                return new String(attr.b().asByteArray());
+            default:
+                throw new IllegalArgumentException("Unsupported attribute type: " + type);
+        }
     }
 }

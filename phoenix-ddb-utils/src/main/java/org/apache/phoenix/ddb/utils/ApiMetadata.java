@@ -85,6 +85,10 @@ public class ApiMetadata {
     public static final String ITEMS = "Items";
     public static final String COUNT = "Count";
     public static final String SCANNED_COUNT = "ScannedCount";
+    public static final String ALL_ATTRIBUTES = "ALL_ATTRIBUTES";
+    public static final String ALL_PROJECTED_ATTRIBUTES = "ALL_PROJECTED_ATTRIBUTES";
+    public static final String SPECIFIC_ATTRIBUTES = "SPECIFIC_ATTRIBUTES";
+    public static final String SELECT_COUNT = "COUNT";
 
     // ---------- PutItem / UpdateItem / DeleteItem ----------
     public static final String ITEM = "Item";

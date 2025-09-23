@@ -28,6 +28,7 @@ import java.util.Map;
 
 import org.apache.hadoop.hbase.util.Pair;
 import org.apache.phoenix.ddb.ConnectionUtil;
+import org.apache.phoenix.ddb.service.exceptions.ValidationException;
 import org.apache.phoenix.ddb.service.utils.ValidationUtil;
 import org.apache.phoenix.ddb.utils.ApiMetadata;
 import org.slf4j.Logger;
@@ -71,9 +72,10 @@ public class QueryService {
                     getPreparedStatement(connection, request, useIndex, tablePKCols, indexPKCols);
             PreparedStatement stmt = pairVal.getFirst();
             boolean isSingleRowExpected = pairVal.getSecond();
+            boolean countOnly = ApiMetadata.SELECT_COUNT.equals(request.get(ApiMetadata.SELECT));
             return DQLUtils.executeStatementReturnResult(stmt,
                     getProjectionAttributes(request), useIndex, tablePKCols, indexPKCols, tableName,
-                    isSingleRowExpected, false);
+                    isSingleRowExpected, false, countOnly);
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
@@ -195,6 +197,17 @@ public class QueryService {
      */
     private static List<String> getProjectionAttributes(Map<String, Object> request) {
         String projExpr = (String) request.get(ApiMetadata.PROJECTION_EXPRESSION);
+        String select = (String) request.get(ApiMetadata.SELECT);
+        if (ApiMetadata.SPECIFIC_ATTRIBUTES.equals(select) && StringUtils.isEmpty(projExpr)) {
+            throw new ValidationException("ProjectionExpression must be provided when querying SPECIFIC_ATTRIBUTES.");
+        }
+        if (ApiMetadata.ALL_ATTRIBUTES.equals(select) && !StringUtils.isEmpty(projExpr)) {
+            throw new ValidationException("Cannot specify the ProjectionExpression when choosing to get ALL_ATTRIBUTES.");
+        }
+        // select all attributes overrides projection expression
+        if (ApiMetadata.ALL_ATTRIBUTES.equals(select)) {
+            projExpr = StringUtils.EMPTY;
+        }
         Map<String, String> exprAttrNames =
                 (Map<String, String>) request.get(ApiMetadata.EXPRESSION_ATTRIBUTE_NAMES);
         return DQLUtils.getProjectionAttributes(projExpr, exprAttrNames);

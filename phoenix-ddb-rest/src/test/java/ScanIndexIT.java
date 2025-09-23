@@ -84,6 +84,164 @@ public class ScanIndexIT {
     }
 
     @Test(timeout = 120000)
+    public void testScanIndexSelectCount() throws SQLException {
+        //create table
+        final String tableName = testName.getMethodName();
+        final String indexName = "IDX_" + tableName;
+        CreateTableRequest createTableRequest =
+                DDLTestUtils.getCreateTableRequest(tableName, "DataGrave-_-Obscure_Dream_.404",
+                        ScalarAttributeType.S, ".-_.-_AnOtHeR_We1rD-Attr_9_9_9_._.-_.-",
+                        ScalarAttributeType.N);
+
+        createTableRequest =
+                DDLTestUtils.addIndexToRequest(true, createTableRequest, indexName, "title",
+                        ScalarAttributeType.S, null, null);
+        phoenixDBClientV2.createTable(createTableRequest);
+        dynamoDbClient.createTable(createTableRequest);
+
+        //put
+        PutItemRequest putItemRequest1 =
+                PutItemRequest.builder().tableName(tableName).item(getItem1()).build();
+        PutItemRequest putItemRequest2 =
+                PutItemRequest.builder().tableName(tableName).item(getItem2()).build();
+        PutItemRequest putItemRequest3 =
+                PutItemRequest.builder().tableName(tableName).item(getItem3()).build();
+        PutItemRequest putItemRequest4 =
+                PutItemRequest.builder().tableName(tableName).item(getItem4()).build();
+        phoenixDBClientV2.putItem(putItemRequest1);
+        phoenixDBClientV2.putItem(putItemRequest2);
+        phoenixDBClientV2.putItem(putItemRequest3);
+        phoenixDBClientV2.putItem(putItemRequest4);
+        dynamoDbClient.putItem(putItemRequest1);
+        dynamoDbClient.putItem(putItemRequest2);
+        dynamoDbClient.putItem(putItemRequest3);
+        dynamoDbClient.putItem(putItemRequest4);
+
+        ScanRequest.Builder sr = ScanRequest.builder().tableName(tableName);
+        sr.indexName(indexName);
+        sr.filterExpression("#0 BETWEEN :v1 AND :v2");
+        Map<String, String> exprAttrNames = new HashMap<>();
+        exprAttrNames.put("#0", "title");
+        sr.expressionAttributeNames(exprAttrNames);
+        Map<String, AttributeValue> exprAttrVals = new HashMap<>();
+        exprAttrVals.put(":v1", AttributeValue.builder().s("Title1").build());
+        exprAttrVals.put(":v2", AttributeValue.builder().s("Title3").build());
+        sr.expressionAttributeValues(exprAttrVals);
+        sr.select("COUNT");
+        
+        ScanResponse phoenixResult = phoenixDBClientV2.scan(sr.build());
+        ScanResponse dynamoResult = dynamoDbClient.scan(sr.build());
+        Assert.assertEquals(dynamoResult.count(), phoenixResult.count());
+        Assert.assertEquals(3, phoenixResult.count().intValue());
+        Assert.assertTrue(phoenixResult.items().isEmpty());
+        Assert.assertTrue(dynamoResult.items().isEmpty());
+        Assert.assertEquals(dynamoResult.scannedCount(), phoenixResult.scannedCount());
+
+        // explain plan
+        TestUtils.validateIndexUsed(sr.build(), url, "FULL SCAN ");
+    }
+
+    @Test(timeout = 120000)
+    public void testScanIndexSelectCountWithPagination() throws SQLException {
+        //create table
+        final String tableName = testName.getMethodName();
+        final String indexName = "IDX_" + tableName;
+        CreateTableRequest createTableRequest =
+                DDLTestUtils.getCreateTableRequest(tableName, "DataGrave-_-Obscure_Dream_.404",
+                        ScalarAttributeType.S, ".-_.-_AnOtHeR_We1rD-Attr_9_9_9_._.-_.-",
+                        ScalarAttributeType.N);
+
+        createTableRequest =
+                DDLTestUtils.addIndexToRequest(true, createTableRequest, indexName, "title",
+                        ScalarAttributeType.S, null, null);
+        phoenixDBClientV2.createTable(createTableRequest);
+        dynamoDbClient.createTable(createTableRequest);
+
+        //put
+        PutItemRequest putItemRequest1 =
+                PutItemRequest.builder().tableName(tableName).item(getItem1()).build();
+        PutItemRequest putItemRequest2 =
+                PutItemRequest.builder().tableName(tableName).item(getItem2()).build();
+        PutItemRequest putItemRequest3 =
+                PutItemRequest.builder().tableName(tableName).item(getItem3()).build();
+        PutItemRequest putItemRequest4 =
+                PutItemRequest.builder().tableName(tableName).item(getItem4()).build();
+        phoenixDBClientV2.putItem(putItemRequest1);
+        phoenixDBClientV2.putItem(putItemRequest2);
+        phoenixDBClientV2.putItem(putItemRequest3);
+        phoenixDBClientV2.putItem(putItemRequest4);
+        dynamoDbClient.putItem(putItemRequest1);
+        dynamoDbClient.putItem(putItemRequest2);
+        dynamoDbClient.putItem(putItemRequest3);
+        dynamoDbClient.putItem(putItemRequest4);
+
+        ScanRequest.Builder sr = ScanRequest.builder().tableName(tableName);
+        sr.indexName(indexName);
+        sr.select("COUNT");
+        sr.limit(1); // paginate with limit 1
+
+        int phoenixCount = 0;
+        ScanResponse phoenixResult;
+        do {
+            phoenixResult = phoenixDBClientV2.scan(sr.build());
+            Assert.assertTrue(phoenixResult.items().isEmpty());
+            phoenixCount += phoenixResult.count();
+            sr.exclusiveStartKey(phoenixResult.lastEvaluatedKey());
+        } while (phoenixResult.hasLastEvaluatedKey());
+        int ddbCount = 0;
+        ScanResponse ddbResult;
+        do {
+            ddbResult = dynamoDbClient.scan(sr.build());
+            Assert.assertTrue(ddbResult.items().isEmpty());
+            ddbCount += ddbResult.count();
+            sr.exclusiveStartKey(ddbResult.lastEvaluatedKey());
+        } while (ddbResult.hasLastEvaluatedKey());
+
+        Assert.assertEquals(ddbCount,phoenixCount);
+        
+        // explain plan
+        TestUtils.validateIndexUsed(sr.build(), url, "FULL SCAN ");
+    }
+
+    @Test(timeout = 120000)
+    public void testScanIndexSelectAllAttributes() throws SQLException {
+        //create table
+        final String tableName = testName.getMethodName();
+        final String indexName = "IDX_" + tableName;
+        CreateTableRequest createTableRequest =
+                DDLTestUtils.getCreateTableRequest(tableName, "DataGrave-_-Obscure_Dream_.404",
+                        ScalarAttributeType.S, ".-_.-_AnOtHeR_We1rD-Attr_9_9_9_._.-_.-",
+                        ScalarAttributeType.N);
+
+        createTableRequest =
+                DDLTestUtils.addIndexToRequest(true, createTableRequest, indexName, "title",
+                        ScalarAttributeType.S, null, null);
+        phoenixDBClientV2.createTable(createTableRequest);
+        dynamoDbClient.createTable(createTableRequest);
+
+        //put
+        PutItemRequest putItemRequest1 =
+                PutItemRequest.builder().tableName(tableName).item(getItem1()).build();
+        phoenixDBClientV2.putItem(putItemRequest1);
+        dynamoDbClient.putItem(putItemRequest1);
+
+        ScanRequest.Builder sr = ScanRequest.builder().tableName(tableName);
+        sr.indexName(indexName);
+        sr.select("ALL_ATTRIBUTES");
+        
+        ScanResponse phoenixResult = phoenixDBClientV2.scan(sr.build());
+        ScanResponse dynamoResult = dynamoDbClient.scan(sr.build());
+        Assert.assertEquals(dynamoResult.count(), phoenixResult.count());
+        Assert.assertEquals(1, phoenixResult.count().intValue());
+        // Should return all attributes
+        Assert.assertTrue(phoenixResult.items().get(0).size() > 1);
+        Assert.assertEquals(dynamoResult.items(), phoenixResult.items());
+
+        // explain plan
+        TestUtils.validateIndexUsed(sr.build(), url, "FULL SCAN ");
+    }
+
+    @Test(timeout = 120000)
     public void testScanIndexOnlyHashKey() throws SQLException {
         //create table
         final String tableName = "X_x-X.xFRACTAL_.void-0mega__99xX-x_X";
@@ -123,7 +281,7 @@ public class ScanIndexIT {
         Map<String, String> exprAttrNames = new HashMap<>();
         exprAttrNames.put("#0", "title");
         sr.expressionAttributeNames(exprAttrNames);
-        Map<String, AttributeValue> exprAttrVals = new HashMap();
+        Map<String, AttributeValue> exprAttrVals = new HashMap<>();
         exprAttrVals.put(":v1", AttributeValue.builder().s("Title1").build());
         exprAttrVals.put(":v2", AttributeValue.builder().s("Title4").build());
         sr.expressionAttributeValues(exprAttrVals);
@@ -178,7 +336,7 @@ public class ScanIndexIT {
         exprAttrNames.put("#0", "title");
         exprAttrNames.put("#1", "Id2");
         sr.expressionAttributeNames(exprAttrNames);
-        Map<String, AttributeValue> exprAttrVals = new HashMap();
+        Map<String, AttributeValue> exprAttrVals = new HashMap<>();
         exprAttrVals.put(":v1", AttributeValue.builder().s("Title1").build());
         exprAttrVals.put(":v2", AttributeValue.builder().s("Title4").build());
         exprAttrVals.put(":v3", AttributeValue.builder().n("150.09").build());
@@ -233,7 +391,7 @@ public class ScanIndexIT {
         Map<String, String> exprAttrNames = new HashMap<>();
         exprAttrNames.put("#0", "title");
         sr.expressionAttributeNames(exprAttrNames);
-        Map<String, AttributeValue> exprAttrVals = new HashMap();
+        Map<String, AttributeValue> exprAttrVals = new HashMap<>();
         exprAttrVals.put(":v1", AttributeValue.builder().s("Title1").build());
         exprAttrVals.put(":v2", AttributeValue.builder().s("Title3").build());
         sr.expressionAttributeValues(exprAttrVals);

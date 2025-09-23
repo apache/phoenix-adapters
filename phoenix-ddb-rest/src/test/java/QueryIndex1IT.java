@@ -362,12 +362,171 @@ public class QueryIndex1IT {
         TestUtils.validateIndexUsed(qr.build(), url);
     }
 
+    @Test(timeout = 120000)
+    public void testQueryIndexSelectCount() throws SQLException {
+        // create table with keys [attr_0]
+        final String tableName = testName.getMethodName();
+        final String indexName = "IDX_" + tableName;
+        CreateTableRequest createTableRequest =
+                DDLTestUtils.getCreateTableRequest(tableName, "attr_0",
+                        ScalarAttributeType.S, null, null);
+        // create index on Id3, IdS
+        createTableRequest = DDLTestUtils.addIndexToRequest(true, createTableRequest, indexName, "Id3",
+                ScalarAttributeType.S, "IdS", ScalarAttributeType.S);
+        phoenixDBClientV2.createTable(createTableRequest);
+        dynamoDbClient.createTable(createTableRequest);
+
+        //put items
+        PutItemRequest putItemRequest1 = PutItemRequest.builder().tableName(tableName).item(getItem1()).build();
+        PutItemRequest putItemRequest2 = PutItemRequest.builder().tableName(tableName).item(getItem2()).build();
+        PutItemRequest putItemRequest3 = PutItemRequest.builder().tableName(tableName).item(getItem3()).build();
+        PutItemRequest putItemRequest4 = PutItemRequest.builder().tableName(tableName).item(getItem4()).build();
+        phoenixDBClientV2.putItem(putItemRequest1);
+        phoenixDBClientV2.putItem(putItemRequest2);
+        phoenixDBClientV2.putItem(putItemRequest3);
+        phoenixDBClientV2.putItem(putItemRequest4);
+        dynamoDbClient.putItem(putItemRequest1);
+        dynamoDbClient.putItem(putItemRequest2);
+        dynamoDbClient.putItem(putItemRequest3);
+        dynamoDbClient.putItem(putItemRequest4);
+
+        //query request using index with COUNT
+        QueryRequest.Builder qr = QueryRequest.builder().tableName(tableName);
+        qr.indexName(indexName);
+        qr.keyConditionExpression("#0 = :v0");
+        Map<String, String> exprAttrNames = new HashMap<>();
+        exprAttrNames.put("#0", "Id3");
+        qr.expressionAttributeNames(exprAttrNames);
+        Map<String, AttributeValue> exprAttrVal = new HashMap<>();
+        exprAttrVal.put(":v0", AttributeValue.builder().s("foo").build());
+        qr.expressionAttributeValues(exprAttrVal);
+        qr.select("COUNT");
+
+        // query result with count only
+        QueryResponse phoenixResult = phoenixDBClientV2.query(qr.build());
+        QueryResponse dynamoResult = dynamoDbClient.query(qr.build());
+        Assert.assertEquals(dynamoResult.count(), phoenixResult.count());
+        Assert.assertEquals(2, phoenixResult.count().intValue());
+        Assert.assertTrue(phoenixResult.items().isEmpty());
+        Assert.assertTrue(dynamoResult.items().isEmpty());
+        Assert.assertEquals(dynamoResult.scannedCount(), phoenixResult.scannedCount());
+
+        // explain plan
+        TestUtils.validateIndexUsed(qr.build(), url);
+    }
+
+    @Test(timeout = 120000)
+    public void testQueryIndexSelectCountWithPagination() throws SQLException {
+        // create table with keys [attr_0]
+        final String tableName = testName.getMethodName();
+        final String indexName = "IDX_" + tableName;
+        CreateTableRequest createTableRequest =
+                DDLTestUtils.getCreateTableRequest(tableName, "attr_0",
+                        ScalarAttributeType.S, null, null);
+        // create index on Id3, IdS
+        createTableRequest = DDLTestUtils.addIndexToRequest(true, createTableRequest, indexName, "Id3",
+                ScalarAttributeType.S, "IdS", ScalarAttributeType.S);
+        phoenixDBClientV2.createTable(createTableRequest);
+        dynamoDbClient.createTable(createTableRequest);
+
+        //put items
+        PutItemRequest putItemRequest1 = PutItemRequest.builder().tableName(tableName).item(getItem1()).build();
+        PutItemRequest putItemRequest2 = PutItemRequest.builder().tableName(tableName).item(getItem2()).build();
+        PutItemRequest putItemRequest3 = PutItemRequest.builder().tableName(tableName).item(getItem3()).build();
+        PutItemRequest putItemRequest4 = PutItemRequest.builder().tableName(tableName).item(getItem4()).build();
+        phoenixDBClientV2.putItem(putItemRequest1);
+        phoenixDBClientV2.putItem(putItemRequest2);
+        phoenixDBClientV2.putItem(putItemRequest3);
+        phoenixDBClientV2.putItem(putItemRequest4);
+        dynamoDbClient.putItem(putItemRequest1);
+        dynamoDbClient.putItem(putItemRequest2);
+        dynamoDbClient.putItem(putItemRequest3);
+        dynamoDbClient.putItem(putItemRequest4);
+
+        //query request using index with COUNT and limit for pagination
+        QueryRequest.Builder qr = QueryRequest.builder().tableName(tableName);
+        qr.indexName(indexName);
+        qr.keyConditionExpression("#0 = :v0");
+        Map<String, String> exprAttrNames = new HashMap<>();
+        exprAttrNames.put("#0", "Id3");
+        qr.expressionAttributeNames(exprAttrNames);
+        Map<String, AttributeValue> exprAttrVal = new HashMap<>();
+        exprAttrVal.put(":v0", AttributeValue.builder().s("bar").build());
+        qr.expressionAttributeValues(exprAttrVal);
+        qr.select("COUNT");
+        qr.limit(1);
+
+        int totalCount = 0;
+        QueryResponse phoenixResult;
+        do {
+            phoenixResult = phoenixDBClientV2.query(qr.build());
+            QueryResponse dynamoResult = dynamoDbClient.query(qr.build());
+            
+            Assert.assertEquals(dynamoResult.count(), phoenixResult.count());
+            Assert.assertTrue(phoenixResult.items().isEmpty());
+            Assert.assertTrue(dynamoResult.items().isEmpty());
+            Assert.assertEquals(dynamoResult.scannedCount(), phoenixResult.scannedCount());
+            
+            totalCount += phoenixResult.count();
+            qr.exclusiveStartKey(phoenixResult.lastEvaluatedKey());
+        } while (!phoenixResult.lastEvaluatedKey().isEmpty());
+
+        Assert.assertEquals(2, totalCount);
+
+        // explain plan
+        TestUtils.validateIndexUsed(qr.build(), url);
+    }
+
+    @Test(timeout = 120000)
+    public void testQueryIndexSelectAllAttributes() throws SQLException {
+        // create table with keys [attr_0]
+        final String tableName = testName.getMethodName();
+        final String indexName = "IDX_" + tableName;
+        CreateTableRequest createTableRequest =
+                DDLTestUtils.getCreateTableRequest(tableName, "attr_0",
+                        ScalarAttributeType.S, null, null);
+        // create index on IdS
+        createTableRequest = DDLTestUtils.addIndexToRequest(true, createTableRequest, indexName, "IdS",
+                ScalarAttributeType.S, null, null);
+        phoenixDBClientV2.createTable(createTableRequest);
+        dynamoDbClient.createTable(createTableRequest);
+
+        //put items
+        PutItemRequest putItemRequest1 = PutItemRequest.builder().tableName(tableName).item(getItem1()).build();
+        phoenixDBClientV2.putItem(putItemRequest1);
+        dynamoDbClient.putItem(putItemRequest1);
+
+        //query request using index with ALL_ATTRIBUTES (no projectionExpression)
+        QueryRequest.Builder qr = QueryRequest.builder().tableName(tableName);
+        qr.indexName(indexName);
+        qr.keyConditionExpression("#0 = :v0");
+        Map<String, String> exprAttrNames = new HashMap<>();
+        exprAttrNames.put("#0", "IdS");
+        qr.expressionAttributeNames(exprAttrNames);
+        Map<String, AttributeValue> exprAttrVal = new HashMap<>();
+        exprAttrVal.put(":v0", AttributeValue.builder().s("101.01").build());
+        qr.expressionAttributeValues(exprAttrVal);
+        qr.select("ALL_ATTRIBUTES");
+
+        QueryResponse phoenixResult = phoenixDBClientV2.query(qr.build());
+        QueryResponse dynamoResult = dynamoDbClient.query(qr.build());
+        Assert.assertEquals(dynamoResult.count(), phoenixResult.count());
+        Assert.assertEquals(1, phoenixResult.count().intValue());
+        // Should return all attributes
+        Assert.assertTrue(phoenixResult.items().get(0).size() > 1);
+        Assert.assertEquals(dynamoResult.items().get(0), phoenixResult.items().get(0));
+
+        // explain plan
+        TestUtils.validateIndexUsed(qr.build(), url);
+    }
+
     private Map<String, AttributeValue> getItem1() {
         Map<String, AttributeValue> item = new HashMap<>();
         item.put("attr_0", AttributeValue.builder().s("str_val_1").build());
         item.put("attr_1", AttributeValue.builder().n("11295.03").build());
         item.put("IdS", AttributeValue.builder().s("101.01").build());
         item.put("Id2", AttributeValue.builder().n("1.1").build());
+        item.put("Id3", AttributeValue.builder().s("foo").build());
         return item;
     }
 
@@ -377,6 +536,7 @@ public class QueryIndex1IT {
         item.put("attr_1", AttributeValue.builder().n("21295.03").build());
         item.put("IdS", AttributeValue.builder().s("202.02").build());
         item.put("Id2", AttributeValue.builder().n("2.2").build());
+        item.put("Id3", AttributeValue.builder().s("foo").build());
         return item;
     }
 
@@ -386,6 +546,7 @@ public class QueryIndex1IT {
         item.put("attr_1", AttributeValue.builder().n("31295.03").build());
         item.put("IdS", AttributeValue.builder().s("303.03").build());
         item.put("Id2", AttributeValue.builder().n("3.3").build());
+        item.put("Id3", AttributeValue.builder().s("bar").build());
         return item;
     }
 
@@ -395,6 +556,7 @@ public class QueryIndex1IT {
         item.put("attr_1", AttributeValue.builder().n("41295.03").build());
         item.put("IdS", AttributeValue.builder().s("404.04").build());
         item.put("Id2", AttributeValue.builder().n("4.4").build());
+        item.put("Id3", AttributeValue.builder().s("bar").build());
         return item;
     }
 }

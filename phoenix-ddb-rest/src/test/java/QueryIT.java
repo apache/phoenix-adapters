@@ -15,10 +15,12 @@ import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import software.amazon.awssdk.services.dynamodb.model.CreateTableRequest;
+import software.amazon.awssdk.services.dynamodb.model.DynamoDbException;
 import software.amazon.awssdk.services.dynamodb.model.PutItemRequest;
 import software.amazon.awssdk.services.dynamodb.model.QueryRequest;
 import software.amazon.awssdk.services.dynamodb.model.QueryResponse;
 import software.amazon.awssdk.services.dynamodb.model.ScalarAttributeType;
+import software.amazon.awssdk.services.dynamodb.model.Select;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
@@ -314,6 +316,7 @@ public class QueryIT {
         qr.projectionExpression(projectionExpr);
         exprAttrNames.put("#proj", "A.B");
         qr.expressionAttributeNames(exprAttrNames);
+        qr.select(Select.SPECIFIC_ATTRIBUTES);
 
         // query result, should return 1 item with only the projected attributes
         QueryResponse phoenixResult = phoenixDBClientV2.query(qr.build());
@@ -491,6 +494,227 @@ public class QueryIT {
             qr.exclusiveStartKey(phoenixResult.lastEvaluatedKey());
             phoenixResult = phoenixDBClientV2.query(qr.build());
             dynamoResult = dynamoDbClient.query(qr.build());
+        }
+    }
+
+    @Test(timeout = 120000)
+    public void querySelectCountTest() throws Exception {
+        //create table
+        final String tableName = testName.getMethodName();
+        CreateTableRequest createTableRequest =
+                DDLTestUtils.getCreateTableRequest(tableName, "attr_0",
+                        ScalarAttributeType.S, "attr_1", ScalarAttributeType.N);
+        phoenixDBClientV2.createTable(createTableRequest);
+        dynamoDbClient.createTable(createTableRequest);
+
+        //put
+        PutItemRequest putItemRequest1 = PutItemRequest.builder().tableName(tableName).item(getItem1()).build();
+        PutItemRequest putItemRequest2 = PutItemRequest.builder().tableName(tableName).item(getItem2()).build();
+        PutItemRequest putItemRequest3 = PutItemRequest.builder().tableName(tableName).item(getItem3()).build();
+        PutItemRequest putItemRequest4 = PutItemRequest.builder().tableName(tableName).item(getItem4()).build();
+        phoenixDBClientV2.putItem(putItemRequest1);
+        phoenixDBClientV2.putItem(putItemRequest2);
+        phoenixDBClientV2.putItem(putItemRequest3);
+        phoenixDBClientV2.putItem(putItemRequest4);
+        dynamoDbClient.putItem(putItemRequest1);
+        dynamoDbClient.putItem(putItemRequest2);
+        dynamoDbClient.putItem(putItemRequest3);
+        dynamoDbClient.putItem(putItemRequest4);
+
+        //query request with Select=COUNT
+        QueryRequest.Builder qr = QueryRequest.builder().tableName(tableName);
+        qr.keyConditionExpression("#0 = :v0 AND #1 > :v1");
+        qr.filterExpression("#2 <= :v2");
+        Map<String, String> exprAttrNames = new HashMap<>();
+        exprAttrNames.put("#0", "attr_0");
+        exprAttrNames.put("#1", "attr_1");
+        exprAttrNames.put("#2", "Id2");
+        qr.expressionAttributeNames(exprAttrNames);
+        Map<String, AttributeValue> exprAttrVal = new HashMap<>();
+        exprAttrVal.put(":v0", AttributeValue.builder().s("B").build());
+        exprAttrVal.put(":v1", AttributeValue.builder().n("1").build());
+        exprAttrVal.put(":v2", AttributeValue.builder().n("1000.10").build());
+        qr.expressionAttributeValues(exprAttrVal);
+        qr.select("COUNT");
+
+        // query result with count only
+        QueryResponse phoenixResult = phoenixDBClientV2.query(qr.build());
+        QueryResponse dynamoResult = dynamoDbClient.query(qr.build());
+        Assert.assertEquals(dynamoResult.count(), phoenixResult.count());
+        Assert.assertEquals(3, phoenixResult.count().intValue());
+        Assert.assertTrue(phoenixResult.items().isEmpty());
+        Assert.assertTrue(dynamoResult.items().isEmpty());
+        Assert.assertEquals(dynamoResult.scannedCount(), phoenixResult.scannedCount());
+    }
+
+    @Test(timeout = 120000)
+    public void querySelectCountWithPaginationTest() throws Exception {
+        //create table
+        final String tableName = testName.getMethodName();
+        CreateTableRequest createTableRequest =
+                DDLTestUtils.getCreateTableRequest(tableName, "attr_0",
+                        ScalarAttributeType.S, "attr_1", ScalarAttributeType.N);
+        phoenixDBClientV2.createTable(createTableRequest);
+        dynamoDbClient.createTable(createTableRequest);
+
+        //put
+        PutItemRequest putItemRequest1 = PutItemRequest.builder().tableName(tableName).item(getItem1()).build();
+        PutItemRequest putItemRequest2 = PutItemRequest.builder().tableName(tableName).item(getItem2()).build();
+        PutItemRequest putItemRequest3 = PutItemRequest.builder().tableName(tableName).item(getItem3()).build();
+        PutItemRequest putItemRequest4 = PutItemRequest.builder().tableName(tableName).item(getItem4()).build();
+        phoenixDBClientV2.putItem(putItemRequest1);
+        phoenixDBClientV2.putItem(putItemRequest2);
+        phoenixDBClientV2.putItem(putItemRequest3);
+        phoenixDBClientV2.putItem(putItemRequest4);
+        dynamoDbClient.putItem(putItemRequest1);
+        dynamoDbClient.putItem(putItemRequest2);
+        dynamoDbClient.putItem(putItemRequest3);
+        dynamoDbClient.putItem(putItemRequest4);
+
+        //query request with Select=COUNT and limit for pagination
+        QueryRequest.Builder qr = QueryRequest.builder().tableName(tableName);
+        qr.keyConditionExpression("#0 = :v0 AND #1 > :v1");
+        Map<String, String> exprAttrNames = new HashMap<>();
+        exprAttrNames.put("#0", "attr_0");
+        exprAttrNames.put("#1", "attr_1");
+        qr.expressionAttributeNames(exprAttrNames);
+        Map<String, AttributeValue> exprAttrVal = new HashMap<>();
+        exprAttrVal.put(":v0", AttributeValue.builder().s("B").build());
+        exprAttrVal.put(":v1", AttributeValue.builder().n("1").build());
+        qr.expressionAttributeValues(exprAttrVal);
+        qr.select("COUNT");
+        qr.limit(1); // paginate with limit 1
+
+        int totalCount = 0;
+        QueryResponse phoenixResult;
+        do {
+            phoenixResult = phoenixDBClientV2.query(qr.build());
+            QueryResponse dynamoResult = dynamoDbClient.query(qr.build());
+            
+            Assert.assertEquals(dynamoResult.count(), phoenixResult.count());
+            Assert.assertTrue(phoenixResult.items().isEmpty());
+            Assert.assertTrue(dynamoResult.items().isEmpty());
+            Assert.assertEquals(dynamoResult.scannedCount(), phoenixResult.scannedCount());
+            
+            totalCount += phoenixResult.count();
+            qr.exclusiveStartKey(phoenixResult.lastEvaluatedKey());
+        } while (!phoenixResult.lastEvaluatedKey().isEmpty());
+
+        Assert.assertEquals(3, totalCount);
+    }
+
+    @Test(timeout = 120000)
+    public void querySelectAllAttributesTest() throws Exception {
+        //create table
+        final String tableName = testName.getMethodName();
+        CreateTableRequest createTableRequest =
+                DDLTestUtils.getCreateTableRequest(tableName, "attr_0",
+                        ScalarAttributeType.S, "attr_1", ScalarAttributeType.N);
+        phoenixDBClientV2.createTable(createTableRequest);
+        dynamoDbClient.createTable(createTableRequest);
+
+        //put
+        PutItemRequest putItemRequest1 = PutItemRequest.builder().tableName(tableName).item(getItem1()).build();
+        phoenixDBClientV2.putItem(putItemRequest1);
+        dynamoDbClient.putItem(putItemRequest1);
+
+        //query request with Select=ALL_ATTRIBUTES (no projectionExpression)
+        QueryRequest.Builder qr = QueryRequest.builder().tableName(tableName);
+        qr.keyConditionExpression("#0 = :v0");
+        Map<String, String> exprAttrNames = new HashMap<>();
+        exprAttrNames.put("#0", "attr_0");
+        qr.expressionAttributeNames(exprAttrNames);
+        Map<String, AttributeValue> exprAttrVal = new HashMap<>();
+        exprAttrVal.put(":v0", AttributeValue.builder().s("A").build());
+        qr.expressionAttributeValues(exprAttrVal);
+        qr.select("ALL_ATTRIBUTES");
+
+        QueryResponse phoenixResult = phoenixDBClientV2.query(qr.build());
+        QueryResponse dynamoResult = dynamoDbClient.query(qr.build());
+        Assert.assertEquals(dynamoResult.count(), phoenixResult.count());
+        Assert.assertEquals(1, phoenixResult.count().intValue());
+        // Should return all attributes
+        Assert.assertTrue(phoenixResult.items().get(0).size() > 1);
+        Assert.assertEquals(dynamoResult.items().get(0), phoenixResult.items().get(0));
+    }
+
+    @Test(timeout = 120000)
+    public void querySelectAllAttributesWithProjectionValidationTest() throws Exception {
+        //create table
+        final String tableName = testName.getMethodName();
+        CreateTableRequest createTableRequest =
+                DDLTestUtils.getCreateTableRequest(tableName, "attr_0",
+                        ScalarAttributeType.S, null, null);
+        phoenixDBClientV2.createTable(createTableRequest);
+        dynamoDbClient.createTable(createTableRequest);
+
+        //put
+        PutItemRequest putItemRequest1 = PutItemRequest.builder().tableName(tableName).item(getItem1()).build();
+        phoenixDBClientV2.putItem(putItemRequest1);
+        dynamoDbClient.putItem(putItemRequest1);
+
+        //query request with Select=ALL_ATTRIBUTES and projectionExpression (should fail)
+        QueryRequest.Builder qr = QueryRequest.builder().tableName(tableName);
+        qr.keyConditionExpression("#0 = :v0");
+        Map<String, String> exprAttrNames = new HashMap<>();
+        exprAttrNames.put("#0", "attr_0");
+        qr.expressionAttributeNames(exprAttrNames);
+        Map<String, AttributeValue> exprAttrVal = new HashMap<>();
+        exprAttrVal.put(":v0", AttributeValue.builder().s("A").build());
+        qr.expressionAttributeValues(exprAttrVal);
+        qr.projectionExpression("attr_0"); // should cause validation error
+        qr.select("ALL_ATTRIBUTES");
+        try {
+            dynamoDbClient.query(qr.build());
+            Assert.fail("Expected ValidationException");
+        }  catch (DynamoDbException e) {
+            Assert.assertEquals(400, e.statusCode());
+        }
+        try {
+            phoenixDBClientV2.query(qr.build());
+            Assert.fail("Expected ValidationException");
+        }  catch (DynamoDbException e) {
+            Assert.assertEquals(400, e.statusCode());
+        }
+    }
+
+    @Test(timeout = 120000)
+    public void querySelectSpecificAttributesValidationTest() throws Exception {
+        //create table
+        final String tableName = testName.getMethodName();
+        CreateTableRequest createTableRequest =
+                DDLTestUtils.getCreateTableRequest(tableName, "attr_0",
+                        ScalarAttributeType.S, null, null);
+        phoenixDBClientV2.createTable(createTableRequest);
+        dynamoDbClient.createTable(createTableRequest);
+
+        //put
+        PutItemRequest putItemRequest1 = PutItemRequest.builder().tableName(tableName).item(getItem1()).build();
+        phoenixDBClientV2.putItem(putItemRequest1);
+        dynamoDbClient.putItem(putItemRequest1);
+
+        //query request with Select=SPECIFIC_ATTRIBUTES but no projectionExpression
+        QueryRequest.Builder qr = QueryRequest.builder().tableName(tableName);
+        qr.keyConditionExpression("#0 = :v0");
+        Map<String, String> exprAttrNames = new HashMap<>();
+        exprAttrNames.put("#0", "attr_0");
+        qr.expressionAttributeNames(exprAttrNames);
+        Map<String, AttributeValue> exprAttrVal = new HashMap<>();
+        exprAttrVal.put(":v0", AttributeValue.builder().s("A").build());
+        qr.expressionAttributeValues(exprAttrVal);
+        qr.select("SPECIFIC_ATTRIBUTES");
+        // No projectionExpression set - should fail
+        try {
+            dynamoDbClient.query(qr.build());
+            Assert.fail("Expected ValidationException");
+        }  catch (DynamoDbException e) {
+            Assert.assertEquals(400, e.statusCode());
+        }
+        try {
+            phoenixDBClientV2.query(qr.build());
+            Assert.fail("Expected ValidationException");
+        }  catch (DynamoDbException e) {
+            Assert.assertEquals(400, e.statusCode());
         }
     }
 

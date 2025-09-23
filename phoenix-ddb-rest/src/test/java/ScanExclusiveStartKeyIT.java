@@ -1,13 +1,9 @@
 import java.sql.DriverManager;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
-import java.nio.ByteBuffer;
 
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -258,9 +254,11 @@ public class ScanExclusiveStartKeyIT {
         }
 
         List<Map<String, AttributeValue>> sortedPhoenixItems =
-                sortItemsByPartitionAndSortKey(phoenixItems, keyTypeConfig);
+                TestUtils.sortItemsByPartitionAndSortKey(phoenixItems, keyTypeConfig.hashKeyName, keyTypeConfig.sortKeyName,
+                        keyTypeConfig.hashKeyType, keyTypeConfig.sortKeyType);
         List<Map<String, AttributeValue>> sortedDynamoItems =
-                sortItemsByPartitionAndSortKey(dynamoItems, keyTypeConfig);
+                TestUtils.sortItemsByPartitionAndSortKey(dynamoItems, keyTypeConfig.hashKeyName, keyTypeConfig.sortKeyName,
+                        keyTypeConfig.hashKeyType, keyTypeConfig.sortKeyType);
         Assert.assertTrue("Phoenix and DynamoDB should return identical items when sorted",
                 ItemComparator.areItemsEqual(sortedPhoenixItems, sortedDynamoItems));
     }
@@ -303,48 +301,4 @@ public class ScanExclusiveStartKeyIT {
         }
     }
 
-    /**
-     * Sort items by partition and sort key, handling different data types.
-     */
-    private List<Map<String, AttributeValue>> sortItemsByPartitionAndSortKey(
-            List<Map<String, AttributeValue>> items, KeyTypeConfig config) {
-        return items.stream().sorted((item1, item2) -> {
-            // Compare hash keys first
-            int hashComparison = compareAttributeValues(
-                    item1.get(config.hashKeyName), item2.get(config.hashKeyName), config.hashKeyType);
-            if (hashComparison != 0) {
-                return hashComparison;
-            }
-            // If hash keys are equal, compare sort keys
-            return compareAttributeValues(
-                    item1.get(config.sortKeyName), item2.get(config.sortKeyName), config.sortKeyType);
-        }).collect(Collectors.toList());
-    }
-
-    /**
-     * Compare two AttributeValues based on their type.
-     */
-    @SuppressWarnings("unchecked")
-    private int compareAttributeValues(AttributeValue attr1, AttributeValue attr2, ScalarAttributeType type) {
-        Comparable<Object> val1 = (Comparable<Object>) getComparableValue(attr1, type);
-        Comparable<Object> val2 = (Comparable<Object>) getComparableValue(attr2, type);
-        return val1.compareTo(val2);
-    }
-
-    /**
-     * Get a comparable value from an AttributeValue based on its type.
-     */
-    private Comparable<?> getComparableValue(AttributeValue attr, ScalarAttributeType type) {
-        switch (type) {
-            case S:
-                return attr.s();
-            case N:
-                return Double.parseDouble(attr.n());
-            case B:
-                // For binary data, convert to string for comparison
-                return new String(attr.b().asByteArray());
-            default:
-                throw new IllegalArgumentException("Unsupported attribute type: " + type);
-        }
-    }
 } 

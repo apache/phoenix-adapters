@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 
 import org.apache.phoenix.ddb.ConnectionUtil;
+import org.apache.phoenix.ddb.service.exceptions.ValidationException;
 import org.apache.phoenix.ddb.service.utils.ValidationUtil;
 import org.apache.phoenix.ddb.utils.ApiMetadata;
 import org.slf4j.Logger;
@@ -72,9 +73,11 @@ public class ScanService {
         final int limit;
         final String tableName;
         final String indexName;
+        final boolean countOnly;
 
         ScanConfig(ScanType type, boolean useIndex, List<PColumn> tablePKCols,
-                       List<PColumn> indexPKCols, int limit, String tableName, String indexName) {
+                List<PColumn> indexPKCols, int limit, String tableName, String indexName,
+                boolean countOnly) {
             this.type = type;
             this.useIndex = useIndex;
             this.tablePKCols = tablePKCols;
@@ -82,6 +85,7 @@ public class ScanService {
             this.limit = limit;
             this.tableName = tableName;
             this.indexName = indexName;
+            this.countOnly = countOnly;
             
             List<PColumn> relevantPKCols = useIndex ? indexPKCols : tablePKCols;
             this.partitionKeyCol = relevantPKCols.get(0);
@@ -123,16 +127,18 @@ public class ScanService {
         
         Map<String, Object> exclusiveStartKey = (Map<String, Object>) request.get(ApiMetadata.EXCLUSIVE_START_KEY);
         int effectiveLimit = getEffectiveLimit(request);
+        boolean countOnly = ApiMetadata.SELECT_COUNT.equals(request.get(ApiMetadata.SELECT));
         
         ScanConfig config = new ScanConfig(
             determineScanType(exclusiveStartKey, useIndex, tablePKCols, indexPKCols),
-            useIndex, tablePKCols, indexPKCols, effectiveLimit, tableName, indexName
+            useIndex, tablePKCols, indexPKCols, effectiveLimit, tableName, indexName, countOnly
         );
 
         // For two-query scenarios, return the first query's PreparedStatement
         if (config.type == ScanType.TWO_KEY_FIRST_QUERY) {
             ScanConfig firstConfig = new ScanConfig(ScanType.TWO_KEY_FIRST_QUERY, config.useIndex,
-                    config.tablePKCols, config.indexPKCols, config.limit, config.tableName, config.indexName);
+                    config.tablePKCols, config.indexPKCols, config.limit, config.tableName,
+                    config.indexName, config.countOnly);
             return buildQuery(connection, request, firstConfig);
         } else {
             return buildQuery(connection, request, config);
@@ -154,10 +160,11 @@ public class ScanService {
         
         Map<String, Object> exclusiveStartKey = (Map<String, Object>) request.get(ApiMetadata.EXCLUSIVE_START_KEY);
         int effectiveLimit = getEffectiveLimit(request);
+        boolean countOnly = ApiMetadata.SELECT_COUNT.equals(request.get(ApiMetadata.SELECT));
         
         ScanConfig config = new ScanConfig(
             determineScanType(exclusiveStartKey, useIndex, tablePKCols, indexPKCols),
-            useIndex, tablePKCols, indexPKCols, effectiveLimit, tableName, indexName
+            useIndex, tablePKCols, indexPKCols, effectiveLimit, tableName, indexName, countOnly
         );
 
         // Execute based on scan type
@@ -204,7 +211,8 @@ public class ScanService {
                                                          ScanConfig config) throws SQLException {
         PreparedStatement stmt = buildQuery(connection, request, config);
         return DQLUtils.executeStatementReturnResult(stmt, getProjectionAttributes(request),
-                config.useIndex, config.tablePKCols, config.indexPKCols, config.tableName, false, false);
+                config.useIndex, config.tablePKCols, config.indexPKCols, config.tableName,
+                false, false, config.countOnly);
     }
 
     /**
@@ -218,9 +226,11 @@ public class ScanService {
         PreparedStatement firstStmt = buildQuery(connection, request, config);
         Map<String, Object> firstResult = DQLUtils.executeStatementReturnResult(firstStmt,
                 getProjectionAttributes(request), config.useIndex, config.tablePKCols, config.indexPKCols,
-                config.tableName, false, true);
+                config.tableName, false, true, config.countOnly);
         
-        List<Map<String, Object>> allItems = new ArrayList<>((List<Map<String, Object>>) firstResult.get(ApiMetadata.ITEMS));
+        List<Map<String, Object>> allItems = config.countOnly
+                ? new ArrayList<>()
+                : new ArrayList<>((List<Map<String, Object>>) firstResult.get(ApiMetadata.ITEMS));
         int totalCount = (Integer) firstResult.get(ApiMetadata.COUNT);
         int totalScannedCount = (Integer) firstResult.get(ApiMetadata.SCANNED_COUNT);
         Map<String, Object> lastEvaluatedKey = (Map<String, Object>) firstResult.get(ApiMetadata.LAST_EVALUATED_KEY);
@@ -229,15 +239,18 @@ public class ScanService {
         if (totalCount < config.limit && !(boolean)firstResult.get(DQLUtils.SIZE_LIMIT_REACHED)) {
             int remainingLimit = config.limit - totalCount;
             ScanConfig secondConfig = new ScanConfig(ScanType.TWO_KEY_SECOND_QUERY, config.useIndex,
-                    config.tablePKCols, config.indexPKCols, remainingLimit, config.tableName, config.indexName);
+                    config.tablePKCols, config.indexPKCols, remainingLimit, config.tableName,
+                    config.indexName, config.countOnly);
             
             PreparedStatement secondStmt = buildQuery(connection, request, secondConfig);
             Map<String, Object> secondResult = DQLUtils.executeStatementReturnResult(secondStmt,
                     getProjectionAttributes(request), config.useIndex, config.tablePKCols, config.indexPKCols,
-                    config.tableName, false, false);
-            
-            List<Map<String, Object>> secondItems = (List<Map<String, Object>>) secondResult.get(ApiMetadata.ITEMS);
-            allItems.addAll(secondItems);
+                    config.tableName, false, false, config.countOnly);
+
+            if (!config.countOnly) {
+                List<Map<String, Object>> secondItems = (List<Map<String, Object>>) secondResult.get(ApiMetadata.ITEMS);
+                allItems.addAll(secondItems);
+            }
             totalCount += (Integer) secondResult.get(ApiMetadata.COUNT);
             totalScannedCount += (Integer) secondResult.get(ApiMetadata.SCANNED_COUNT);
             
@@ -248,7 +261,7 @@ public class ScanService {
             }
         }
         
-        return buildScanResponse(allItems, totalCount, totalScannedCount, config.tableName, lastEvaluatedKey);
+        return buildScanResponse(allItems, totalCount, totalScannedCount, config.tableName, lastEvaluatedKey, config.countOnly);
     }
 
     /**
@@ -389,9 +402,12 @@ public class ScanService {
      */
     private static Map<String, Object> buildScanResponse(List<Map<String, Object>> items, int count, 
                                                         int scannedCount, String tableName, 
-                                                        Map<String, Object> lastEvaluatedKey) {
+                                                        Map<String, Object> lastEvaluatedKey,
+                                                        boolean countOnly) {
         Map<String, Object> response = new HashMap<>();
-        response.put(ApiMetadata.ITEMS, items);
+        if (!countOnly) {
+            response.put(ApiMetadata.ITEMS, items);
+        }
         response.put(ApiMetadata.COUNT, count);
         response.put(ApiMetadata.SCANNED_COUNT, scannedCount);
         response.put(ApiMetadata.CONSUMED_CAPACITY, CommonServiceUtils.getConsumedCapacity(tableName));
@@ -404,6 +420,17 @@ public class ScanService {
      */
     private static List<String> getProjectionAttributes(Map<String, Object> request) {
         String projExpr = (String) request.get(ApiMetadata.PROJECTION_EXPRESSION);
+        String select = (String) request.get(ApiMetadata.SELECT);
+        if (ApiMetadata.SPECIFIC_ATTRIBUTES.equals(select) && StringUtils.isEmpty(projExpr)) {
+            throw new ValidationException("ProjectionExpression must be provided when querying SPECIFIC_ATTRIBUTES.");
+        }
+        if (ApiMetadata.ALL_ATTRIBUTES.equals(select) && !StringUtils.isEmpty(projExpr)) {
+            throw new ValidationException("Cannot specify the ProjectionExpression when choosing to get ALL_ATTRIBUTES.");
+        }
+        // select all attributes overrides projection expression
+        if (ApiMetadata.ALL_ATTRIBUTES.equals(select)) {
+            projExpr = StringUtils.EMPTY;
+        }
         Map<String, String> exprAttrNames =
                 (Map<String, String>) request.get(ApiMetadata.EXPRESSION_ATTRIBUTE_NAMES);
         return DQLUtils.getProjectionAttributes(projExpr, exprAttrNames);
