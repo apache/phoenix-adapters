@@ -368,20 +368,20 @@ public class DeleteItemIT {
         dI.expressionAttributeValues(exprAttrVal);
         dI.returnValuesOnConditionCheckFailure(
                 software.amazon.awssdk.services.dynamodb.model.ReturnValuesOnConditionCheckFailure.ALL_OLD);
+        Map<String, AttributeValue> ddbItem = new HashMap<>();
         try {
             dynamoDbClient.deleteItem(dI.build());
             Assert.fail("Delete item should throw exception when condition check fails.");
         } catch (ConditionalCheckFailedException e) {
             //dynamodb returns item if condition expression fails and ReturnValuesOnConditionCheckFailure is set
             Assert.assertNotNull(e.item());
+            ddbItem = e.item();
         }
         try {
             phoenixDBClientV2.deleteItem(dI.build());
             Assert.fail("Delete item should throw exception when condition check fails.");
         } catch (ConditionalCheckFailedException e) {
-            //phoenix returns null if condition expression fails and ReturnValuesOnConditionCheckFailure is set
-            // sdkv2 will have empty map
-            Assert.assertTrue(e.item().isEmpty());
+            Assert.assertEquals(ddbItem, e.item());
         }
 
         //key was not deleted and is still there

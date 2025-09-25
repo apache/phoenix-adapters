@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.phoenix.ddb.ConnectionUtil;
+import org.apache.phoenix.ddb.service.exceptions.ConditionCheckFailedException;
 import org.apache.phoenix.ddb.service.utils.ValidationUtil;
 import org.apache.phoenix.ddb.utils.ApiMetadata;
 import org.apache.phoenix.ddb.rest.metrics.ApiOperation;
@@ -42,6 +43,13 @@ public class DeleteItemService {
         try (Connection connection = ConnectionUtil.getConnection(connectionUrl)) {
             connection.setAutoCommit(true);
             result = deleteItemWithConn(connection, request);
+        } catch (ConditionCheckFailedException e) {
+            if (ApiMetadata.ALL_OLD.equals(
+                    request.get(ApiMetadata.RETURN_VALUES_ON_CONDITION_CHECK_FAILURE))) {
+                Map<String, Object> item = GetItemService.getItem(request, connectionUrl);
+                e.setItem((Map<String, Object>)item.get(ApiMetadata.ITEM));
+            }
+            throw e;
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
