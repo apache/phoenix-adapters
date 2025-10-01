@@ -191,12 +191,14 @@ public class JMXJsonServlet extends HttpServlet {
                 if (beanWriter != null) {
                     beanWriter.close();
                 }
-                if (jsonpcb != null) {
-                    writer.write(");");
-                }
+
                 if (writer != null) {
+                    if (jsonpcb != null) {
+                        writer.write(");");
+                    }
                     writer.close();
                 }
+
             }
         } catch (IOException e) {
             LOG.error("Caught an exception while processing JMX request", e);
