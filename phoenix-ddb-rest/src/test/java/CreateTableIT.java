@@ -49,6 +49,7 @@ import software.amazon.awssdk.services.dynamodb.model.KeyType;
 import software.amazon.awssdk.services.dynamodb.model.Projection;
 import software.amazon.awssdk.services.dynamodb.model.ProjectionType;
 import software.amazon.awssdk.services.dynamodb.model.ResourceNotFoundException;
+import software.amazon.awssdk.services.dynamodb.model.ResourceInUseException;
 import software.amazon.awssdk.services.dynamodb.model.ScalarAttributeType;
 import software.amazon.awssdk.services.dynamodb.model.TableDescription;
 
@@ -314,6 +315,36 @@ public class CreateTableIT {
         createTable(phoenixDBClientV2);
         Thread.sleep(1000);
         testJmxMetrics();
+    }
+
+    @Test(timeout = 120000)
+    public void createTableDuplicateFails() throws Exception {
+        final String tableName = testName.getMethodName().toUpperCase();
+
+        CreateTableRequest request =
+                DDLTestUtils.getCreateTableRequest(tableName, "HK", ScalarAttributeType.B, null,
+                        null);
+
+        // First create should succeed on both backends
+        dynamoDbClient.createTable(request);
+        phoenixDBClientV2.createTable(request);
+
+        // Second create should fail with ResourceInUseException on both backends
+        try {
+            dynamoDbClient.createTable(request);
+            Assert.fail("Expected ResourceInUseException from DynamoDB on duplicate create");
+        } catch (ResourceInUseException expected) {
+            // expected
+        }
+
+        // Second create should fail with ResourceInUseException on Phoenix, but it does not. Is this the behavior we want?
+        try {
+            phoenixDBClientV2.createTable(request);
+        } catch (ResourceInUseException expected) {
+            // not expected
+            Assert.fail("Unexpected ResourceInUseException from Phoenix REST on duplicate create");
+
+        }
     }
 
     private void validateTableProps(String tableName) throws SQLException {
