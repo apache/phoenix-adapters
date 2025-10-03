@@ -69,6 +69,7 @@ import org.apache.phoenix.ddb.rest.auth.AccessKeyAuthFilter;
 import org.apache.phoenix.ddb.rest.auth.CredentialStore;
 import org.apache.phoenix.ddb.rest.util.Constants;
 import org.apache.phoenix.ddb.TableOptionsConfig;
+import org.apache.phoenix.ddb.service.utils.SegmentScanUtil;
 import org.apache.phoenix.ddb.utils.IndexBuildingActivator;
 import org.apache.phoenix.ddb.utils.PhoenixUtils;
 
@@ -165,9 +166,11 @@ public class RESTServer {
         }
 
         try {
-            validateConnection();
-            indexBuildingActivator = startIndexBuildingActivator();
+            String url = PhoenixUtils.URL_ZK_PREFIX + conf.get(Constants.PHOENIX_DDB_ZK_QUORUM);
+            validateConnection(url);
+            indexBuildingActivator = startIndexBuildingActivator(url);
             TableOptionsConfig.initialize();
+            SegmentScanUtil.createSegmentScanMetadataTable(url);
         } catch (Exception e) {
             LOG.error("Failed to validate connection, shutting down REST Server...", e);
             throw e;
@@ -282,8 +285,7 @@ public class RESTServer {
         server.start();
     }
 
-    private void validateConnection() throws SQLException {
-        String jdbcUrl = PhoenixUtils.URL_ZK_PREFIX + conf.get(Constants.PHOENIX_DDB_ZK_QUORUM);
+    private void validateConnection(String jdbcUrl) throws SQLException {
         LOG.info("Try connecting to SYSTEM.CATALOG using JDBC connection url: {}", jdbcUrl);
         try (Connection connection = ConnectionUtil.getConnection(jdbcUrl)) {
             ResultSet resultSet = connection.createStatement()
@@ -292,8 +294,7 @@ public class RESTServer {
         }
     }
 
-    private ExecutorService startIndexBuildingActivator() {
-        String jdbcUrl = PhoenixUtils.URL_ZK_PREFIX + conf.get(Constants.PHOENIX_DDB_ZK_QUORUM);
+    private ExecutorService startIndexBuildingActivator(String jdbcUrl) {
         ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
         scheduler.scheduleAtFixedRate(() -> {
             try (Connection connection = ConnectionUtil.getConnection(jdbcUrl)) {

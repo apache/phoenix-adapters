@@ -36,14 +36,14 @@ public class DMLUtils {
             PColumn pkCol = pkCols.get(i);
             String colName = pkCol.getName().toString();
             PDataType type = pkCol.getDataType();
-            if (type.equals(PDouble.INSTANCE)) {
+            if (type == PDouble.INSTANCE) {
                 String strValue = (String) ((Map<String, Object>) item.get(colName)).get("N");
                 double value = Double.parseDouble(strValue);
                 stmt.setDouble(i + 1, value);
-            } else if (type.equals(PVarchar.INSTANCE)) {
+            } else if (type == PVarchar.INSTANCE) {
                 String value = (String) ((Map<String, Object>) item.get(colName)).get("S");
                 stmt.setString(i + 1, value);
-            } else if (type.equals(PVarbinaryEncoded.INSTANCE)) {
+            } else if (type == PVarbinaryEncoded.INSTANCE) {
                 String value = (String) ((Map<String, Object>) item.get(colName)).get("B");
                 byte[] b = Base64.getDecoder().decode(value);
                 stmt.setBytes(i + 1, b);

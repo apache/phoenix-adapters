@@ -254,11 +254,9 @@ public class ScanExclusiveStartKeyIT {
         }
 
         List<Map<String, AttributeValue>> sortedPhoenixItems =
-                TestUtils.sortItemsByPartitionAndSortKey(phoenixItems, keyTypeConfig.hashKeyName, keyTypeConfig.sortKeyName,
-                        keyTypeConfig.hashKeyType, keyTypeConfig.sortKeyType);
+                TestUtils.sortItemsByPartitionAndSortKey(phoenixItems, keyTypeConfig.hashKeyName, keyTypeConfig.sortKeyName);
         List<Map<String, AttributeValue>> sortedDynamoItems =
-                TestUtils.sortItemsByPartitionAndSortKey(dynamoItems, keyTypeConfig.hashKeyName, keyTypeConfig.sortKeyName,
-                        keyTypeConfig.hashKeyType, keyTypeConfig.sortKeyType);
+                TestUtils.sortItemsByPartitionAndSortKey(dynamoItems, keyTypeConfig.hashKeyName, keyTypeConfig.sortKeyName);
         Assert.assertTrue("Phoenix and DynamoDB should return identical items when sorted",
                 ItemComparator.areItemsEqual(sortedPhoenixItems, sortedDynamoItems));
     }

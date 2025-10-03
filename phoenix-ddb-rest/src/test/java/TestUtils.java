@@ -7,7 +7,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import java.util.Comparator;
 
 import org.bson.BsonDocument;
 import org.junit.Assert;
@@ -33,10 +32,12 @@ import software.amazon.awssdk.services.dynamodb.model.StreamStatus;
 import software.amazon.awssdk.services.dynamodb.streams.DynamoDbStreamsClient;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.HRegionLocation;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Admin;
 import org.apache.hadoop.hbase.client.ConnectionFactory;
 import org.apache.hadoop.hbase.client.RegionLocator;
+import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.phoenix.compile.ExplainPlan;
 import org.apache.phoenix.compile.ExplainPlanAttributes;
 import org.apache.phoenix.ddb.bson.BsonDocumentToMap;
@@ -48,6 +49,7 @@ import org.apache.phoenix.jdbc.PhoenixConnection;
 import org.apache.phoenix.jdbc.PhoenixPreparedStatement;
 import org.apache.phoenix.query.ConnectionQueryServices;
 import org.apache.phoenix.schema.PColumn;
+import org.apache.phoenix.util.SchemaUtil;
 
 import static software.amazon.awssdk.services.dynamodb.model.ShardIteratorType.TRIM_HORIZON;
 
@@ -292,6 +294,15 @@ public class TestUtils {
         validateRecords(allPhoenixRecords, allDynamoRecords);
     }
 
+    public static int getNumberOfTableRegions(Connection conn, String tableName)
+            throws SQLException {
+        String fullTableName = SchemaUtil.getTableName("DDB", tableName);
+        PhoenixConnection pconn = conn.unwrap(PhoenixConnection.class);
+        List<HRegionLocation> regs
+                = pconn.getQueryServices().getAllTableRegions(fullTableName.getBytes(), 30000);
+        return regs.size();
+    }
+
     public static void compareQueryOutputs(QueryRequest.Builder qr,
             DynamoDbClient phoenixDBClientV2, DynamoDbClient dynamoDbClient) {
         List<Map<String, AttributeValue>> phoenixResult = new ArrayList<>();
@@ -331,74 +342,87 @@ public class TestUtils {
             ddbResult.addAll(ddbResponse.items());
             sr.exclusiveStartKey(ddbResponse.lastEvaluatedKey());
         } while (ddbResponse.hasLastEvaluatedKey());
-        List<Map<String, AttributeValue>> sortedPhoenixItems =
-                TestUtils.sortItemsByPartitionAndSortKey(phoenixResult, partitionKeyName, sortKeyName, partitionKeyType, sortKeyType);
-        List<Map<String, AttributeValue>> sortedDynamoItems =
-                TestUtils.sortItemsByPartitionAndSortKey(ddbResult, partitionKeyName, sortKeyName, partitionKeyType, sortKeyType);
-        Assert.assertTrue(ItemComparator.areItemsEqual(sortedPhoenixItems, sortedDynamoItems));
+
+        verifyItemsEqual(ddbResult, phoenixResult, partitionKeyName, sortKeyName);
     }
 
     /**
-     * Sort scan result items by partition key using string comparison.
-     * This is a simple version for cases where only partition key sorting is needed.
+     * Verify that two lists of items contain the same items.
      */
-    public static List<Map<String, AttributeValue>> sortItemsByPk(
-            List<Map<String, AttributeValue>> items, String pkName) {
-        return items.stream()
-                .sorted(Comparator.comparing(item -> item.get(pkName).s()))
-                .collect(Collectors.toList());
+    public static void verifyItemsEqual(List<Map<String, AttributeValue>> expectedItems,
+            List<Map<String, AttributeValue>> actualItems, String hashKeyName, String sortKeyName) {
+
+        Assert.assertEquals("Item count mismatch.", expectedItems.size(), actualItems.size());
+
+        // Sort both lists by primary key for consistent comparison
+        List<Map<String, AttributeValue>> sortedExpected = TestUtils.sortItemsByPartitionAndSortKey(expectedItems, hashKeyName, sortKeyName);
+        List<Map<String, AttributeValue>> sortedActual = TestUtils.sortItemsByPartitionAndSortKey(actualItems, hashKeyName, sortKeyName);
+
+        // Use ItemComparator for proper item comparison
+        Assert.assertTrue("Items don't match. ",  ItemComparator.areItemsEqual(sortedExpected, sortedActual));
     }
 
     /**
-     * Sort scan result items by partition key and sort key, handling different data types.
-     * This is a comprehensive version that handles different attribute types properly.
+     * Sort scan result items by partition key and sort key with automatic type detection.
+     * This is useful when the attribute types are not known at compile time.
      */
     public static List<Map<String, AttributeValue>> sortItemsByPartitionAndSortKey(
-            List<Map<String, AttributeValue>> items, String partitionKeyName, String sortKeyName,
-            ScalarAttributeType partitionKeyType, ScalarAttributeType sortKeyType) {
+            List<Map<String, AttributeValue>> items, String partitionKeyName, String sortKeyName) {
         return items.stream().sorted((item1, item2) -> {
             // Compare partition keys first
-            int partitionComparison = compareAttributeValues(
-                    item1.get(partitionKeyName), item2.get(partitionKeyName), partitionKeyType);
+            AttributeValue partitionValue1 = item1.get(partitionKeyName);
+            AttributeValue partitionValue2 = item2.get(partitionKeyName);
+            int partitionComparison = compareAttributeValues(partitionValue1, partitionValue2);
+            
             if (partitionComparison != 0) {
                 return partitionComparison;
             }
+            
             // If partition keys are equal and sort key exists, compare sort keys
             if (sortKeyName != null) {
-                AttributeValue sortKey1 = item1.get(sortKeyName);
-                AttributeValue sortKey2 = item2.get(sortKeyName);
-                if (sortKey1 != null && sortKey2 != null) {
-                    return compareAttributeValues(sortKey1, sortKey2, sortKeyType);
-                }
+                AttributeValue sortValue1 = item1.get(sortKeyName);
+                AttributeValue sortValue2 = item2.get(sortKeyName);
+                return compareAttributeValues(sortValue1, sortValue2);
             }
+            
             return 0;
         }).collect(Collectors.toList());
     }
 
     /**
-     * Compare two AttributeValues based on their type.
+     * Compare two AttributeValues with automatic type detection.
+     * This is useful when the attribute types are not known at compile time.
      */
-    @SuppressWarnings("unchecked")
-    public static int compareAttributeValues(AttributeValue attr1, AttributeValue attr2, ScalarAttributeType type) {
-        Comparable<Object> val1 = (Comparable<Object>) getComparableValue(attr1, type);
-        Comparable<Object> val2 = (Comparable<Object>) getComparableValue(attr2, type);
-        return val1.compareTo(val2);
-    }
-
-    /**
-     * Get a comparable value from an AttributeValue based on its type.
-     */
-    public static Comparable<?> getComparableValue(AttributeValue attr, ScalarAttributeType type) {
-        switch (type) {
-            case S:
-                return attr.s();
-            case N:
-                return Double.parseDouble(attr.n());
-            case B:
-                // For binary data, convert to string for comparison
-                return new String(attr.b().asByteArray());
-            default:
-                throw new IllegalArgumentException("Unsupported attribute type: " + type);
+    public static int compareAttributeValues(AttributeValue value1, AttributeValue value2) {
+        if (value1 == null && value2 == null) return 0;
+        if (value1 == null) return -1;
+        if (value2 == null) return 1;
+        
+        // String comparison
+        if (value1.s() != null && value2.s() != null) {
+            return value1.s().compareTo(value2.s());
         }
+        
+        // Number comparison
+        if (value1.n() != null && value2.n() != null) {
+            try {
+                Double num1 = Double.parseDouble(value1.n());
+                Double num2 = Double.parseDouble(value2.n());
+                return num1.compareTo(num2);
+            } catch (NumberFormatException e) {
+                // Fallback to string comparison if parsing fails
+                return value1.n().compareTo(value2.n());
+            }
+        }
+        
+        // Binary comparison - use proper byte array comparison
+        if (value1.b() != null && value2.b() != null) {
+            byte[] bytes1 = value1.b().asByteArray();
+            byte[] bytes2 = value2.b().asByteArray();
+            return Bytes.compareTo(bytes1, bytes2);
+        }
+        
+        // Fallback: convert to string for comparison
+        return String.valueOf(value1).compareTo(String.valueOf(value2));
     }
 }

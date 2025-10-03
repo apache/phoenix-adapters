@@ -608,34 +608,6 @@ public class ScanTableIT {
     }
 
     @Test(timeout = 120000)
-    public void testScanWithSegments() {
-        //create table
-        final String tableName = testName.getMethodName();
-        CreateTableRequest createTableRequest =
-                DDLTestUtils.getCreateTableRequest(tableName, "attr_0",
-                        ScalarAttributeType.S, null, null);
-        phoenixDBClientV2.createTable(createTableRequest);
-
-        //put
-        PutItemRequest putItemRequest1 = PutItemRequest.builder().tableName(tableName).item(getItem1()).build();
-        PutItemRequest putItemRequest2 = PutItemRequest.builder().tableName(tableName).item(getItem2()).build();
-        PutItemRequest putItemRequest3 = PutItemRequest.builder().tableName(tableName).item(getItem3()).build();
-        PutItemRequest putItemRequest4 = PutItemRequest.builder().tableName(tableName).item(getItem4()).build();
-        phoenixDBClientV2.putItem(putItemRequest1);
-        phoenixDBClientV2.putItem(putItemRequest2);
-        phoenixDBClientV2.putItem(putItemRequest3);
-        phoenixDBClientV2.putItem(putItemRequest4);
-
-        ScanRequest.Builder sr = ScanRequest.builder().tableName(tableName).segment(0).totalSegments(2);
-        ScanResponse phoenixResult = phoenixDBClientV2.scan(sr.build());
-        Assert.assertEquals(4, phoenixResult.items().size());
-
-        sr = ScanRequest.builder().tableName(tableName).segment(1).totalSegments(2);
-        phoenixResult = phoenixDBClientV2.scan(sr.build());
-        Assert.assertEquals(0, phoenixResult.items().size());
-    }
-
-    @Test(timeout = 120000)
     public void testScanWithBeginsWithFilter() {
         final String tableName = testName.getMethodName();
         CreateTableRequest createTableRequest =
@@ -1649,8 +1621,9 @@ public class ScanTableIT {
         }
         Assert.assertEquals(dynamoResult.count(), phoenixResult.count());
         Assert.assertEquals(dynamoResult.scannedCount(), phoenixResult.scannedCount());
-        Assert.assertTrue(ItemComparator.areItemsEqual(TestUtils.sortItemsByPk(dynamoResult.items(), pkName),
-                TestUtils.sortItemsByPk(phoenixResult.items(), pkName)));
+        Assert.assertTrue(ItemComparator.areItemsEqual(
+                TestUtils.sortItemsByPartitionAndSortKey(dynamoResult.items(), pkName, null),
+                TestUtils.sortItemsByPartitionAndSortKey(phoenixResult.items(), pkName, null)));
     }
 
     /**

@@ -1,6 +1,8 @@
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.junit.AfterClass;
@@ -409,6 +411,52 @@ public class ScanIndexIT {
         } while (phoenixResult.count() > 0);
         // 1 more than total number of results expected
         Assert.assertEquals(4, paginationCount);
+    }
+
+    @Test(timeout = 120000)
+    public void testScanIndexWithSegments() {
+        //create table
+        final String tableName = testName.getMethodName();
+        final String indexName = "g_IDX" + tableName;
+        CreateTableRequest createTableRequest =
+                DDLTestUtils.getCreateTableRequest(tableName, "DataGrave-_-Obscure_Dream_.404",
+                        ScalarAttributeType.S, ".-_.-_AnOtHeR_We1rD-Attr_9_9_9_._.-_.-",
+                        ScalarAttributeType.N);
+
+        createTableRequest =
+                DDLTestUtils.addIndexToRequest(true, createTableRequest, indexName, "title",
+                        ScalarAttributeType.S, null, null);
+        phoenixDBClientV2.createTable(createTableRequest);
+        dynamoDbClient.createTable(createTableRequest);
+
+        //put
+        PutItemRequest putItemRequest1 = PutItemRequest.builder().tableName(tableName).item(getItem1()).build();
+        PutItemRequest putItemRequest2 = PutItemRequest.builder().tableName(tableName).item(getItem2()).build();
+        PutItemRequest putItemRequest3 = PutItemRequest.builder().tableName(tableName).item(getItem3()).build();
+        PutItemRequest putItemRequest4 = PutItemRequest.builder().tableName(tableName).item(getItem4()).build();
+        phoenixDBClientV2.putItem(putItemRequest1);
+        phoenixDBClientV2.putItem(putItemRequest2);
+        phoenixDBClientV2.putItem(putItemRequest3);
+        phoenixDBClientV2.putItem(putItemRequest4);
+        dynamoDbClient.putItem(putItemRequest1);
+        dynamoDbClient.putItem(putItemRequest2);
+        dynamoDbClient.putItem(putItemRequest3);
+        dynamoDbClient.putItem(putItemRequest4);
+
+        ScanRequest.Builder sr = ScanRequest.builder().tableName(tableName).indexName(indexName).segment(0).totalSegments(2);
+        ScanResponse phoenixResult0 = phoenixDBClientV2.scan(sr.build());
+        List<Map<String, AttributeValue>> ddbItems0 = dynamoDbClient.scan(sr.build()).items();
+        Assert.assertEquals(4, phoenixResult0.items().size());
+
+        sr = sr.segment(1);
+        ScanResponse phoenixResult1 = phoenixDBClientV2.scan(sr.build());
+        Assert.assertEquals(0, phoenixResult1.items().size());
+
+        List<Map<String, AttributeValue>> ddbItems1 = dynamoDbClient.scan(sr.build()).items();
+        List<Map<String, AttributeValue>> ddbItems = new ArrayList<>();
+        ddbItems.addAll(ddbItems0);
+        ddbItems.addAll(ddbItems1);
+        TestUtils.verifyItemsEqual(ddbItems, phoenixResult0.items(), "title", null);
     }
 
     private static Map<String, AttributeValue> getItem1() {

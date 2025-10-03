@@ -31,15 +31,20 @@ import org.apache.phoenix.ddb.ConnectionUtil;
 import org.apache.phoenix.ddb.service.exceptions.PhoenixServiceException;
 import org.apache.phoenix.ddb.service.exceptions.ValidationException;
 import org.apache.phoenix.ddb.service.utils.ValidationUtil;
+import org.apache.phoenix.ddb.service.utils.SegmentScanUtil;
 import org.apache.phoenix.ddb.utils.ApiMetadata;
+
+import com.google.common.annotations.VisibleForTesting;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.phoenix.ddb.service.utils.DQLUtils;
+import org.apache.phoenix.ddb.service.utils.ScanSegmentInfo;
 import org.apache.phoenix.ddb.utils.CommonServiceUtils;
 import org.apache.phoenix.ddb.utils.PhoenixUtils;
 import org.apache.phoenix.schema.PColumn;
+import org.apache.phoenix.schema.types.PDouble;
 
 public class ScanService {
 
@@ -75,6 +80,10 @@ public class ScanService {
         final String tableName;
         final String indexName;
         final boolean countOnly;
+        // Segment scan fields
+        boolean isSegmentScan = false;
+        ScanSegmentInfo scanSegmentInfo = null;
+
 
         ScanConfig(ScanType type, boolean useIndex, List<PColumn> tablePKCols,
                 List<PColumn> indexPKCols, int limit, String tableName, String indexName,
@@ -92,57 +101,40 @@ public class ScanService {
             this.partitionKeyCol = relevantPKCols.get(0);
             this.sortKeyCol = (relevantPKCols.size() > 1) ? relevantPKCols.get(1) : null;
         }
+
+        void setScanSegmentInfo(ScanSegmentInfo segmentInfo) {
+            this.isSegmentScan = true;
+            this.scanSegmentInfo = segmentInfo;
+        }
+
+        boolean isSegmentScan() {
+            return isSegmentScan && (scanSegmentInfo != null);
+        }
+
+        @Override
+        public String toString() {
+            if (isSegmentScan) {
+                return this.type.toString() + "," + this.scanSegmentInfo.toShortString();
+            } else {
+                return this.type.toString();
+            }
+        }
     }
 
     public static Map<String, Object> scan(Map<String, Object> request, String connectionUrl) {
         ValidationUtil.validateScanRequest(request);
-
         handleLegacyParamsConversion(request);
         CommonServiceUtils.handleLegacyProjectionConversion(request);
-        
-        // Phoenix does not support parallel scans from the client
-        if (request.get(ApiMetadata.SEGMENT) != null && (Integer) request.get(ApiMetadata.SEGMENT) > 0) {
-            return Collections.emptyMap();
+
+        // Segment Scan on indexes is not yet supported - we will return all items for segment 0.
+        if (isSegmentScanRequestOnIndex(request) && (Integer) request.get(ApiMetadata.SEGMENT) > 0) {
+            return buildEmptyScanResponse(request);
         }
-        
+
         try (Connection connection = ConnectionUtil.getConnection(connectionUrl)) {
             return executeScan(connection, request);
         } catch (SQLException e) {
             throw new PhoenixServiceException(e);
-        }
-    }
-
-    /**
-     * Public method to get PreparedStatement for testing purposes.
-     * Returns the primary PreparedStatement that would be used for the scan request.
-     * For two-query scenarios, returns the first query's PreparedStatement.
-     */
-    public static PreparedStatement getPreparedStatement(Connection connection, Map<String, Object> request) 
-            throws SQLException {
-        String tableName = (String) request.get(ApiMetadata.TABLE_NAME);
-        String indexName = (String) request.get(ApiMetadata.INDEX_NAME);
-        boolean useIndex = !StringUtils.isEmpty(indexName);
-        
-        List<PColumn> tablePKCols = PhoenixUtils.getPKColumns(connection, tableName);
-        List<PColumn> indexPKCols = useIndex ? PhoenixUtils.getOnlyIndexPKColumns(connection, indexName, tableName) : null;
-        
-        Map<String, Object> exclusiveStartKey = (Map<String, Object>) request.get(ApiMetadata.EXCLUSIVE_START_KEY);
-        int effectiveLimit = getEffectiveLimit(request);
-        boolean countOnly = ApiMetadata.SELECT_COUNT.equals(request.get(ApiMetadata.SELECT));
-        
-        ScanConfig config = new ScanConfig(
-            determineScanType(exclusiveStartKey, useIndex, tablePKCols, indexPKCols),
-            useIndex, tablePKCols, indexPKCols, effectiveLimit, tableName, indexName, countOnly
-        );
-
-        // For two-query scenarios, return the first query's PreparedStatement
-        if (config.type == ScanType.TWO_KEY_FIRST_QUERY) {
-            ScanConfig firstConfig = new ScanConfig(ScanType.TWO_KEY_FIRST_QUERY, config.useIndex,
-                    config.tablePKCols, config.indexPKCols, config.limit, config.tableName,
-                    config.indexName, config.countOnly);
-            return buildQuery(connection, request, firstConfig);
-        } else {
-            return buildQuery(connection, request, config);
         }
     }
 
@@ -168,7 +160,17 @@ public class ScanService {
             useIndex, tablePKCols, indexPKCols, effectiveLimit, tableName, indexName, countOnly
         );
 
-        // Execute based on scan type
+        // Set segment info if this is a segment scan
+        if (isSegmentScanRequestOnTable(request)) {
+            ScanSegmentInfo segmentInfo = getSegmentInfo(connection, request);
+            // Return empty result if segment doesn't exist
+            if (segmentInfo == null || segmentInfo.isEmptySegment()) {
+                return buildEmptyScanResponse(request);
+            }
+            config.setScanSegmentInfo(segmentInfo);
+        }
+
+        // Execute based on scan type (same logic for both regular and segment scans)
         switch (config.type) {
             case NO_EXCLUSIVE_START_KEY:
             case SINGLE_KEY_CONTINUATION:
@@ -235,14 +237,17 @@ public class ScanService {
         int totalCount = (Integer) firstResult.get(ApiMetadata.COUNT);
         int totalScannedCount = (Integer) firstResult.get(ApiMetadata.SCANNED_COUNT);
         Map<String, Object> lastEvaluatedKey = (Map<String, Object>) firstResult.get(ApiMetadata.LAST_EVALUATED_KEY);
-        
+
         // Execute second query if needed: (pk1 > k1)
         if (totalCount < config.limit && !(boolean)firstResult.get(DQLUtils.SIZE_LIMIT_REACHED)) {
             int remainingLimit = config.limit - totalCount;
             ScanConfig secondConfig = new ScanConfig(ScanType.TWO_KEY_SECOND_QUERY, config.useIndex,
                     config.tablePKCols, config.indexPKCols, remainingLimit, config.tableName,
                     config.indexName, config.countOnly);
-            
+            // Copy segment scan configuration if present
+            if (config.isSegmentScan()) {
+                secondConfig.setScanSegmentInfo(config.scanSegmentInfo);
+            }
             PreparedStatement secondStmt = buildQuery(connection, request, secondConfig);
             Map<String, Object> secondResult = DQLUtils.executeStatementReturnResult(secondStmt,
                     getProjectionAttributes(request), config.useIndex, config.tablePKCols, config.indexPKCols,
@@ -272,14 +277,24 @@ public class ScanService {
                                               ScanConfig config) throws SQLException {
         
         StringBuilder queryBuilder = buildBaseSelectClause(config);
-        queryBuilder.append(" WHERE ");
-        
-        boolean hasFilter = addFilterConditionIfPresent(queryBuilder, request);
-        addKeyConditions(queryBuilder, config, hasFilter);
+
+        // Add filter conditions
+        boolean hasFilterCondition = addFilterConditionIfPresent(queryBuilder, request);
+
+        // Add key conditions
+        boolean hasKeyConditions = addKeyConditions(queryBuilder, config, hasFilterCondition);
+
+        // Add segment boundary conditions
+        addSegmentBoundaryConditions(queryBuilder, config, hasFilterCondition || hasKeyConditions);
+
+        // Add order by clause
+        addOrderByClause(queryBuilder, config, hasFilterCondition);
+
+        // Add limit clause
         addLimitClause(queryBuilder, config.limit);
-        
-        LOGGER.debug("Scan Query ({}): {}", config.type, queryBuilder);
-        
+
+        LOGGER.debug("Scan Query ({}): {}", config, queryBuilder);
+
         PreparedStatement stmt = connection.prepareStatement(queryBuilder.toString());
         setQueryParameters(stmt, request, config);
         return stmt;
@@ -304,6 +319,7 @@ public class ScanService {
     private static boolean addFilterConditionIfPresent(StringBuilder queryBuilder, Map<String, Object> request) {
         String filterExpr = (String) request.get(ApiMetadata.FILTER_EXPRESSION);
         if (!StringUtils.isEmpty(filterExpr)) {
+            queryBuilder.append(" WHERE ");
             Map<String, String> exprAttrNames = (Map<String, String>) request.get(ApiMetadata.EXPRESSION_ATTRIBUTE_NAMES);
             Map<String, Object> exprAttrValues = (Map<String, Object>) request.get(ApiMetadata.EXPRESSION_ATTRIBUTE_VALUES);
             DQLUtils.addFilterCondition(false, queryBuilder, filterExpr, exprAttrNames, exprAttrValues);
@@ -314,19 +330,20 @@ public class ScanService {
 
     /**
      * Add key-based WHERE conditions based on scan type
+     *
+     * @return true if key conditions were added
      */
-    private static void addKeyConditions(StringBuilder queryBuilder, ScanConfig config, boolean hasFilter) {
+    private static boolean addKeyConditions(StringBuilder queryBuilder, ScanConfig config,
+            boolean hasPreviousConditions) {
         if (config.type == ScanType.NO_EXCLUSIVE_START_KEY) {
             // No key conditions needed for simple scan
-            if (!hasFilter) {
-                // Remove the WHERE clause since no conditions
-                queryBuilder.setLength(queryBuilder.length() - " WHERE ".length());
-            }
-            return;
+            return false;
         }
         
-        if (hasFilter) {
+        if (hasPreviousConditions) {
             queryBuilder.append(" AND ");
+        } else {
+            queryBuilder.append(" WHERE ");
         }
         
         String partitionKeyName = getColumnNameForQuery(config.partitionKeyCol, config.useIndex);
@@ -334,14 +351,15 @@ public class ScanService {
         switch (config.type) {
             case SINGLE_KEY_CONTINUATION:
             case TWO_KEY_SECOND_QUERY:
-                queryBuilder.append(partitionKeyName).append(" > ?");
+                queryBuilder.append(partitionKeyName).append(" > ? ");
                 break;
             case TWO_KEY_FIRST_QUERY:
                 String sortKeyName = getColumnNameForQuery(config.sortKeyCol, config.useIndex);
-                queryBuilder.append("(").append(partitionKeyName).append(" = ? AND ")
-                           .append(sortKeyName).append(" > ?)");
+                queryBuilder.append("( ").append(partitionKeyName).append(" = ? AND ")
+                           .append(sortKeyName).append(" > ? ) ");
                 break;
         }
+        return true;
     }
 
     /**
@@ -352,33 +370,58 @@ public class ScanService {
     }
 
     /**
+     * Add ORDER BY clause to query.
+     * If leading key is double, rows can be returned in a different order than number ordering
+     * since a query without ORDER BY uses ROUND ROBIN FULL SCAN.
+     */
+    private static void addOrderByClause(StringBuilder queryBuilder, ScanConfig config,
+            boolean hasFilterCondition) {
+        if (hasFilterCondition && config.partitionKeyCol.getDataType() == PDouble.INSTANCE) {
+            String partitionKeyName = config.useIndex
+                    ? config.partitionKeyCol.getName().getString().substring(1)
+                    : CommonServiceUtils.getEscapedArgument(config.partitionKeyCol.getName().getString());
+            queryBuilder.append(" ORDER BY ").append(partitionKeyName).append(" ");
+        }
+    }
+
+    /**
      * Set all parameters on the PreparedStatement based on scan type
      */
     private static void setQueryParameters(PreparedStatement stmt, Map<String, Object> request,
                                          ScanConfig config) throws SQLException {
-        if (config.type == ScanType.NO_EXCLUSIVE_START_KEY) {
-            return; // No parameters to set
-        }
-        
-        Map<String, Object> exclusiveStartKey = (Map<String, Object>) request.get(ApiMetadata.EXCLUSIVE_START_KEY);
-        String partitionKeyName = getKeyNameFromColumn(config.partitionKeyCol, config.useIndex);
-        
-        switch (config.type) {
+
+        int paramIndex = 1;
+        if (config.type != ScanType.NO_EXCLUSIVE_START_KEY) {
+            // Set key condition parameters first
+            Map<String, Object> exclusiveStartKey =
+                    (Map<String, Object>) request.get(ApiMetadata.EXCLUSIVE_START_KEY);
+            String partitionKeyName = getKeyNameFromColumn(config.partitionKeyCol, config.useIndex);
+
+            switch (config.type) {
             case SINGLE_KEY_CONTINUATION:
             case TWO_KEY_SECOND_QUERY:
-                DQLUtils.setKeyValueOnStatement(stmt, 1, 
+                DQLUtils.setKeyValueOnStatement(stmt, paramIndex++,
                         (Map<String, Object>) exclusiveStartKey.get(partitionKeyName), false);
                 break;
-                
+
             case TWO_KEY_FIRST_QUERY:
                 String sortKeyName = getKeyNameFromColumn(config.sortKeyCol, config.useIndex);
                 // Set pk1 = ?
-                DQLUtils.setKeyValueOnStatement(stmt, 1, 
+                DQLUtils.setKeyValueOnStatement(stmt, paramIndex++,
                         (Map<String, Object>) exclusiveStartKey.get(partitionKeyName), false);
                 // Set pk2 > ?
-                DQLUtils.setKeyValueOnStatement(stmt, 2, 
+                DQLUtils.setKeyValueOnStatement(stmt, paramIndex++,
                         (Map<String, Object>) exclusiveStartKey.get(sortKeyName), false);
                 break;
+            }
+        }
+
+        // Set segment boundary parameters if this is a segment scan
+        if (config.isSegmentScan()) {
+            byte[] startKey = config.scanSegmentInfo.getStartKey();
+            byte[] endKey = config.scanSegmentInfo.getEndKey();
+            stmt.setBytes(paramIndex++, startKey);
+            stmt.setBytes(paramIndex++, endKey);
         }
     }
 
@@ -417,6 +460,15 @@ public class ScanService {
     }
 
     /**
+     * Build the final scan response
+     */
+    private static Map<String, Object> buildEmptyScanResponse(Map<String, Object> request) {
+        return buildScanResponse(Collections.emptyList(), 0, 0,
+                (String) request.get(ApiMetadata.TABLE_NAME), null,
+                ApiMetadata.SELECT_COUNT.equals(request.get(ApiMetadata.SELECT)));
+    }
+
+    /**
      * Get projection attributes from request
      */
     private static List<String> getProjectionAttributes(Map<String, Object> request) {
@@ -438,6 +490,66 @@ public class ScanService {
     }
 
     /**
+     * Check if the request is for a segment scan
+     */
+    public static boolean isSegmentScanRequestOnTable(Map<String, Object> request) {
+        return request.get(ApiMetadata.SEGMENT) != null
+                && request.get(ApiMetadata.TOTAL_SEGMENTS) != null
+                && StringUtils.isEmpty((String)request.get(ApiMetadata.INDEX_NAME));
+    }
+
+    /**
+     * Check if the request is for a segment scan
+     */
+    public static boolean isSegmentScanRequestOnIndex(Map<String, Object> request) {
+        return request.get(ApiMetadata.SEGMENT) != null
+                && request.get(ApiMetadata.TOTAL_SEGMENTS) != null
+                && !StringUtils.isEmpty((String)request.get(ApiMetadata.INDEX_NAME));
+    }
+
+    /**
+     * Get segment info for segment scan
+     */
+    private static ScanSegmentInfo getSegmentInfo(Connection connection,
+            Map<String, Object> request) throws SQLException {
+        Integer segment = (Integer) request.get(ApiMetadata.SEGMENT);
+        Integer totalSegments = (Integer) request.get(ApiMetadata.TOTAL_SEGMENTS);
+        String tableName = (String) request.get(ApiMetadata.TABLE_NAME);
+        Map<String, Object> exclusiveStartKey =
+                (Map<String, Object>) request.get(ApiMetadata.EXCLUSIVE_START_KEY);
+
+        // Get segment boundaries using SegmentScanUtil
+        if (exclusiveStartKey == null || exclusiveStartKey.isEmpty()) {
+            // First page - generate and get segment boundaries
+            return SegmentScanUtil.updateAndGetSegmentScanRange(connection, tableName,
+                    totalSegments, segment);
+        } else {
+            // Subsequent page - boundaries should already exist
+            return SegmentScanUtil.getSegmentScanRange(connection, tableName, totalSegments,
+                    segment);
+        }
+    }
+
+    /**
+     * Add segment boundary conditions to the query
+     *
+     * @return true if segment conditions were added
+     */
+    private static boolean addSegmentBoundaryConditions(StringBuilder queryBuilder,
+            ScanConfig config, boolean hasPreviousConditions) {
+        if (!config.isSegmentScan()) {
+            return false;
+        }
+        if (hasPreviousConditions) {
+            queryBuilder.append(" AND ");
+        } else {
+            queryBuilder.append(" WHERE ");
+        }
+        queryBuilder.append(" SCAN_START_KEY() = ? AND SCAN_END_KEY() = ? ");
+        return true;
+    }
+
+    /*
      * Handles legacy parameter conversion to modern equivalents.
      */
     private static void handleLegacyParamsConversion(Map<String, Object> request) {
@@ -469,6 +581,41 @@ public class ScanService {
             }
             request.remove(ApiMetadata.SCAN_FILTER);
             request.remove(ApiMetadata.CONDITIONAL_OPERATOR);
+        }
+    }
+
+    /**
+     * Public method to get PreparedStatement for testing purposes.
+     * Returns the primary PreparedStatement that would be used for the scan request.
+     * For two-query scenarios, returns the first query's PreparedStatement.
+     */
+    @VisibleForTesting
+    public static PreparedStatement getPreparedStatement(Connection connection, Map<String, Object> request)
+            throws SQLException {
+        String tableName = (String) request.get(ApiMetadata.TABLE_NAME);
+        String indexName = (String) request.get(ApiMetadata.INDEX_NAME);
+        boolean useIndex = !StringUtils.isEmpty(indexName);
+
+        List<PColumn> tablePKCols = PhoenixUtils.getPKColumns(connection, tableName);
+        List<PColumn> indexPKCols = useIndex ? PhoenixUtils.getOnlyIndexPKColumns(connection, indexName, tableName) : null;
+
+        Map<String, Object> exclusiveStartKey = (Map<String, Object>) request.get(ApiMetadata.EXCLUSIVE_START_KEY);
+        int effectiveLimit = getEffectiveLimit(request);
+        boolean countOnly = ApiMetadata.SELECT_COUNT.equals(request.get(ApiMetadata.SELECT));
+
+        ScanConfig config = new ScanConfig(
+                determineScanType(exclusiveStartKey, useIndex, tablePKCols, indexPKCols),
+                useIndex, tablePKCols, indexPKCols, effectiveLimit, tableName, indexName, countOnly
+        );
+
+        // For two-query scenarios, return the first query's PreparedStatement
+        if (config.type == ScanType.TWO_KEY_FIRST_QUERY) {
+            ScanConfig firstConfig = new ScanConfig(ScanType.TWO_KEY_FIRST_QUERY, config.useIndex,
+                    config.tablePKCols, config.indexPKCols, config.limit, config.tableName,
+                    config.indexName, config.countOnly);
+            return buildQuery(connection, request, firstConfig);
+        } else {
+            return buildQuery(connection, request, config);
         }
     }
 }

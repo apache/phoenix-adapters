@@ -21,6 +21,7 @@ package org.apache.phoenix.ddb.service.utils;
 import java.util.Map;
 
 import org.apache.phoenix.ddb.rest.metrics.ApiOperation;
+import org.apache.phoenix.ddb.service.ScanService;
 import org.apache.phoenix.ddb.service.exceptions.ValidationException;
 import org.apache.phoenix.ddb.utils.ApiMetadata;
 
@@ -92,6 +93,16 @@ public class ValidationUtil {
     }
 
     public static void validateScanRequest(Map<String, Object> request) {
+        if (ScanService.isSegmentScanRequestOnTable(request)) {
+            Integer segment = (Integer) request.get(ApiMetadata.SEGMENT);
+            Integer totalSegments = (Integer) request.get(ApiMetadata.TOTAL_SEGMENTS);
+            if (segment < 0) {
+                throw new ValidationException("Segment must be greater than or equal to 0");
+            }
+            if (segment >= totalSegments) {
+                throw new ValidationException("Segment must be less than Total Segments");
+            }
+        }
         String filterExpression = (String) request.get(ApiMetadata.FILTER_EXPRESSION);
         Object scanFilter = request.get(ApiMetadata.SCAN_FILTER);
         if (filterExpression != null && scanFilter != null) {

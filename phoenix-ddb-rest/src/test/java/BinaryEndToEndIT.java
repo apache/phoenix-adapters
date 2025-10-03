@@ -1,6 +1,7 @@
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
+import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.phoenix.coprocessor.PhoenixMasterObserver;
 import org.apache.phoenix.ddb.rest.RESTServer;
 import org.apache.phoenix.end2end.ServerMetadataCacheTestImpl;
@@ -673,7 +674,7 @@ public class BinaryEndToEndIT {
         items.sort((o1, o2) -> {
             byte[] b1 = o1.get("sk").b().asByteArray();
             byte[] b2 = o2.get("sk").b().asByteArray();
-            return compareByteArrays(b1, b2);
+            return Bytes.compareTo(b1, b2);
         });
 
         // choose a middle range of sk
@@ -727,7 +728,7 @@ public class BinaryEndToEndIT {
         items.sort((o1, o2) -> {
             byte[] b1 = o1.get("index_sk").b().asByteArray();
             byte[] b2 = o2.get("index_sk").b().asByteArray();
-            return compareByteArrays(b1, b2);
+            return Bytes.compareTo(b1, b2);
         });
 
         // choose a middle range of index_sk
@@ -935,17 +936,5 @@ public class BinaryEndToEndIT {
         key.put("hk", item.get("hk"));
         key.put("sk", item.get("sk"));
         return key;
-    }
-
-    private int compareByteArrays(byte[] left, byte[] right) {
-        int len = Math.min(left.length, right.length);
-        for (int i = 0; i < len; i++) {
-            int a = (left[i] & 0xff);
-            int b = (right[i] & 0xff);
-            if (a != b) {
-                return a - b;
-            }
-        }
-        return left.length - right.length;
     }
 }
