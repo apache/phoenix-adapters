@@ -26,6 +26,7 @@ import software.amazon.awssdk.services.dynamodb.model.CreateTableRequest;
 import software.amazon.awssdk.services.dynamodb.model.DeleteGlobalSecondaryIndexAction;
 import software.amazon.awssdk.services.dynamodb.model.DescribeTableRequest;
 import software.amazon.awssdk.services.dynamodb.model.DescribeTableResponse;
+import software.amazon.awssdk.services.dynamodb.model.DynamoDbException;
 import software.amazon.awssdk.services.dynamodb.model.GlobalSecondaryIndexUpdate;
 import software.amazon.awssdk.services.dynamodb.model.KeySchemaElement;
 import software.amazon.awssdk.services.dynamodb.model.KeyType;
@@ -284,5 +285,228 @@ public class UpdateTableIT {
         Assert.assertEquals("DELETING",
                 describeTableResponse.table().globalSecondaryIndexes().get(0).indexStatus()
                         .toString());
+    }
+
+    // Stream disabled -> enable with a type
+    @Test(timeout = 120000)
+    public void updateTableEnableStreamOnDisabledStream() throws Exception {
+        final String tableName = testName.getMethodName();
+        CreateTableRequest createTableRequest =
+                DDLTestUtils.getCreateTableRequest(tableName, "ForumName", ScalarAttributeType.S,
+                        "SubjectNumber", ScalarAttributeType.N);
+        
+        phoenixDBClientV2.createTable(createTableRequest);
+        dynamoDbClient.createTable(createTableRequest);
+
+        DescribeTableRequest describeTableRequest =
+                DescribeTableRequest.builder().tableName(tableName).build();
+        DescribeTableResponse phoenixDescribe = phoenixDBClientV2.describeTable(describeTableRequest);
+        DescribeTableResponse ddbDescribe = dynamoDbClient.describeTable(describeTableRequest);
+        Assert.assertEquals(ddbDescribe.table().streamSpecification(), phoenixDescribe.table().streamSpecification());
+
+        UpdateTableRequest.Builder utr = UpdateTableRequest.builder().tableName(tableName);
+        utr.streamSpecification(StreamSpecification.builder().streamEnabled(true)
+                .streamViewType(StreamViewType.NEW_IMAGE).build());
+        UpdateTableResponse phoenixUpdateResponse = phoenixDBClientV2.updateTable(utr.build());
+
+        UpdateTableResponse ddbUpdateResponse = dynamoDbClient.updateTable(utr.build());
+
+        Assert.assertTrue("Phoenix UpdateTableResponse should have stream enabled",
+                phoenixUpdateResponse.tableDescription().streamSpecification().streamEnabled());
+        Assert.assertTrue("DDB UpdateTableResponse should have stream enabled",
+                ddbUpdateResponse.tableDescription().streamSpecification().streamEnabled());
+        Assert.assertEquals("StreamViewType should match between Phoenix and DDB",
+                ddbUpdateResponse.tableDescription().streamSpecification().streamViewType(),
+                phoenixUpdateResponse.tableDescription().streamSpecification().streamViewType());
+
+        phoenixDescribe = phoenixDBClientV2.describeTable(describeTableRequest);
+        ddbDescribe = dynamoDbClient.describeTable(describeTableRequest);
+        Assert.assertEquals(ddbDescribe.table().streamSpecification(), phoenixDescribe.table().streamSpecification());
+    }
+
+    // Stream disabled -> disable (should throw exception)
+    @Test(timeout = 120000)
+    public void updateTableDisableStreamOnDisabledStream() throws Exception {
+        final String tableName = testName.getMethodName();
+        CreateTableRequest createTableRequest =
+                DDLTestUtils.getCreateTableRequest(tableName, "ForumName", ScalarAttributeType.S,
+                        "SubjectNumber", ScalarAttributeType.N);
+        
+        phoenixDBClientV2.createTable(createTableRequest);
+        dynamoDbClient.createTable(createTableRequest);
+
+        DescribeTableRequest describeTableRequest =
+                DescribeTableRequest.builder().tableName(tableName).build();
+        DescribeTableResponse phoenixDescribe = phoenixDBClientV2.describeTable(describeTableRequest);
+        DescribeTableResponse ddbDescribe = dynamoDbClient.describeTable(describeTableRequest);
+        Assert.assertEquals(ddbDescribe.table().streamSpecification(), phoenixDescribe.table().streamSpecification());
+
+        UpdateTableRequest.Builder utr = UpdateTableRequest.builder().tableName(tableName);
+        utr.streamSpecification(StreamSpecification.builder().streamEnabled(false).build());
+        
+        int phoenixStatusCode = -1;
+        try {
+            phoenixDBClientV2.updateTable(utr.build());
+            Assert.fail("Phoenix: Expected exception when trying to disable an already disabled stream");
+        } catch (DynamoDbException e) {
+            phoenixStatusCode = e.statusCode();
+            Assert.assertEquals("Phoenix: Status code should be 400 for validation error", 400, phoenixStatusCode);
+        }
+
+        int dynamoStatusCode = -1;
+        try {
+            dynamoDbClient.updateTable(utr.build());
+            Assert.fail("DDB: Expected exception when trying to disable an already disabled stream");
+        } catch (DynamoDbException e) {
+            dynamoStatusCode = e.statusCode();
+            Assert.assertEquals("DDB: Status code should be 400 for validation error", 400, dynamoStatusCode);
+        }
+
+        phoenixDescribe = phoenixDBClientV2.describeTable(describeTableRequest);
+        ddbDescribe = dynamoDbClient.describeTable(describeTableRequest);
+        Assert.assertEquals(ddbDescribe.table().streamSpecification(), phoenixDescribe.table().streamSpecification());
+    }
+
+    // Stream enabled -> enable with same type (should throw exception)
+    @Test(timeout = 120000)
+    public void updateTableEnableStreamWithSameType() throws Exception {
+        final String tableName = testName.getMethodName();
+        CreateTableRequest createTableRequest =
+                DDLTestUtils.getCreateTableRequest(tableName, "ForumName", ScalarAttributeType.S,
+                        "SubjectNumber", ScalarAttributeType.N);
+        createTableRequest = createTableRequest.toBuilder()
+                .streamSpecification(StreamSpecification.builder().streamEnabled(true)
+                        .streamViewType(StreamViewType.KEYS_ONLY).build())
+                .build();
+        
+        phoenixDBClientV2.createTable(createTableRequest);
+        dynamoDbClient.createTable(createTableRequest);
+
+        DescribeTableRequest describeTableRequest =
+                DescribeTableRequest.builder().tableName(tableName).build();
+        DescribeTableResponse phoenixDescribe = phoenixDBClientV2.describeTable(describeTableRequest);
+        DescribeTableResponse ddbDescribe = dynamoDbClient.describeTable(describeTableRequest);
+        Assert.assertEquals(ddbDescribe.table().streamSpecification(), phoenixDescribe.table().streamSpecification());
+
+        UpdateTableRequest.Builder utr = UpdateTableRequest.builder().tableName(tableName);
+        utr.streamSpecification(StreamSpecification.builder().streamEnabled(true)
+                .streamViewType(StreamViewType.KEYS_ONLY).build());
+
+        int phoenixStatusCode = -1;
+        try {
+            phoenixDBClientV2.updateTable(utr.build());
+            Assert.fail("Phoenix: Expected exception when trying to enable already enabled stream with same type");
+        } catch (DynamoDbException e) {
+            phoenixStatusCode = e.statusCode();
+            Assert.assertEquals("Phoenix: Status code should be 400 for validation error", 400, phoenixStatusCode);
+        }
+
+        int dynamoStatusCode = -1;
+        try {
+            dynamoDbClient.updateTable(utr.build());
+            Assert.fail("DDB: Expected exception when trying to enable already enabled stream with same type");
+        } catch (DynamoDbException e) {
+            dynamoStatusCode = e.statusCode();
+            Assert.assertEquals("DDB: Status code should be 400 for validation error", 400, dynamoStatusCode);
+        }
+
+        phoenixDescribe = phoenixDBClientV2.describeTable(describeTableRequest);
+        ddbDescribe = dynamoDbClient.describeTable(describeTableRequest);
+        Assert.assertEquals(ddbDescribe.table().streamSpecification(), phoenixDescribe.table().streamSpecification());
+    }
+
+    // Stream enabled -> enable with different type (should throw exception)
+    @Test(timeout = 120000)
+    public void updateTableChangeStreamType() throws Exception {
+        final String tableName = testName.getMethodName();
+        CreateTableRequest createTableRequest =
+                DDLTestUtils.getCreateTableRequest(tableName, "ForumName", ScalarAttributeType.S,
+                        "SubjectNumber", ScalarAttributeType.N);
+        createTableRequest = createTableRequest.toBuilder()
+                .streamSpecification(StreamSpecification.builder().streamEnabled(true)
+                        .streamViewType(StreamViewType.OLD_IMAGE).build())
+                .build();
+        
+        phoenixDBClientV2.createTable(createTableRequest);
+        dynamoDbClient.createTable(createTableRequest);
+
+        DescribeTableRequest describeTableRequest =
+                DescribeTableRequest.builder().tableName(tableName).build();
+        DescribeTableResponse phoenixDescribe = phoenixDBClientV2.describeTable(describeTableRequest);
+        DescribeTableResponse ddbDescribe = dynamoDbClient.describeTable(describeTableRequest);
+        Assert.assertEquals(ddbDescribe.table().streamSpecification(), phoenixDescribe.table().streamSpecification());
+
+        UpdateTableRequest.Builder utr = UpdateTableRequest.builder().tableName(tableName);
+        utr.streamSpecification(StreamSpecification.builder().streamEnabled(true)
+                .streamViewType(StreamViewType.NEW_AND_OLD_IMAGES).build());
+
+        int phoenixStatusCode = -1;
+        try {
+            phoenixDBClientV2.updateTable(utr.build());
+            Assert.fail("Phoenix: Expected exception when trying to change stream type");
+        } catch (DynamoDbException e) {
+            phoenixStatusCode = e.statusCode();
+            Assert.assertEquals("Phoenix: Status code should be 400 for validation error", 400, phoenixStatusCode);
+        }
+
+        int dynamoStatusCode = -1;
+        try {
+            dynamoDbClient.updateTable(utr.build());
+            Assert.fail("DDB: Expected exception when trying to change stream type");
+        } catch (DynamoDbException e) {
+            dynamoStatusCode = e.statusCode();
+            Assert.assertEquals("DDB: Status code should be 400 for validation error", 400, dynamoStatusCode);
+        }
+
+        phoenixDescribe = phoenixDBClientV2.describeTable(describeTableRequest);
+        ddbDescribe = dynamoDbClient.describeTable(describeTableRequest);
+        Assert.assertEquals(ddbDescribe.table().streamSpecification(), phoenixDescribe.table().streamSpecification());
+    }
+
+    // Stream enabled -> disable (should throw exception)
+    @Test(timeout = 120000)
+    public void updateTableDisableStreamOnEnabledStream() throws Exception {
+        final String tableName = testName.getMethodName();
+        CreateTableRequest createTableRequest =
+                DDLTestUtils.getCreateTableRequest(tableName, "ForumName", ScalarAttributeType.S,
+                        "SubjectNumber", ScalarAttributeType.N);
+        createTableRequest = createTableRequest.toBuilder()
+                .streamSpecification(StreamSpecification.builder().streamEnabled(true)
+                        .streamViewType(StreamViewType.NEW_IMAGE).build())
+                .build();
+        
+        phoenixDBClientV2.createTable(createTableRequest);
+        dynamoDbClient.createTable(createTableRequest);
+
+        DescribeTableRequest describeTableRequest =
+                DescribeTableRequest.builder().tableName(tableName).build();
+        DescribeTableResponse phoenixDescribe = phoenixDBClientV2.describeTable(describeTableRequest);
+        DescribeTableResponse ddbDescribe = dynamoDbClient.describeTable(describeTableRequest);
+        Assert.assertEquals(ddbDescribe.table().streamSpecification(), phoenixDescribe.table().streamSpecification());
+
+        UpdateTableRequest.Builder utr = UpdateTableRequest.builder().tableName(tableName);
+        utr.streamSpecification(StreamSpecification.builder().streamEnabled(false).build());
+
+        int phoenixStatusCode = -1;
+        try {
+            phoenixDBClientV2.updateTable(utr.build());
+            Assert.fail("Phoenix: Expected exception when trying to disable a stream");
+        } catch (DynamoDbException e) {
+            phoenixStatusCode = e.statusCode();
+            Assert.assertEquals("Phoenix: Status code should be 400 for validation error", 400, phoenixStatusCode);
+        }
+
+        // ddb allows disabling stream
+        dynamoDbClient.updateTable(utr.build());
+        ddbDescribe = dynamoDbClient.describeTable(describeTableRequest);
+        Assert.assertNull(ddbDescribe.table().streamSpecification());
+
+        phoenixDescribe = phoenixDBClientV2.describeTable(describeTableRequest);
+        Assert.assertNotNull("Phoenix: Stream specification should still be present",
+                phoenixDescribe.table().streamSpecification());
+        Assert.assertTrue(phoenixDescribe.table().streamSpecification().streamEnabled());
+        Assert.assertEquals(StreamViewType.NEW_IMAGE,
+                phoenixDescribe.table().streamSpecification().streamViewType());
+
     }
 }
