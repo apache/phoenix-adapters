@@ -32,9 +32,10 @@ import org.apache.phoenix.ddb.service.exceptions.PhoenixServiceException;
 import org.apache.phoenix.ddb.service.exceptions.ValidationException;
 import org.apache.phoenix.ddb.service.utils.ValidationUtil;
 import org.apache.phoenix.ddb.service.utils.SegmentScanUtil;
+import org.apache.phoenix.ddb.service.utils.ScanConfig;
+import org.apache.phoenix.ddb.service.utils.ScanConfig.ScanType;
 import org.apache.phoenix.ddb.utils.ApiMetadata;
 
-import com.google.common.annotations.VisibleForTesting;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -55,71 +56,6 @@ public class ScanService {
             "SELECT /*+ INDEX(\"%s.%s\" \"%s\") */ COL FROM %s.\"%s\" ";
 
     private static final int MAX_SCAN_LIMIT = 100;
-
-    /**
-     * Enumeration of different scan types
-     */
-    private enum ScanType {
-        NO_EXCLUSIVE_START_KEY,           // Simple scan without pagination
-        SINGLE_KEY_CONTINUATION,          // pk > value (single key table)
-        TWO_KEY_FIRST_QUERY,             // pk1 = value AND pk2 > value (two key table, first query)
-        TWO_KEY_SECOND_QUERY             // pk1 > value (two key table, second query)
-    }
-
-    /**
-     * Container for scan configuration
-     */
-    private static class ScanConfig {
-        final ScanType type;
-        final boolean useIndex;
-        final List<PColumn> tablePKCols;
-        final List<PColumn> indexPKCols;
-        final PColumn partitionKeyCol;
-        final PColumn sortKeyCol;
-        final int limit;
-        final String tableName;
-        final String indexName;
-        final boolean countOnly;
-        // Segment scan fields
-        boolean isSegmentScan = false;
-        ScanSegmentInfo scanSegmentInfo = null;
-
-
-        ScanConfig(ScanType type, boolean useIndex, List<PColumn> tablePKCols,
-                List<PColumn> indexPKCols, int limit, String tableName, String indexName,
-                boolean countOnly) {
-            this.type = type;
-            this.useIndex = useIndex;
-            this.tablePKCols = tablePKCols;
-            this.indexPKCols = indexPKCols;
-            this.limit = limit;
-            this.tableName = tableName;
-            this.indexName = indexName;
-            this.countOnly = countOnly;
-            
-            List<PColumn> relevantPKCols = useIndex ? indexPKCols : tablePKCols;
-            this.partitionKeyCol = relevantPKCols.get(0);
-            this.sortKeyCol = (relevantPKCols.size() > 1) ? relevantPKCols.get(1) : null;
-        }
-
-        void setScanSegmentInfo(ScanSegmentInfo segmentInfo) {
-            this.isSegmentScan = true;
-            this.scanSegmentInfo = segmentInfo;
-        }
-
-        boolean isSegmentScan() {
-            return isSegmentScan && (scanSegmentInfo != null);
-        }
-
-        @Override
-        public String toString() {
-            if (isSegmentScan) {
-                return this.type.toString() + "," + this.scanSegmentInfo.toShortString();
-            } else {
-                return this.type.toString();
-            }
-        }
-    }
 
     public static Map<String, Object> scan(Map<String, Object> request, String connectionUrl) {
         ValidationUtil.validateScanRequest(request);
@@ -171,22 +107,22 @@ public class ScanService {
         }
 
         // Execute based on scan type (same logic for both regular and segment scans)
-        switch (config.type) {
+        switch (config.getType()) {
             case NO_EXCLUSIVE_START_KEY:
             case SINGLE_KEY_CONTINUATION:
                 return executeSingleQuery(connection, request, config);
             case TWO_KEY_FIRST_QUERY:
                 return executeTwoKeyTableScan(connection, request, config);
             default:
-                throw new IllegalStateException("Unsupported scan config type: " + config.type);
+                throw new IllegalStateException("Unsupported scan config type: " + config.getType());
         }
     }
 
     /**
      * Determine the appropriate scan type based on request parameters
      */
-    private static ScanType determineScanType(Map<String, Object> exclusiveStartKey, boolean useIndex,
-                                               List<PColumn> tablePKCols, List<PColumn> indexPKCols) {
+    public static ScanType determineScanType(Map<String, Object> exclusiveStartKey,
+            boolean useIndex, List<PColumn> tablePKCols, List<PColumn> indexPKCols) {
         if (exclusiveStartKey == null || exclusiveStartKey.isEmpty()) {
             return ScanType.NO_EXCLUSIVE_START_KEY;
         }
@@ -214,8 +150,8 @@ public class ScanService {
                                                          ScanConfig config) throws SQLException {
         PreparedStatement stmt = buildQuery(connection, request, config);
         return DQLUtils.executeStatementReturnResult(stmt, getProjectionAttributes(request),
-                config.useIndex, config.tablePKCols, config.indexPKCols, config.tableName,
-                false, false, config.countOnly);
+                config.useIndex(), config.getTablePKCols(), config.getIndexPKCols(), config.getTableName(),
+                false, false, config.isCountOnly());
     }
 
     /**
@@ -228,10 +164,10 @@ public class ScanService {
         
         PreparedStatement firstStmt = buildQuery(connection, request, config);
         Map<String, Object> firstResult = DQLUtils.executeStatementReturnResult(firstStmt,
-                getProjectionAttributes(request), config.useIndex, config.tablePKCols, config.indexPKCols,
-                config.tableName, false, true, config.countOnly);
+                getProjectionAttributes(request), config.useIndex(), config.getTablePKCols(), config.getIndexPKCols(),
+                config.getTableName(), false, true, config.isCountOnly());
         
-        List<Map<String, Object>> allItems = config.countOnly
+        List<Map<String, Object>> allItems = config.isCountOnly()
                 ? new ArrayList<>()
                 : new ArrayList<>((List<Map<String, Object>>) firstResult.get(ApiMetadata.ITEMS));
         int totalCount = (Integer) firstResult.get(ApiMetadata.COUNT);
@@ -239,21 +175,15 @@ public class ScanService {
         Map<String, Object> lastEvaluatedKey = (Map<String, Object>) firstResult.get(ApiMetadata.LAST_EVALUATED_KEY);
 
         // Execute second query if needed: (pk1 > k1)
-        if (totalCount < config.limit && !(boolean)firstResult.get(DQLUtils.SIZE_LIMIT_REACHED)) {
-            int remainingLimit = config.limit - totalCount;
-            ScanConfig secondConfig = new ScanConfig(ScanType.TWO_KEY_SECOND_QUERY, config.useIndex,
-                    config.tablePKCols, config.indexPKCols, remainingLimit, config.tableName,
-                    config.indexName, config.countOnly);
-            // Copy segment scan configuration if present
-            if (config.isSegmentScan()) {
-                secondConfig.setScanSegmentInfo(config.scanSegmentInfo);
-            }
+        if (totalCount < config.getLimit() && !(boolean)firstResult.get(DQLUtils.SIZE_LIMIT_REACHED)) {
+            int remainingLimit = config.getLimit() - totalCount;
+            ScanConfig secondConfig = config.cloneWithTypeAndLimit(ScanType.TWO_KEY_SECOND_QUERY, remainingLimit);
             PreparedStatement secondStmt = buildQuery(connection, request, secondConfig);
             Map<String, Object> secondResult = DQLUtils.executeStatementReturnResult(secondStmt,
-                    getProjectionAttributes(request), config.useIndex, config.tablePKCols, config.indexPKCols,
-                    config.tableName, false, false, config.countOnly);
+                    getProjectionAttributes(request), config.useIndex(), config.getTablePKCols(), config.getIndexPKCols(),
+                    config.getTableName(), false, false, config.isCountOnly());
 
-            if (!config.countOnly) {
+            if (!config.isCountOnly()) {
                 List<Map<String, Object>> secondItems = (List<Map<String, Object>>) secondResult.get(ApiMetadata.ITEMS);
                 allItems.addAll(secondItems);
             }
@@ -267,14 +197,14 @@ public class ScanService {
             }
         }
         
-        return buildScanResponse(allItems, totalCount, totalScannedCount, config.tableName, lastEvaluatedKey, config.countOnly);
+        return buildScanResponse(allItems, totalCount, totalScannedCount, config.getTableName(), lastEvaluatedKey, config.isCountOnly());
     }
 
     /**
      * Unified query builder that handles all scan types
      */
-    private static PreparedStatement buildQuery(Connection connection, Map<String, Object> request,
-                                              ScanConfig config) throws SQLException {
+    public static PreparedStatement buildQuery(Connection connection, Map<String, Object> request,
+            ScanConfig config) throws SQLException {
         
         StringBuilder queryBuilder = buildBaseSelectClause(config);
 
@@ -291,7 +221,7 @@ public class ScanService {
         addOrderByClause(queryBuilder, config, hasFilterCondition);
 
         // Add limit clause
-        addLimitClause(queryBuilder, config.limit);
+        addLimitClause(queryBuilder, config.getLimit());
 
         LOGGER.debug("Scan Query ({}): {}", config, queryBuilder);
 
@@ -304,11 +234,11 @@ public class ScanService {
      * Build the base SELECT clause with optional index hint
      */
     private static StringBuilder buildBaseSelectClause(ScanConfig config) {
-        if (StringUtils.isEmpty(config.indexName)) {
-            return new StringBuilder(String.format(SELECT_QUERY, "DDB", config.tableName));
+        if (StringUtils.isEmpty(config.getIndexName())) {
+            return new StringBuilder(String.format(SELECT_QUERY, "DDB", config.getTableName()));
         } else {
             return new StringBuilder(String.format(SELECT_QUERY_WITH_INDEX_HINT, 
-                    "DDB", config.tableName, config.indexName, "DDB", config.tableName));
+                    "DDB", config.getTableName(), config.getIndexName(), "DDB", config.getTableName()));
         }
     }
 
@@ -335,7 +265,7 @@ public class ScanService {
      */
     private static boolean addKeyConditions(StringBuilder queryBuilder, ScanConfig config,
             boolean hasPreviousConditions) {
-        if (config.type == ScanType.NO_EXCLUSIVE_START_KEY) {
+        if (config.getType() == ScanType.NO_EXCLUSIVE_START_KEY) {
             // No key conditions needed for simple scan
             return false;
         }
@@ -346,15 +276,15 @@ public class ScanService {
             queryBuilder.append(" WHERE ");
         }
         
-        String partitionKeyName = getColumnNameForQuery(config.partitionKeyCol, config.useIndex);
+        String partitionKeyName = getColumnNameForQuery(config.getPartitionKeyCol(), config.useIndex());
         
-        switch (config.type) {
+        switch (config.getType()) {
             case SINGLE_KEY_CONTINUATION:
             case TWO_KEY_SECOND_QUERY:
                 queryBuilder.append(partitionKeyName).append(" > ? ");
                 break;
             case TWO_KEY_FIRST_QUERY:
-                String sortKeyName = getColumnNameForQuery(config.sortKeyCol, config.useIndex);
+                String sortKeyName = getColumnNameForQuery(config.getSortKeyCol(), config.useIndex());
                 queryBuilder.append("( ").append(partitionKeyName).append(" = ? AND ")
                            .append(sortKeyName).append(" > ? ) ");
                 break;
@@ -376,10 +306,10 @@ public class ScanService {
      */
     private static void addOrderByClause(StringBuilder queryBuilder, ScanConfig config,
             boolean hasFilterCondition) {
-        if (hasFilterCondition && config.partitionKeyCol.getDataType() == PDouble.INSTANCE) {
-            String partitionKeyName = config.useIndex
-                    ? config.partitionKeyCol.getName().getString().substring(1)
-                    : CommonServiceUtils.getEscapedArgument(config.partitionKeyCol.getName().getString());
+        if (hasFilterCondition && config.getPartitionKeyCol().getDataType() == PDouble.INSTANCE) {
+            String partitionKeyName = config.useIndex()
+                    ? config.getPartitionKeyCol().getName().getString().substring(1)
+                    : CommonServiceUtils.getEscapedArgument(config.getPartitionKeyCol().getName().getString());
             queryBuilder.append(" ORDER BY ").append(partitionKeyName).append(" ");
         }
     }
@@ -391,13 +321,13 @@ public class ScanService {
                                          ScanConfig config) throws SQLException {
 
         int paramIndex = 1;
-        if (config.type != ScanType.NO_EXCLUSIVE_START_KEY) {
+        if (config.getType() != ScanType.NO_EXCLUSIVE_START_KEY) {
             // Set key condition parameters first
             Map<String, Object> exclusiveStartKey =
                     (Map<String, Object>) request.get(ApiMetadata.EXCLUSIVE_START_KEY);
-            String partitionKeyName = getKeyNameFromColumn(config.partitionKeyCol, config.useIndex);
+            String partitionKeyName = getKeyNameFromColumn(config.getPartitionKeyCol(), config.useIndex());
 
-            switch (config.type) {
+            switch (config.getType()) {
             case SINGLE_KEY_CONTINUATION:
             case TWO_KEY_SECOND_QUERY:
                 DQLUtils.setKeyValueOnStatement(stmt, paramIndex++,
@@ -405,7 +335,7 @@ public class ScanService {
                 break;
 
             case TWO_KEY_FIRST_QUERY:
-                String sortKeyName = getKeyNameFromColumn(config.sortKeyCol, config.useIndex);
+                String sortKeyName = getKeyNameFromColumn(config.getSortKeyCol(), config.useIndex());
                 // Set pk1 = ?
                 DQLUtils.setKeyValueOnStatement(stmt, paramIndex++,
                         (Map<String, Object>) exclusiveStartKey.get(partitionKeyName), false);
@@ -418,8 +348,8 @@ public class ScanService {
 
         // Set segment boundary parameters if this is a segment scan
         if (config.isSegmentScan()) {
-            byte[] startKey = config.scanSegmentInfo.getStartKey();
-            byte[] endKey = config.scanSegmentInfo.getEndKey();
+            byte[] startKey = config.getScanSegmentInfo().getStartKey();
+            byte[] endKey = config.getScanSegmentInfo().getEndKey();
             stmt.setBytes(paramIndex++, startKey);
             stmt.setBytes(paramIndex++, endKey);
         }
@@ -581,41 +511,6 @@ public class ScanService {
             }
             request.remove(ApiMetadata.SCAN_FILTER);
             request.remove(ApiMetadata.CONDITIONAL_OPERATOR);
-        }
-    }
-
-    /**
-     * Public method to get PreparedStatement for testing purposes.
-     * Returns the primary PreparedStatement that would be used for the scan request.
-     * For two-query scenarios, returns the first query's PreparedStatement.
-     */
-    @VisibleForTesting
-    public static PreparedStatement getPreparedStatement(Connection connection, Map<String, Object> request)
-            throws SQLException {
-        String tableName = (String) request.get(ApiMetadata.TABLE_NAME);
-        String indexName = (String) request.get(ApiMetadata.INDEX_NAME);
-        boolean useIndex = !StringUtils.isEmpty(indexName);
-
-        List<PColumn> tablePKCols = PhoenixUtils.getPKColumns(connection, tableName);
-        List<PColumn> indexPKCols = useIndex ? PhoenixUtils.getOnlyIndexPKColumns(connection, indexName, tableName) : null;
-
-        Map<String, Object> exclusiveStartKey = (Map<String, Object>) request.get(ApiMetadata.EXCLUSIVE_START_KEY);
-        int effectiveLimit = getEffectiveLimit(request);
-        boolean countOnly = ApiMetadata.SELECT_COUNT.equals(request.get(ApiMetadata.SELECT));
-
-        ScanConfig config = new ScanConfig(
-                determineScanType(exclusiveStartKey, useIndex, tablePKCols, indexPKCols),
-                useIndex, tablePKCols, indexPKCols, effectiveLimit, tableName, indexName, countOnly
-        );
-
-        // For two-query scenarios, return the first query's PreparedStatement
-        if (config.type == ScanType.TWO_KEY_FIRST_QUERY) {
-            ScanConfig firstConfig = new ScanConfig(ScanType.TWO_KEY_FIRST_QUERY, config.useIndex,
-                    config.tablePKCols, config.indexPKCols, config.limit, config.tableName,
-                    config.indexName, config.countOnly);
-            return buildQuery(connection, request, firstConfig);
-        } else {
-            return buildQuery(connection, request, config);
         }
     }
 }

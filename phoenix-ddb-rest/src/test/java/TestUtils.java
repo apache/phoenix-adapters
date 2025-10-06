@@ -31,6 +31,7 @@ import software.amazon.awssdk.services.dynamodb.model.StreamDescription;
 import software.amazon.awssdk.services.dynamodb.model.StreamStatus;
 import software.amazon.awssdk.services.dynamodb.streams.DynamoDbStreamsClient;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HRegionLocation;
 import org.apache.hadoop.hbase.TableName;
@@ -44,6 +45,8 @@ import org.apache.phoenix.ddb.bson.BsonDocumentToMap;
 import org.apache.phoenix.ddb.bson.DdbAttributesToBsonDocument;
 import org.apache.phoenix.ddb.service.QueryService;
 import org.apache.phoenix.ddb.service.ScanService;
+import org.apache.phoenix.ddb.service.utils.ScanConfig;
+import org.apache.phoenix.ddb.utils.ApiMetadata;
 import org.apache.phoenix.ddb.utils.PhoenixUtils;
 import org.apache.phoenix.jdbc.PhoenixConnection;
 import org.apache.phoenix.jdbc.PhoenixPreparedStatement;
@@ -121,12 +124,43 @@ public class TestUtils {
             throws SQLException {
         String indexName = sr.indexName();
         try (Connection connection = DriverManager.getConnection(url)) {
-            PreparedStatement ps = ScanService.getPreparedStatement(connection, getScanRequest(sr));
+            PreparedStatement ps = getPreparedStatementForScan(connection, getScanRequest(sr));
             ExplainPlan plan =
                     ps.unwrap(PhoenixPreparedStatement.class).optimizeQuery().getExplainPlan();
             ExplainPlanAttributes explainPlanAttributes = plan.getPlanStepsAsAttributes();
             Assert.assertEquals(scanType, explainPlanAttributes.getExplainScanType());
             Assert.assertEquals("DDB." + indexName, explainPlanAttributes.getTableName());
+        }
+    }
+
+    /**
+     * Returns the primary PreparedStatement that would be used for the scan request.
+     * For two-query scenarios, returns the first query's PreparedStatement.
+     */
+    private static PreparedStatement getPreparedStatementForScan(Connection connection,
+            Map<String, Object> request)
+            throws SQLException {
+        String tableName = (String) request.get(ApiMetadata.TABLE_NAME);
+        String indexName = (String) request.get(ApiMetadata.INDEX_NAME);
+        boolean useIndex = !StringUtils.isEmpty(indexName);
+
+        List<PColumn> tablePKCols = PhoenixUtils.getPKColumns(connection, tableName);
+        List<PColumn> indexPKCols = useIndex ? PhoenixUtils.getOnlyIndexPKColumns(connection, indexName, tableName) : null;
+
+        Map<String, Object> exclusiveStartKey = (Map<String, Object>) request.get(ApiMetadata.EXCLUSIVE_START_KEY);
+        int effectiveLimit = 100;
+        boolean countOnly = ApiMetadata.SELECT_COUNT.equals(request.get(ApiMetadata.SELECT));
+
+        ScanConfig config = new ScanConfig(
+                ScanService.determineScanType(exclusiveStartKey, useIndex, tablePKCols, indexPKCols),
+                useIndex, tablePKCols, indexPKCols, effectiveLimit, tableName, indexName, countOnly
+        );
+
+        // For two-query scenarios, return the first query's PreparedStatement
+        if (config.getType() == ScanConfig.ScanType.TWO_KEY_FIRST_QUERY) {
+            return ScanService.buildQuery(connection, request, config);
+        } else {
+            return ScanService.buildQuery(connection, request, config);
         }
     }
 
