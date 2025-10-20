@@ -20,6 +20,7 @@ package org.apache.phoenix.ddb;
 import org.apache.phoenix.jdbc.PhoenixConnection;
 import org.apache.phoenix.schema.PTable;
 import org.apache.phoenix.util.CDCUtil;
+import org.apache.phoenix.ddb.utils.PhoenixUtils;
 import org.junit.Assert;
 import software.amazon.awssdk.services.dynamodb.model.AttributeDefinition;
 import software.amazon.awssdk.services.dynamodb.model.CreateTableRequest;
@@ -229,12 +230,12 @@ public class DDLTestUtils {
         Assert.assertTrue(td.latestStreamArn().startsWith("phoenix/cdc/stream/"));
         Assert.assertTrue(td.latestStreamArn().contains(tableName));
 
-        PTable dataTable = pconn.getTable("DDB." + tableName);
+        PTable dataTable = pconn.getTable(PhoenixUtils.getFullTableName(tableName, false));
         Assert.assertEquals(streamType, dataTable.getSchemaVersion());
         boolean cdcIndexPresent = false;
         PTable cdcIndex = null;
         for (PTable index : dataTable.getIndexes()) {
-            if (CDCUtil.isCDCIndex(index.getName().getString().split("DDB.")[1])) {
+            if (CDCUtil.isCDCIndex(PhoenixUtils.getTableNameFromFullName(index.getName().getString(), false))) {
                 cdcIndexPresent = true;
                 cdcIndex = index;
             }

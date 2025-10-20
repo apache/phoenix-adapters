@@ -44,7 +44,7 @@ public class GetItemService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(GetItemService.class);
 
-    private static final String SELECT_QUERY = "SELECT COL FROM %s.\"%s\" WHERE %s = ? ";
+    private static final String SELECT_QUERY = "SELECT COL FROM %s WHERE %s = ? ";
     private static final String CLAUSE_FOR_SORT_COL = "AND %s = ?";
 
     public static Map<String, Object> getItem(Map<String, Object> request, String connectionUrl) {
@@ -73,7 +73,8 @@ public class GetItemService {
         String tableName = (String) request.get("TableName");
         String partitionKeyPKCol = tablePKCols.get(0).toString();
 
-        StringBuilder queryBuilder = new StringBuilder(String.format(SELECT_QUERY, "DDB", tableName,
+        StringBuilder queryBuilder = new StringBuilder(String.format(SELECT_QUERY,
+                PhoenixUtils.getFullTableName(tableName, true),
                 CommonServiceUtils.getEscapedArgument(partitionKeyPKCol)));
         if (tablePKCols.size() > 1) {
             String sortKeyPKCol = tablePKCols.get(1).toString();

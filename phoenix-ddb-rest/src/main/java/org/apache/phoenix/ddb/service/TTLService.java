@@ -19,7 +19,7 @@ import java.util.Map;
 public class TTLService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(TTLService.class);
-    private static final String ALTER_TTL_STMT = "ALTER TABLE %s.\"%s\" SET TTL = '%s'";
+    private static final String ALTER_TTL_STMT = "ALTER TABLE %s SET TTL = '%s'";
 
     public static Map<String, Object> updateTimeToLive(Map<String, Object> request,
             String connectionUrl) {
@@ -28,12 +28,13 @@ public class TTLService {
                 (Map<String, Object>) request.get(ApiMetadata.TIME_TO_LIVE_SPECIFICATION);
         String colName = (String) ttlSpec.get(ApiMetadata.ATTRIBUTE_NAME);
         boolean enabled = Boolean.TRUE.equals(ttlSpec.get(ApiMetadata.TIME_TO_LIVE_ENABLED));
+        String fullTableName = PhoenixUtils.getFullTableName(tableName, true);
         String alterStmt;
         if (enabled) {
             String ttlExpression = String.format(PhoenixUtils.TTL_EXPRESSION, colName, colName);
-            alterStmt = String.format(ALTER_TTL_STMT, "DDB", tableName, ttlExpression);
+            alterStmt = String.format(ALTER_TTL_STMT, fullTableName, ttlExpression);
         } else {
-            alterStmt = String.format(ALTER_TTL_STMT, "DDB", tableName, HConstants.FOREVER);
+            alterStmt = String.format(ALTER_TTL_STMT, fullTableName, HConstants.FOREVER);
         }
         LOGGER.debug("SQL for UpdateTimeToLive: {}", alterStmt);
         try (Connection connection = ConnectionUtil.getConnection(connectionUrl)) {
@@ -48,10 +49,10 @@ public class TTLService {
 
     public static Map<String, Object> describeTimeToLive(Map<String, Object> request,
             String connectionUrl) {
-        String tableName = "DDB." + request.get(ApiMetadata.TABLE_NAME);
+        String fullTableName = PhoenixUtils.getFullTableName((String)request.get(ApiMetadata.TABLE_NAME), false);
         Map<String, Object> ttlDesc = new HashMap<>();
         try (Connection connection = ConnectionUtil.getConnection(connectionUrl)) {
-            PTable pTable = connection.unwrap(PhoenixConnection.class).getTable(tableName);
+            PTable pTable = connection.unwrap(PhoenixConnection.class).getTable(fullTableName);
             String ttlExpression = pTable.getTTLExpression().toString().trim();
             if (ttlExpression.contains("BSON_VALUE")) {
                 ttlDesc.put(ApiMetadata.TIME_TO_LIVE_STATUS, "ENABLED");

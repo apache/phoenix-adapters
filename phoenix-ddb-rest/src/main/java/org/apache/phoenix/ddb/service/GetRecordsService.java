@@ -31,7 +31,7 @@ public class GetRecordsService {
     private static final Logger LOGGER = LoggerFactory.getLogger(GetRecordsService.class);
 
     private static final String GET_RECORDS_QUERY = "SELECT /*+ CDC_INCLUDE(PRE, POST) */ * " +
-            " FROM %s.\"%s\" WHERE PARTITION_ID() = ? " +
+            " FROM %s WHERE PARTITION_ID() = ? " +
             " AND PHOENIX_ROW_TIMESTAMP() >= CAST(CAST(? AS BIGINT) AS TIMESTAMP) LIMIT ? ";
 
     private static final int MAX_GET_RECORDS_LIMIT = 100;
@@ -61,8 +61,7 @@ public class GetRecordsService {
         Map<String, Object> record = new HashMap<>();
         try (Connection conn = ConnectionUtil.getConnection(connectionUrl)) {
             String tableName = pIter.getTableName();
-            List<PColumn> pkCols = PhoenixUtils.getPKColumns(conn,
-                    tableName.startsWith("DDB.") ? tableName.split("DDB.")[1] : tableName);
+            List<PColumn> pkCols = PhoenixUtils.getPKColumns(conn, PhoenixUtils.getTableNameFromFullName(tableName, false));
             int limit = (requestLimit != null && requestLimit > 0)
                     ? Math.min(requestLimit, MAX_GET_RECORDS_LIMIT)
                     : MAX_GET_RECORDS_LIMIT;
@@ -127,7 +126,7 @@ public class GetRecordsService {
                                                           PhoenixShardIterator phoenixShardIterator,
                                                           Integer limit) throws SQLException {
         StringBuilder sb = new StringBuilder(String.format(
-                GET_RECORDS_QUERY, "DDB", phoenixShardIterator.getCdcObject()));
+                GET_RECORDS_QUERY, PhoenixUtils.getFullTableName(phoenixShardIterator.getCdcObject(), true)));
         if (phoenixShardIterator.getOffset() > 0) {
             sb.append(" OFFSET ? ");
         }

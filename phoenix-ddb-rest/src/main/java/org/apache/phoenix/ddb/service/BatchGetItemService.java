@@ -27,9 +27,9 @@ public class BatchGetItemService {
     private static final Logger LOGGER = LoggerFactory.getLogger(BatchGetItemService.class);
 
     private static final String SELECT_QUERY_WITH_SORT_COL =
-            "SELECT COL FROM %s.\"%s\" WHERE (%s,%s) IN (%s)";
+            "SELECT COL FROM %s WHERE (%s,%s) IN (%s)";
     private static final String SELECT_QUERY_WITH_ONLY_PARTITION_COL =
-            "SELECT COL FROM %s.\"%s\" WHERE (%s) IN (%s)";
+            "SELECT COL FROM %s WHERE (%s) IN (%s)";
     private static final String PARAMETER_CLAUSE_IF_ONLY_PARTITION_COL = "(?)";
     private static final String PARAMETER_CLAUSE_IF_BOTH_COLS = "(?,?)";
     private static final String COMMA = ",";
@@ -103,13 +103,13 @@ public class BatchGetItemService {
         if (tablePKCols.size() > 1) {
             String sortKeyPKCol = tablePKCols.get(1).toString();
             queryBuilder = new StringBuilder(
-                    String.format(SELECT_QUERY_WITH_SORT_COL, "DDB", tableName,
+                    String.format(SELECT_QUERY_WITH_SORT_COL, PhoenixUtils.getFullTableName(tableName, true),
                             CommonServiceUtils.getEscapedArgument(partitionKeyPKCol),
                             CommonServiceUtils.getEscapedArgument(sortKeyPKCol),
                             buildSQLQueryClause(numKeysToQuery, true)));
         } else {
             queryBuilder = new StringBuilder(
-                    String.format(SELECT_QUERY_WITH_ONLY_PARTITION_COL, "DDB", tableName,
+                    String.format(SELECT_QUERY_WITH_ONLY_PARTITION_COL, PhoenixUtils.getFullTableName(tableName, true),
                             CommonServiceUtils.getEscapedArgument(partitionKeyPKCol),
                             buildSQLQueryClause(numKeysToQuery, false)));
 

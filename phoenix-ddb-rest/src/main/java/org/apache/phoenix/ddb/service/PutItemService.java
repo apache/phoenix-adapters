@@ -11,6 +11,7 @@ import org.apache.phoenix.ddb.ConnectionUtil;
 import org.apache.phoenix.ddb.service.exceptions.PhoenixServiceException;
 import org.apache.phoenix.ddb.service.utils.ValidationUtil;
 import org.apache.phoenix.ddb.utils.ApiMetadata;
+import org.apache.phoenix.ddb.utils.PhoenixUtils;
 import org.apache.phoenix.ddb.rest.metrics.ApiOperation;
 import org.apache.phoenix.expression.util.bson.SQLComparisonExpressionUtils;
 
@@ -23,35 +24,32 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.phoenix.ddb.bson.MapToBsonDocument;
 import org.apache.phoenix.ddb.service.utils.DMLUtils;
 import org.apache.phoenix.ddb.utils.CommonServiceUtils;
-import org.apache.phoenix.jdbc.PhoenixConnection;
 import org.apache.phoenix.schema.PColumn;
-import org.apache.phoenix.schema.PTable;
-import org.apache.phoenix.schema.PTableKey;
 
 public class PutItemService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PutItemService.class);
 
-    private static final String PUT_WITH_HASH_KEY = "UPSERT INTO %s.\"%s\" VALUES (?,?)";
-    private static final String PUT_WITH_HASH_SORT_KEY = "UPSERT INTO %s.\"%s\" VALUES (?,?,?)";
+    private static final String PUT_WITH_HASH_KEY = "UPSERT INTO %s VALUES (?,?)";
+    private static final String PUT_WITH_HASH_SORT_KEY = "UPSERT INTO %s VALUES (?,?,?)";
 
     private static final String CONDITIONAL_PUT_UPDATE_ONLY_WITH_HASH_KEY =
-            "UPSERT INTO %s.\"%s\" VALUES (?) " + " ON DUPLICATE KEY UPDATE_ONLY\n"
+            "UPSERT INTO %s VALUES (?) " + " ON DUPLICATE KEY UPDATE_ONLY\n"
                     + " COL = CASE WHEN BSON_CONDITION_EXPRESSION(COL,?) THEN ? \n"
                     + " ELSE COL END";
 
     private static final String CONDITIONAL_PUT_UPDATE_ONLY_WITH_HASH_SORT_KEY =
-            "UPSERT INTO %s.\"%s\" VALUES (?, ?) " + " ON DUPLICATE KEY UPDATE_ONLY\n"
+            "UPSERT INTO %s VALUES (?, ?) " + " ON DUPLICATE KEY UPDATE_ONLY\n"
                     + " COL = CASE WHEN BSON_CONDITION_EXPRESSION(COL,?) THEN ? \n"
                     + " ELSE COL END";
 
     private static final String CONDITIONAL_PUT_UPDATE_WITH_HASH_KEY =
-            "UPSERT INTO %s.\"%s\" VALUES (?, ?) " + " ON DUPLICATE KEY UPDATE\n"
+            "UPSERT INTO %s VALUES (?, ?) " + " ON DUPLICATE KEY UPDATE\n"
                     + " COL = CASE WHEN BSON_CONDITION_EXPRESSION(COL,?) THEN ? \n"
                     + " ELSE COL END";
 
     private static final String CONDITIONAL_PUT_UPDATE_WITH_HASH_SORT_KEY =
-            "UPSERT INTO %s.\"%s\" VALUES (?, ?, ?) " + " ON DUPLICATE KEY UPDATE\n"
+            "UPSERT INTO %s VALUES (?, ?, ?) " + " ON DUPLICATE KEY UPDATE\n"
                     + " COL = CASE WHEN BSON_CONDITION_EXPRESSION(COL,?) THEN ? \n"
                     + " ELSE COL END";
 
@@ -74,11 +72,8 @@ public class PutItemService {
         ValidationUtil.validatePutItemRequest(request);
         Map<String, Object> item = (Map<String, Object>) request.get(ApiMetadata.ITEM);
 
-        // get PTable and PK PColumns
-        PhoenixConnection phoenixConnection = connection.unwrap(PhoenixConnection.class);
-        PTable table = phoenixConnection.getTable(new PTableKey(phoenixConnection.getTenantId(),
-                "DDB." + request.get(ApiMetadata.TABLE_NAME)));
-        List<PColumn> pkCols = table.getPKColumns();
+        // get PK PColumns
+        List<PColumn> pkCols = PhoenixUtils.getPKColumns(connection, (String)request.get(ApiMetadata.TABLE_NAME));
 
         //create statement based on PKs and conditional expression
         StatementInfo stmtInfo = getPreparedStatement(connection, request, pkCols);
@@ -144,7 +139,7 @@ public class PutItemService {
         } else {
             queryFormat = (pkCols.size() == 1) ? PUT_WITH_HASH_KEY : PUT_WITH_HASH_SORT_KEY;
         }
-        stmt = conn.prepareStatement(String.format(queryFormat, "DDB", tableName));
+        stmt = conn.prepareStatement(String.format(queryFormat, PhoenixUtils.getFullTableName(tableName, true)));
         return new StatementInfo(setItemTwice, stmt, conditionDoc);
     }
 

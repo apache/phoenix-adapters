@@ -24,6 +24,7 @@ import java.util.Map;
 import org.apache.phoenix.ddb.ConnectionUtil;
 import org.apache.phoenix.ddb.service.exceptions.PhoenixServiceException;
 import org.apache.phoenix.ddb.utils.ApiMetadata;
+import org.apache.phoenix.ddb.utils.PhoenixUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,7 +40,7 @@ public class DeleteTableService {
         Map<String, Object> tableDescription =
                 TableDescriptorUtils.getTableDescription(tableName, connectionUrl,
                         "TableDescription");
-        String deleteTableDDL = "DROP TABLE DDB.\"" + tableName + "\" CASCADE";
+        String deleteTableDDL = "DROP TABLE " + PhoenixUtils.getFullTableName(tableName, true) + " CASCADE";
         LOGGER.debug("Delete Table Query: {}", deleteTableDDL);
 
         try (Connection connection = ConnectionUtil.getConnection(connectionUrl)) {

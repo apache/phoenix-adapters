@@ -30,6 +30,7 @@ import java.util.Set;
 import org.apache.phoenix.ddb.ConnectionUtil;
 import org.apache.phoenix.ddb.service.exceptions.PhoenixServiceException;
 import org.apache.phoenix.ddb.utils.ApiMetadata;
+import org.apache.phoenix.ddb.utils.PhoenixUtils;
 import org.apache.phoenix.ddb.utils.CommonServiceUtils;
 import org.apache.phoenix.ddb.utils.DDBShimCDCUtils;
 import org.apache.phoenix.schema.PIndexState;
@@ -59,8 +60,7 @@ public class TableDescriptorUtils {
             for (PTable index : table.getIndexes()) {
                 String indexName = index.getName().getString();
                 // skip the CDC index when building table descriptor
-                if (indexName.startsWith("DDB.") && CDCUtil.isCDCIndex(
-                        indexName.split("DDB.")[1])) {
+                if (CDCUtil.isCDCIndex(PhoenixUtils.getTableNameFromFullName(indexName, false))) {
                     continue;
                 }
 
@@ -136,7 +136,7 @@ public class TableDescriptorUtils {
         try (Connection connection = ConnectionUtil.getConnection(connectionUrl)) {
             PhoenixConnection phoenixConnection = connection.unwrap(PhoenixConnection.class);
             PTable table = phoenixConnection.getTableNoCache(phoenixConnection.getTenantId(),
-                    "DDB." + tableName);
+                    PhoenixUtils.getFullTableName(tableName, false));
 
             Map<String, Object> tableDescriptionResponse = new HashMap<>();
             tableDescriptionResponse.put(topResponseAttribute, new HashMap<String, Object>());

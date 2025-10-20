@@ -23,6 +23,7 @@ import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.phoenix.ddb.bson.BsonDocumentToDdbAttributes;
 import org.apache.phoenix.ddb.rest.RESTServer;
+import org.apache.phoenix.ddb.utils.PhoenixUtils;
 import org.apache.phoenix.end2end.ServerMetadataCacheTestImpl;
 import org.apache.phoenix.jdbc.PhoenixDriver;
 import org.apache.phoenix.util.PhoenixRuntime;
@@ -248,7 +249,7 @@ public class ConditionalPutItemIT {
         // check phoenix row, there should be no update
         try (Connection connection = DriverManager.getConnection(url)) {
             ResultSet rs = connection.createStatement().executeQuery(
-                    "SELECT * FROM DDB.\"" + tableName + "\" WHERE \"attr_0\" = 'val1'");
+                    "SELECT * FROM " + PhoenixUtils.getFullTableName(tableName, true) + " WHERE \"attr_0\" = 'val1'");
             Assert.assertTrue(rs.next());
             BsonDocument rowBsonDoc = (BsonDocument) rs.getObject(2);
             Assert.assertEquals(rowBsonDoc.get("attr_1").asInt32().getValue(), 123);
@@ -258,7 +259,7 @@ public class ConditionalPutItemIT {
 
             //check no update to index row [123, val1, (val1, 123)]
             rs = connection.createStatement()
-                    .executeQuery("SELECT * FROM DDB.\"G_IDX_" + tableName + "\"");
+                    .executeQuery("SELECT * FROM " + PhoenixUtils.getFullTableName("G_IDX_" + tableName, true));
             Assert.assertTrue(rs.next());
             Assert.assertEquals(rs.getLong(1), Long.parseLong(item1.get("attr_1").n()));
             Assert.assertEquals(rs.getString(2), item1.get("attr_0").s());
@@ -326,7 +327,7 @@ public class ConditionalPutItemIT {
         // check phoenix row, there should be update to the row
         try (Connection connection = DriverManager.getConnection(url)) {
             ResultSet rs = connection.createStatement().executeQuery(
-                    "SELECT * FROM DDB.\"" + tableName + "\" WHERE \"attr_0\" = 'val1'");
+                    "SELECT * FROM " + PhoenixUtils.getFullTableName(tableName, true) + " WHERE \"attr_0\" = 'val1'");
             Assert.assertTrue(rs.next());
             BsonDocument rowBsonDoc = (BsonDocument) rs.getObject(2);
             Assert.assertEquals(rowBsonDoc.get("attr_1").asInt32().getValue(), 999);
@@ -479,7 +480,7 @@ public class ConditionalPutItemIT {
         // check phoenix row, there should be no update to the row
         try (Connection connection = DriverManager.getConnection(url)) {
             ResultSet rs = connection.createStatement().executeQuery(
-                    "SELECT * FROM DDB.\"" + tableName + "\" WHERE \"attr_0\" = 'str_val_0'");
+                    "SELECT * FROM " + PhoenixUtils.getFullTableName(tableName, true) + " WHERE \"attr_0\" = 'str_val_0'");
             Assert.assertTrue(rs.next());
             Map<String, AttributeValue> phoenixItem = BsonDocumentToDdbAttributes.getFullItem(
                     (BsonDocument) rs.getObject(columnIndex));
@@ -619,7 +620,7 @@ public class ConditionalPutItemIT {
         // check phoenix row, there should be update to the row
         try (Connection connection = DriverManager.getConnection(url)) {
             ResultSet rs = connection.createStatement().executeQuery(
-                    "SELECT * FROM DDB.\"" + tableName + "\" WHERE \"attr_0\" = 'str_val_0'");
+                    "SELECT * FROM " + PhoenixUtils.getFullTableName(tableName, true) + " WHERE \"attr_0\" = 'str_val_0'");
             Assert.assertTrue(rs.next());
             Map<String, AttributeValue> phoenixItem =
                     BsonDocumentToDdbAttributes.getFullItem((BsonDocument) rs.getObject(2));
@@ -627,7 +628,7 @@ public class ConditionalPutItemIT {
 
             // check index row is updated (Id2, attr_0, COL)
             rs = connection.createStatement()
-                    .executeQuery("SELECT * FROM DDB.\"G_IDX_" + tableName + "\"");
+                    .executeQuery("SELECT * FROM " + PhoenixUtils.getFullTableName("G_IDX_" + tableName, true));
             Assert.assertTrue(rs.next());
             Assert.assertEquals(rs.getDouble(1), Double.parseDouble(item2.get("Id2").n()), 0.0);
             Assert.assertEquals(rs.getString(2), item2.get("attr_0").s());

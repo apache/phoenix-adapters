@@ -22,6 +22,7 @@ import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.phoenix.ddb.rest.RESTServer;
 import org.apache.phoenix.ddb.utils.IndexBuildingActivator;
+import org.apache.phoenix.ddb.utils.PhoenixUtils;
 import org.apache.phoenix.end2end.ServerMetadataCacheTestImpl;
 import org.apache.phoenix.jdbc.PhoenixConnection;
 import org.apache.phoenix.jdbc.PhoenixDriver;
@@ -222,7 +223,7 @@ public class UpdateTableIT {
         try (Connection connection = DriverManager.getConnection(url)) {
             IndexBuildingActivator.activateIndexesForBuilding(connection, 0);
             PTable pTable =
-                    connection.unwrap(PhoenixConnection.class).getTableNoCache("DDB." + tableName);
+                    connection.unwrap(PhoenixConnection.class).getTableNoCache(PhoenixUtils.getFullTableName(tableName, false));
             Assert.assertEquals(PIndexState.BUILDING, pTable.getIndexes().get(0).getIndexState());
         }
         describeTableResponse = phoenixDBClientV2.describeTable(describeTableRequest);

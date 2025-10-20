@@ -24,6 +24,7 @@ import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.phoenix.coprocessor.PhoenixMasterObserver;
 import org.apache.phoenix.ddb.rest.RESTServer;
+import org.apache.phoenix.ddb.utils.PhoenixUtils;
 import org.apache.phoenix.end2end.ServerMetadataCacheTestImpl;
 import org.apache.phoenix.jdbc.PhoenixDriver;
 import org.apache.phoenix.jdbc.PhoenixTestDriver;
@@ -142,17 +143,17 @@ public class DescribeStreamIT {
         ListStreamsResponse phoenixStreams = phoenixDBStreamsClientV2.listStreams(lsr);
         String phoenixStreamArn = phoenixStreams.streams().get(0).streamArn();
         TestUtils.waitForStream(phoenixDBStreamsClientV2, phoenixStreamArn);
-
+        String fullTableName = PhoenixUtils.getFullTableName(tableName, false);
         try (Connection connection = DriverManager.getConnection(url)) {
-            TestUtils.splitTable(connection, "DDB." + tableName, Bytes.toBytes("m"));
-            TestUtils.splitTable(connection, "DDB." + tableName, Bytes.toBytes("g"));
-            TestUtils.splitTable(connection, "DDB." + tableName, Bytes.toBytes("d"));
-            TestUtils.splitTable(connection, "DDB." + tableName, Bytes.toBytes("j"));
-            TestUtils.splitTable(connection, "DDB." + tableName, Bytes.toBytes("t"));
-            TestUtils.splitTable(connection, "DDB." + tableName, Bytes.toBytes("p"));
-            TestUtils.splitTable(connection, "DDB." + tableName, Bytes.toBytes("w"));
-            TestUtils.splitTable(connection, "DDB." + tableName, Bytes.toBytes("l"));
-            TestUtils.splitTable(connection, "DDB." + tableName, Bytes.toBytes("r"));
+            TestUtils.splitTable(connection, fullTableName, Bytes.toBytes("m"));
+            TestUtils.splitTable(connection, fullTableName, Bytes.toBytes("g"));
+            TestUtils.splitTable(connection, fullTableName, Bytes.toBytes("d"));
+            TestUtils.splitTable(connection, fullTableName, Bytes.toBytes("j"));
+            TestUtils.splitTable(connection, fullTableName, Bytes.toBytes("t"));
+            TestUtils.splitTable(connection, fullTableName, Bytes.toBytes("p"));
+            TestUtils.splitTable(connection, fullTableName, Bytes.toBytes("w"));
+            TestUtils.splitTable(connection, fullTableName, Bytes.toBytes("l"));
+            TestUtils.splitTable(connection, fullTableName, Bytes.toBytes("r"));
         }
 
         List<Shard> phoenixShards = new ArrayList<>();
@@ -245,7 +246,7 @@ public class DescribeStreamIT {
 
         // split table
         try (Connection connection = DriverManager.getConnection(url)) {
-            TestUtils.splitTable(connection, "DDB." + tableName, Bytes.toBytes("foo"));
+            TestUtils.splitTable(connection, PhoenixUtils.getFullTableName(tableName, false), Bytes.toBytes("foo"));
         }
 
         phoenixShards.clear();

@@ -46,9 +46,9 @@ public class QueryService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(QueryService.class);
 
-    public static final String SELECT_QUERY = "SELECT COL FROM %s.\"%s\" WHERE ";
+    public static final String SELECT_QUERY = "SELECT COL FROM %s WHERE ";
     public static final String SELECT_QUERY_WITH_INDEX_HINT =
-            "SELECT /*+ INDEX(\"%s.%s\" \"%s\") */ COL FROM %s.\"%s\" WHERE ";
+            "SELECT /*+ INDEX(\"%s.%s\" \"%s\") */ COL FROM %s WHERE ";
 
     private static final int MAX_QUERY_LIMIT = 100;
 
@@ -110,9 +110,9 @@ public class QueryService {
 
         // build SQL query
         StringBuilder queryBuilder = StringUtils.isEmpty(indexName) ?
-                new StringBuilder(String.format(SELECT_QUERY, "DDB", tableName)) :
-                new StringBuilder(String.format(SELECT_QUERY_WITH_INDEX_HINT, "DDB",
-                        tableName, indexName, "DDB", tableName));
+                new StringBuilder(String.format(SELECT_QUERY, PhoenixUtils.getFullTableName(tableName, true))) :
+                new StringBuilder(String.format(SELECT_QUERY_WITH_INDEX_HINT, PhoenixUtils.SCHEMA_NAME,
+                        tableName, indexName,  PhoenixUtils.getFullTableName(tableName, true)));
 
         // parse Key Conditions
         KeyConditionsHolder keyConditions = new KeyConditionsHolder(keyCondExpr, exprAttrNames,

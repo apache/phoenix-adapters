@@ -22,8 +22,8 @@ import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.phoenix.coprocessor.PhoenixMasterObserver;
-import org.apache.phoenix.coprocessorclient.BaseScannerRegionObserverConstants;
 import org.apache.phoenix.ddb.rest.RESTServer;
+import org.apache.phoenix.ddb.utils.PhoenixUtils;
 import org.apache.phoenix.end2end.ServerMetadataCacheTestImpl;
 import org.apache.phoenix.jdbc.PhoenixDriver;
 import org.apache.phoenix.jdbc.PhoenixTestDriver;
@@ -170,7 +170,7 @@ public class GetRecordsShardLineageIT extends GetRecordsBaseTest {
 
         //split table between the 2 records
         try (Connection connection = DriverManager.getConnection(url)) {
-            TestUtils.splitTable(connection, "DDB." + tableName, Bytes.toBytes("LMN"));
+            TestUtils.splitTable(connection, PhoenixUtils.getFullTableName(tableName, false), Bytes.toBytes("LMN"));
         }
 
         //update item1 --> change should go to left daughter

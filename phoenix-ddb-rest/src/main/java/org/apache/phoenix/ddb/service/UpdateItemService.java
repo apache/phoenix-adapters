@@ -20,51 +20,49 @@ import org.apache.phoenix.ddb.service.exceptions.PhoenixServiceException;
 import org.apache.phoenix.ddb.service.utils.DMLUtils;
 import org.apache.phoenix.ddb.service.utils.ValidationUtil;
 import org.apache.phoenix.ddb.utils.ApiMetadata;
+import org.apache.phoenix.ddb.utils.PhoenixUtils;
 import org.apache.phoenix.ddb.rest.metrics.ApiOperation;
 import org.apache.phoenix.ddb.utils.CommonServiceUtils;
 import org.apache.phoenix.expression.util.bson.SQLComparisonExpressionUtils;
-import org.apache.phoenix.jdbc.PhoenixConnection;
 import org.apache.phoenix.schema.PColumn;
-import org.apache.phoenix.schema.PTable;
-import org.apache.phoenix.schema.PTableKey;
 
 public class UpdateItemService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(UpdateItemService.class);
 
     private static final String UPDATE_WITH_HASH_KEY =
-            "UPSERT INTO %s.\"%s\" VALUES (?,?) " + " ON DUPLICATE KEY UPDATE\n"
+            "UPSERT INTO %s VALUES (?,?) " + " ON DUPLICATE KEY UPDATE\n"
                     + " COL = BSON_UPDATE_EXPRESSION(COL,?)";
 
     private static final String UPDATE_WITH_HASH_SORT_KEY =
-            "UPSERT INTO %s.\"%s\" VALUES (?,?,?) " + " ON DUPLICATE KEY UPDATE\n"
+            "UPSERT INTO %s VALUES (?,?,?) " + " ON DUPLICATE KEY UPDATE\n"
                     + " COL = BSON_UPDATE_EXPRESSION(COL,?)";
 
     private static final String UPDATE_ONLY_WITH_HASH_KEY =
-            "UPSERT INTO %s.\"%s\" VALUES (?) " + " ON DUPLICATE KEY UPDATE_ONLY\n"
+            "UPSERT INTO %s VALUES (?) " + " ON DUPLICATE KEY UPDATE_ONLY\n"
                     + " COL = BSON_UPDATE_EXPRESSION(COL,?)";
 
     private static final String UPDATE_ONLY_WITH_HASH_SORT_KEY =
-            "UPSERT INTO %s.\"%s\" VALUES (?,?) " + " ON DUPLICATE KEY UPDATE_ONLY\n"
+            "UPSERT INTO %s VALUES (?,?) " + " ON DUPLICATE KEY UPDATE_ONLY\n"
                     + " COL = BSON_UPDATE_EXPRESSION(COL,?)";
 
     private static final String CONDITIONAL_UPDATE_WITH_HASH_KEY =
-            "UPSERT INTO %s.\"%s\" VALUES (?,?) " + " ON DUPLICATE KEY UPDATE\n"
+            "UPSERT INTO %s VALUES (?,?) " + " ON DUPLICATE KEY UPDATE\n"
                     + " COL = CASE WHEN BSON_CONDITION_EXPRESSION(COL,?) "
                     + " THEN BSON_UPDATE_EXPRESSION(COL,?) \n" + " ELSE COL END";
 
     private static final String CONDITIONAL_UPDATE_WITH_HASH_SORT_KEY =
-            "UPSERT INTO %s.\"%s\" VALUES (?,?,?) " + " ON DUPLICATE KEY UPDATE\n"
+            "UPSERT INTO %s VALUES (?,?,?) " + " ON DUPLICATE KEY UPDATE\n"
                     + " COL = CASE WHEN BSON_CONDITION_EXPRESSION(COL,?) "
                     + " THEN BSON_UPDATE_EXPRESSION(COL,?) \n" + " ELSE COL END";
 
     private static final String CONDITIONAL_UPDATE_ONLY_WITH_HASH_KEY =
-            "UPSERT INTO %s.\"%s\" VALUES (?) " + " ON DUPLICATE KEY UPDATE_ONLY\n"
+            "UPSERT INTO %s VALUES (?) " + " ON DUPLICATE KEY UPDATE_ONLY\n"
                     + " COL = CASE WHEN BSON_CONDITION_EXPRESSION(COL,?) "
                     + " THEN BSON_UPDATE_EXPRESSION(COL,?) \n" + " ELSE COL END";
 
     private static final String CONDITIONAL_UPDATE_ONLY_WITH_HASH_SORT_KEY =
-            "UPSERT INTO %s.\"%s\" VALUES (?,?) " + " ON DUPLICATE KEY UPDATE_ONLY\n"
+            "UPSERT INTO %s VALUES (?,?) " + " ON DUPLICATE KEY UPDATE_ONLY\n"
                     + " COL = CASE WHEN BSON_CONDITION_EXPRESSION(COL,?) "
                     + " THEN BSON_UPDATE_EXPRESSION(COL,?) \n" + " ELSE COL END";
 
@@ -77,11 +75,7 @@ public class UpdateItemService {
         try (Connection connection = ConnectionUtil.getConnection(connectionUrl)) {
             connection.setAutoCommit(true);
             // get PTable and PK PColumns
-            PhoenixConnection phoenixConnection = connection.unwrap(PhoenixConnection.class);
-            PTable table = phoenixConnection.getTable(new PTableKey(phoenixConnection.getTenantId(),
-                    "DDB." + request.get(ApiMetadata.TABLE_NAME)));
-            List<PColumn> pkCols = table.getPKColumns();
-
+            List<PColumn> pkCols = PhoenixUtils.getPKColumns(connection, (String)request.get(ApiMetadata.TABLE_NAME));
             //create statement based on PKs and conditional expression
             StatementInfo statementInfo = getPreparedStatement(connection, request, pkCols);
             setValuesOnPreparedStatement(statementInfo, pkCols, request);
@@ -152,7 +146,7 @@ public class UpdateItemService {
         }
 
         PreparedStatement stmt =
-                conn.prepareStatement(String.format(formatInfo.queryFormat, "DDB", tableName));
+                conn.prepareStatement(String.format(formatInfo.queryFormat, PhoenixUtils.getFullTableName(tableName, true)));
         return new StatementInfo(stmt, conditionDoc, updateDoc, newItemDoc, formatInfo.needsValuesDoc);
     }
 

@@ -50,9 +50,9 @@ public class ScanService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ScanService.class);
 
-    private static final String SELECT_QUERY = "SELECT COL FROM %s.\"%s\" ";
+    private static final String SELECT_QUERY = "SELECT COL FROM %s ";
     private static final String SELECT_QUERY_WITH_INDEX_HINT =
-            "SELECT /*+ INDEX(\"%s.%s\" \"%s\") */ COL FROM %s.\"%s\" ";
+            "SELECT /*+ INDEX(\"%s.%s\" \"%s\") */ COL FROM %s ";
 
     private static final int MAX_SCAN_LIMIT = 100;
 
@@ -233,11 +233,12 @@ public class ScanService {
      * Build the base SELECT clause with optional index hint
      */
     private static StringBuilder buildBaseSelectClause(ScanConfig config) {
+        String fullTableName = PhoenixUtils.getFullTableName(config.getTableName(), true);
         if (StringUtils.isEmpty(config.getIndexName())) {
-            return new StringBuilder(String.format(SELECT_QUERY, "DDB", config.getTableName()));
+            return new StringBuilder(String.format(SELECT_QUERY, fullTableName));
         } else {
             return new StringBuilder(String.format(SELECT_QUERY_WITH_INDEX_HINT, 
-                    "DDB", config.getTableName(), config.getIndexName(), "DDB", config.getTableName()));
+                    PhoenixUtils.SCHEMA_NAME, config.getTableName(), config.getIndexName(), fullTableName));
         }
     }
 

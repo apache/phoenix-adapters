@@ -56,12 +56,10 @@ import software.amazon.awssdk.services.dynamodb.streams.DynamoDbStreamsClient;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
-import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.apache.phoenix.coprocessor.CompactionScanner;
 import org.apache.phoenix.coprocessor.PhoenixMasterObserver;
-import org.apache.phoenix.coprocessorclient.BaseScannerRegionObserverConstants;
 import org.apache.phoenix.ddb.rest.RESTServer;
+import org.apache.phoenix.ddb.utils.PhoenixUtils;
 import org.apache.phoenix.end2end.ServerMetadataCacheTestImpl;
 import org.apache.phoenix.jdbc.PhoenixDriver;
 import org.apache.phoenix.jdbc.PhoenixTestDriver;
@@ -76,8 +74,6 @@ import org.apache.phoenix.util.ServerUtil;
 import org.apache.phoenix.util.TestUtil;
 
 import static org.apache.phoenix.query.BaseTest.setUpConfigForMiniCluster;
-import static software.amazon.awssdk.services.dynamodb.model.ShardIteratorType.AFTER_SEQUENCE_NUMBER;
-import static software.amazon.awssdk.services.dynamodb.model.ShardIteratorType.AT_SEQUENCE_NUMBER;
 import static software.amazon.awssdk.services.dynamodb.model.ShardIteratorType.TRIM_HORIZON;
 
 public class GetRecordsTTLExpiryIT extends GetRecordsBaseTest  {
@@ -211,7 +207,7 @@ public class GetRecordsTTLExpiryIT extends GetRecordsBaseTest  {
 
         //split table between the 2 records
         try (Connection connection = DriverManager.getConnection(url)) {
-            TestUtils.splitTable(connection, "DDB." + tableName, Bytes.toBytes("LMN"));
+            TestUtils.splitTable(connection, PhoenixUtils.getFullTableName(tableName, false), Bytes.toBytes("LMN"));
         }
 
         //update item1 --> change should go to left daughter
@@ -289,7 +285,7 @@ public class GetRecordsTTLExpiryIT extends GetRecordsBaseTest  {
 
         // major compact table
         try (Connection connection = DriverManager.getConnection(url)) {
-            TestUtil.doMajorCompaction(connection, SchemaUtil.getEscapedArgument("DDB."+tableName));
+            TestUtil.doMajorCompaction(connection, SchemaUtil.getEscapedArgument(PhoenixUtils.getFullTableName(tableName, false)));
         }
 
         // there should be no change records in parent shard
@@ -387,8 +383,8 @@ public class GetRecordsTTLExpiryIT extends GetRecordsBaseTest  {
         // increment clock by 1 more day and major compact table and index
         injectEdge.incrementValue(TimeUnit.DAYS.toMillis(1));
         try (Connection connection = DriverManager.getConnection(url)) {
-            TestUtil.doMajorCompaction(connection, SchemaUtil.getEscapedArgument("DDB."+tableName));
-            TestUtil.doMajorCompaction(connection, SchemaUtil.getEscapedArgument("DDB."+"PHOENIX_CDC_INDEX_CDC_" +tableName));
+            TestUtil.doMajorCompaction(connection, SchemaUtil.getEscapedArgument(PhoenixUtils.getFullTableName(tableName, false)));
+            TestUtil.doMajorCompaction(connection, SchemaUtil.getEscapedArgument(PhoenixUtils.getFullTableName("PHOENIX_CDC_INDEX_CDC_" +tableName, false)));
         }
 
         // there should be no ttl_delete event since max lookback is 27h
@@ -399,7 +395,7 @@ public class GetRecordsTTLExpiryIT extends GetRecordsBaseTest  {
         // increment clock by 3h + few seconds and major compact
         injectEdge.incrementValue(TimeUnit.HOURS.toMillis(3) + TimeUnit.SECONDS.toMillis(10));
         try (Connection connection = DriverManager.getConnection(url)) {
-            TestUtil.doMajorCompaction(connection, SchemaUtil.getEscapedArgument("DDB."+tableName));
+            TestUtil.doMajorCompaction(connection, SchemaUtil.getEscapedArgument(PhoenixUtils.getFullTableName(tableName, false)));
         }
 
         // ttl_delete event is generated

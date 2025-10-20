@@ -5,6 +5,7 @@ import org.apache.phoenix.ddb.ConnectionUtil;
 import org.apache.phoenix.ddb.service.exceptions.PhoenixServiceException;
 import org.apache.phoenix.ddb.utils.ApiMetadata;
 import org.apache.phoenix.ddb.utils.DDBShimCDCUtils;
+import org.apache.phoenix.ddb.utils.PhoenixUtils;
 import org.apache.phoenix.util.CDCUtil;
 
 import java.sql.Connection;
@@ -37,11 +38,9 @@ public class ListStreamsService {
             List<Map<String, Object>> streams = new ArrayList<>();
             StringBuilder query = new StringBuilder(STREAM_QUERY);
             if (StringUtils.isEmpty(requestTableName)) {
-                query.append("AND SUBSTR(TABLE_NAME, 0, 4) = 'DDB.'");
+                query.append("AND SUBSTR(TABLE_NAME, 0, 4) = '" + PhoenixUtils.SCHEMA_NAME_AND_DELIM + "'");
             } else {
-                query.append(" AND TABLE_NAME = '" + "DDB.")
-                     .append(requestTableName)
-                     .append("'");
+                query.append(" AND TABLE_NAME = '" + PhoenixUtils.getFullTableName(requestTableName, false) + "'");
             }
             if (!StringUtils.isEmpty(exclusiveStartStreamArn)) {
                 query.append(" AND STREAM_NAME > '")
@@ -56,7 +55,7 @@ public class ListStreamsService {
                 String tableName = rs.getString(1);
                 String streamName = rs.getString(2);
                 Map<String, Object> stream = new HashMap<>();
-                stream.put(ApiMetadata.TABLE_NAME, tableName.startsWith("DDB.") ? tableName.split("DDB.")[1] : tableName);
+                stream.put(ApiMetadata.TABLE_NAME, PhoenixUtils.getTableNameFromFullName(tableName, false));
                 stream.put(ApiMetadata.STREAM_ARN, streamName);
                 stream.put(ApiMetadata.STREAM_LABEL, DDBShimCDCUtils.getStreamLabel(streamName));
                 streams.add(stream);

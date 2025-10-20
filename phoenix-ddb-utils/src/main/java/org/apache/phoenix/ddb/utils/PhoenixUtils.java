@@ -37,6 +37,35 @@ public class PhoenixUtils {
             PhoenixRuntime.JDBC_PROTOCOL_RPC + PhoenixRuntime.JDBC_PROTOCOL_SEPARATOR;
     public static final String TTL_EXPRESSION = "BSON_VALUE(COL, ''%s'', ''BIGINT'') IS NOT NULL "
             + "AND TO_NUMBER(CURRENT_TIME()) > BSON_VALUE(COL, ''%s'', ''BIGINT'') * 1000";
+    
+    public static final String SCHEMA_NAME = "DDB";
+    public static final String SCHEMA_DELIMITER = ".";
+    public static final String SCHEMA_NAME_AND_DELIM = SCHEMA_NAME + SCHEMA_DELIMITER;
+
+    /**
+     *  Append schema name to return the full table name.
+     *  Escape tableName with quotes if case-sensitive.
+     */
+    public static String getFullTableName(String tableName, boolean withQuotes) {
+        if (withQuotes) {
+            return SCHEMA_NAME + SCHEMA_DELIMITER + "\"" + tableName + "\"";
+        } else {
+            return SCHEMA_NAME + SCHEMA_DELIMITER + tableName;
+        }
+    }
+
+    /**
+     * Extract table name from the given full name which can be case-sensitive.
+     */
+    public static String getTableNameFromFullName(String tableName, boolean hasQuotes) {
+       tableName = tableName.startsWith(SCHEMA_NAME_AND_DELIM)
+                ? tableName.split(SCHEMA_NAME_AND_DELIM)[1]
+                : tableName;
+       if (hasQuotes) {
+           tableName = tableName.substring(1, tableName.length()-1);
+       }
+       return tableName;
+    }
 
     /**
      * Check whether the connection url provided has the right format.
@@ -69,7 +98,7 @@ public class PhoenixUtils {
             throws SQLException {
         PhoenixConnection phoenixConnection = conn.unwrap(PhoenixConnection.class);
         PTable table = phoenixConnection.getTable(
-                new PTableKey(phoenixConnection.getTenantId(), "DDB." + tableName));
+                new PTableKey(phoenixConnection.getTenantId(), getFullTableName(tableName, false)));
         return table.getPKColumns();
     }
 

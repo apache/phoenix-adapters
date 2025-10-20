@@ -13,6 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.hadoop.hbase.util.Pair;
+import org.apache.phoenix.ddb.utils.PhoenixUtils;
 import org.apache.phoenix.jdbc.PhoenixPreparedStatement;
 
 /**
@@ -125,7 +126,7 @@ public class SegmentScanUtil {
         List<String> segmentEndKeys = new ArrayList<>();
         int i = 0;
         String totalSegmentsQuery =
-                String.format(PHOENIX_TOTAL_SEGMENTS_QUERY, "DDB.\"" + tableName + "\"", totalSegments);
+                String.format(PHOENIX_TOTAL_SEGMENTS_QUERY, PhoenixUtils.getFullTableName(tableName, true), totalSegments);
         ResultSet rs = connection.createStatement().executeQuery(totalSegmentsQuery);
         while (rs.next()) {
             byte[] startKey = rs.getBytes(1);

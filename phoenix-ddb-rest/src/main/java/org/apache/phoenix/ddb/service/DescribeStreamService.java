@@ -5,6 +5,7 @@ import org.apache.phoenix.ddb.ConnectionUtil;
 import org.apache.phoenix.ddb.service.exceptions.PhoenixServiceException;
 import org.apache.phoenix.ddb.utils.ApiMetadata;
 import org.apache.phoenix.ddb.utils.DDBShimCDCUtils;
+import org.apache.phoenix.ddb.utils.PhoenixUtils;
 import org.apache.phoenix.jdbc.PhoenixConnection;
 import org.apache.phoenix.schema.PTable;
 import org.apache.phoenix.util.CDCUtil;
@@ -84,8 +85,7 @@ public class DescribeStreamService {
         PTable table = pconn.getTable(tableName);
         Map<String, Object> streamDesc = new HashMap<>();
         streamDesc.put(ApiMetadata.STREAM_ARN, streamName);
-        streamDesc.put(ApiMetadata.TABLE_NAME,
-                tableName.startsWith("DDB.") ? tableName.split("DDB.")[1] : tableName);
+        streamDesc.put(ApiMetadata.TABLE_NAME, PhoenixUtils.getTableNameFromFullName(tableName, false));
         long creationTS = DDBShimCDCUtils.getCDCIndexTimestampFromStreamName(streamName);
         streamDesc.put(ApiMetadata.STREAM_LABEL, DDBShimCDCUtils.getStreamLabel(streamName));
         streamDesc.put(ApiMetadata.STREAM_VIEW_TYPE, table.getSchemaVersion());

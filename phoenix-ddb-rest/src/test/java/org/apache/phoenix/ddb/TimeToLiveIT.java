@@ -21,13 +21,13 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.phoenix.ddb.rest.RESTServer;
+import org.apache.phoenix.ddb.utils.PhoenixUtils;
 import org.apache.phoenix.end2end.ServerMetadataCacheTestImpl;
 import org.apache.phoenix.jdbc.PhoenixDriver;
 import org.apache.phoenix.jdbc.PhoenixTestDriver;
 import org.apache.phoenix.util.EnvironmentEdgeManager;
 import org.apache.phoenix.util.ManualEnvironmentEdge;
 import org.apache.phoenix.util.PhoenixRuntime;
-import org.apache.phoenix.util.SchemaUtil;
 import org.apache.phoenix.util.ServerUtil;
 import org.apache.phoenix.util.TestUtil;
 
@@ -211,7 +211,7 @@ public class TimeToLiveIT {
         EnvironmentEdgeManager.injectEdge(injectEdge);
         injectEdge.setValue(t);
         try (Connection connection = DriverManager.getConnection(url)) {
-            TestUtil.doMajorCompaction(connection, "DDB." + tableName);
+            TestUtil.doMajorCompaction(connection, PhoenixUtils.getFullTableName(tableName, false));
         }
 
         // max lookback is 27h so all rows should be visible
@@ -222,7 +222,7 @@ public class TimeToLiveIT {
 
         // first 2 items do not show in scan after major compaction
         try (Connection connection = DriverManager.getConnection(url)) {
-            TestUtil.doMajorCompaction(connection, "DDB." + tableName);
+            TestUtil.doMajorCompaction(connection, PhoenixUtils.getFullTableName(tableName, false));
         }
         ScanResponse sres = phoenixDBClientV2.scan(sr);
         Assert.assertEquals(2, sres.items().size());
@@ -233,7 +233,7 @@ public class TimeToLiveIT {
         injectEdge.incrementValue(TimeUnit.DAYS.toMillis(1));
         Assert.assertEquals(2, phoenixDBClientV2.scan(sr).items().size());
         try (Connection connection = DriverManager.getConnection(url)) {
-            TestUtil.doMajorCompaction(connection, "DDB." + tableName);
+            TestUtil.doMajorCompaction(connection, PhoenixUtils.getFullTableName(tableName, false));
         }
         sres = phoenixDBClientV2.scan(sr);
         Assert.assertEquals(1, sres.items().size());

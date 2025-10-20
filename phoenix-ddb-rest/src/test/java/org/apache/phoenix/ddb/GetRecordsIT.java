@@ -30,8 +30,8 @@ import org.apache.phoenix.query.QueryServices;
 import org.apache.phoenix.thirdparty.com.google.common.collect.Maps;
 import org.apache.phoenix.util.PhoenixRuntime;
 import org.apache.phoenix.util.ReadOnlyProps;
-import org.apache.phoenix.util.SchemaUtil;
 import org.apache.phoenix.util.ServerUtil;
+import org.apache.phoenix.ddb.utils.PhoenixUtils;
 
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -391,7 +391,7 @@ public class GetRecordsIT {
             dynamoDbClient.putItem(pir);
         }
         try (Connection connection = DriverManager.getConnection(url)) {
-            TestUtils.splitTable(connection, SchemaUtil.getTableName("DDB", tableName),
+            TestUtils.splitTable(connection, PhoenixUtils.getFullTableName(tableName, false),
                     Bytes.toBytes(5));
         }
         for (int i = 0; i < 5000; i++) {
@@ -404,9 +404,9 @@ public class GetRecordsIT {
             dynamoDbClient.updateItem(uir);
         }
         try (Connection connection = DriverManager.getConnection(url)) {
-            TestUtils.splitTable(connection, SchemaUtil.getTableName("DDB", tableName),
+            TestUtils.splitTable(connection, PhoenixUtils.getFullTableName(tableName, false),
                     Bytes.toBytes(3));
-            TestUtils.splitTable(connection, SchemaUtil.getTableName("DDB", tableName),
+            TestUtils.splitTable(connection, PhoenixUtils.getFullTableName(tableName, false),
                     Bytes.toBytes(7));
         }
         for (int i = 0; i < 5000; i = i + 2) {

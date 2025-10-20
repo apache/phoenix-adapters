@@ -30,6 +30,7 @@ import java.util.Map;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.phoenix.ddb.utils.PhoenixUtils;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -349,7 +350,7 @@ public class CreateTableIT {
     }
 
     private void validateTableProps(String tableName) throws SQLException {
-        String fullTableName = "DDB." + tableName;
+        String fullTableName = PhoenixUtils.getFullTableName(tableName, false);
         try (Connection conn = DriverManager.getConnection(url)) {
             PhoenixConnection phoenixConnection = conn.unwrap(PhoenixConnection.class);
             PTable table = phoenixConnection.getTable(

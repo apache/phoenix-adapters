@@ -12,6 +12,7 @@ import org.apache.phoenix.ddb.service.exceptions.ConditionCheckFailedException;
 import org.apache.phoenix.ddb.service.exceptions.PhoenixServiceException;
 import org.apache.phoenix.ddb.service.utils.ValidationUtil;
 import org.apache.phoenix.ddb.utils.ApiMetadata;
+import org.apache.phoenix.ddb.utils.PhoenixUtils;
 import org.apache.phoenix.ddb.rest.metrics.ApiOperation;
 import org.bson.BsonDocument;
 import org.slf4j.Logger;
@@ -29,13 +30,13 @@ public class DeleteItemService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DeleteItemService.class);
 
-    private static final String DELETE_QUERY = "DELETE FROM %s.\"%s\" WHERE %s = ? ";
+    private static final String DELETE_QUERY = "DELETE FROM %s WHERE %s = ? ";
     private static final String DELETE_QUERY_WITH_SORT =
-            "DELETE FROM %s.\"%s\" WHERE %s = ? AND %s = ?";
+            "DELETE FROM %s WHERE %s = ? AND %s = ?";
     private static final String DELETE_QUERY_NO_SORT_WITH_COND_EXPR =
-            "DELETE FROM %s.\"%s\" WHERE %s = ? AND BSON_CONDITION_EXPRESSION(COL,?)";
+            "DELETE FROM %s WHERE %s = ? AND BSON_CONDITION_EXPRESSION(COL,?)";
     private static final String DELETE_QUERY_SORT_WITH_COND_EXPR =
-            "DELETE FROM %s.\"%s\" WHERE %s = ? AND %s = ? AND BSON_CONDITION_EXPRESSION(COL,?)";
+            "DELETE FROM %s WHERE %s = ? AND %s = ? AND BSON_CONDITION_EXPRESSION(COL,?)";
 
     public static Map<String, Object> deleteItem(Map<String, Object> request,
             String connectionUrl) {
@@ -61,7 +62,7 @@ public class DeleteItemService {
             Map<String, Object> request) throws SQLException {
         PhoenixConnection phoenixConnection = connection.unwrap(PhoenixConnection.class);
         PTable table = phoenixConnection.getTable(new PTableKey(phoenixConnection.getTenantId(),
-                "DDB." + request.get(ApiMetadata.TABLE_NAME)));
+                PhoenixUtils.getFullTableName((String)request.get(ApiMetadata.TABLE_NAME), false)));
         // get PKs from phoenix
         List<PColumn> pkCols = table.getPKColumns();
         //build prepared statement and execute
@@ -120,21 +121,21 @@ public class DeleteItemService {
                             exprAttrVals);
             if (sortKeyPKCol != null) {
                 stmt = conn.prepareStatement(
-                        String.format(DELETE_QUERY_SORT_WITH_COND_EXPR, "DDB", tableName,
+                        String.format(DELETE_QUERY_SORT_WITH_COND_EXPR, PhoenixUtils.getFullTableName(tableName, true),
                                 CommonServiceUtils.getEscapedArgument(partitionKeyPKCol),
                                 CommonServiceUtils.getEscapedArgument(sortKeyPKCol)));
             } else {
                 stmt = conn.prepareStatement(
-                        String.format(DELETE_QUERY_NO_SORT_WITH_COND_EXPR, "DDB", tableName,
+                        String.format(DELETE_QUERY_NO_SORT_WITH_COND_EXPR, PhoenixUtils.getFullTableName(tableName, true),
                                 CommonServiceUtils.getEscapedArgument(partitionKeyPKCol)));
             }
         } else {
             if (sortKeyPKCol != null) {
-                stmt = conn.prepareStatement(String.format(DELETE_QUERY_WITH_SORT, "DDB", tableName,
+                stmt = conn.prepareStatement(String.format(DELETE_QUERY_WITH_SORT, PhoenixUtils.getFullTableName(tableName, true),
                         CommonServiceUtils.getEscapedArgument(partitionKeyPKCol),
                         CommonServiceUtils.getEscapedArgument(sortKeyPKCol)));
             } else {
-                stmt = conn.prepareStatement(String.format(DELETE_QUERY, "DDB", tableName,
+                stmt = conn.prepareStatement(String.format(DELETE_QUERY, PhoenixUtils.getFullTableName(tableName, true),
                         CommonServiceUtils.getEscapedArgument(partitionKeyPKCol)));
             }
         }

@@ -71,7 +71,6 @@ import org.apache.phoenix.jdbc.PhoenixConnection;
 import org.apache.phoenix.jdbc.PhoenixPreparedStatement;
 import org.apache.phoenix.query.ConnectionQueryServices;
 import org.apache.phoenix.schema.PColumn;
-import org.apache.phoenix.util.SchemaUtil;
 
 import static software.amazon.awssdk.services.dynamodb.model.ShardIteratorType.TRIM_HORIZON;
 
@@ -96,7 +95,7 @@ public class TestUtils {
                     ps.unwrap(PhoenixPreparedStatement.class).optimizeQuery().getExplainPlan();
             ExplainPlanAttributes explainPlanAttributes = plan.getPlanStepsAsAttributes();
             Assert.assertEquals("RANGE SCAN ", explainPlanAttributes.getExplainScanType());
-            Assert.assertEquals("DDB." + indexName, explainPlanAttributes.getTableName());
+            Assert.assertEquals(PhoenixUtils.getFullTableName(indexName, false), explainPlanAttributes.getTableName());
         }
     }
 
@@ -148,7 +147,7 @@ public class TestUtils {
                     ps.unwrap(PhoenixPreparedStatement.class).optimizeQuery().getExplainPlan();
             ExplainPlanAttributes explainPlanAttributes = plan.getPlanStepsAsAttributes();
             Assert.assertEquals(scanType, explainPlanAttributes.getExplainScanType());
-            Assert.assertEquals("DDB." + indexName, explainPlanAttributes.getTableName());
+            Assert.assertEquals(PhoenixUtils.getFullTableName(indexName, false), explainPlanAttributes.getTableName());
         }
     }
 
@@ -349,7 +348,7 @@ public class TestUtils {
 
     public static int getNumberOfTableRegions(Connection conn, String tableName)
             throws SQLException {
-        String fullTableName = SchemaUtil.getTableName("DDB", tableName);
+        String fullTableName = PhoenixUtils.getFullTableName(tableName, false);
         PhoenixConnection pconn = conn.unwrap(PhoenixConnection.class);
         List<HRegionLocation> regs
                 = pconn.getQueryServices().getAllTableRegions(fullTableName.getBytes(), 30000);

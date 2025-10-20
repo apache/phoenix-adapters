@@ -57,6 +57,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.phoenix.ddb.rest.RESTServer;
+import org.apache.phoenix.ddb.utils.PhoenixUtils;
 import org.apache.phoenix.end2end.ServerMetadataCacheTestImpl;
 import org.apache.phoenix.jdbc.PhoenixDriver;
 import org.apache.phoenix.util.PhoenixRuntime;
@@ -216,7 +217,7 @@ public class DeleteItemIT {
         //since item was not deleted we will still see 1 item in the table
         try (Connection connection = DriverManager.getConnection(url)) {
             ResultSet rs = connection.createStatement()
-                    .executeQuery("SELECT COUNT(*) FROM DDB.\"" + tableName + "\"");
+                    .executeQuery("SELECT COUNT(*) FROM " + PhoenixUtils.getFullTableName(tableName, true));
             Assert.assertTrue(rs.next());
             Assert.assertEquals(1, rs.getInt(1));
         }
@@ -252,7 +253,7 @@ public class DeleteItemIT {
         //since item was not deleted we will still see 1 item in the table
         try (Connection connection = DriverManager.getConnection(url)) {
             ResultSet rs = connection.createStatement()
-                    .executeQuery("SELECT COUNT(*) FROM DDB.\"" + tableName + "\"");
+                    .executeQuery("SELECT COUNT(*) FROM " + PhoenixUtils.getFullTableName(tableName, true));
             Assert.assertTrue(rs.next());
             Assert.assertEquals(1, rs.getInt(1));
         }

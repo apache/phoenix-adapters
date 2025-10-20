@@ -49,9 +49,9 @@ import org.apache.phoenix.end2end.ServerMetadataCacheTestImpl;
 import org.apache.phoenix.jdbc.PhoenixDriver;
 import org.apache.phoenix.jdbc.PhoenixTestDriver;
 import org.apache.phoenix.util.PhoenixRuntime;
-import org.apache.phoenix.util.SchemaUtil;
 import org.apache.phoenix.util.ServerUtil;
 import org.apache.phoenix.schema.types.PDouble;
+import org.apache.phoenix.ddb.utils.PhoenixUtils;
 
 import static org.apache.phoenix.query.BaseTest.setUpConfigForMiniCluster;
 
@@ -194,7 +194,7 @@ public abstract class BaseSegmentScanIT {
                     break;
             }
             
-            String fullTableName = SchemaUtil.getTableName("DDB", tableName);
+            String fullTableName = PhoenixUtils.getFullTableName(tableName, false);
             TestUtils.splitTable(testConnection, fullTableName, splitPoint);
             LOGGER.info("Split table {} at index {}", tableName, currentIndex);
         } catch (Exception e) {

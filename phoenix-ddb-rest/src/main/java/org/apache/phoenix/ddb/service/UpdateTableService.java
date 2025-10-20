@@ -4,6 +4,7 @@ import org.apache.phoenix.ddb.ConnectionUtil;
 import org.apache.phoenix.ddb.service.exceptions.PhoenixServiceException;
 import org.apache.phoenix.ddb.service.exceptions.ValidationException;
 import org.apache.phoenix.ddb.utils.ApiMetadata;
+import org.apache.phoenix.ddb.utils.PhoenixUtils;
 import org.apache.phoenix.ddb.service.utils.TableDescriptorUtils;
 import org.apache.phoenix.jdbc.PhoenixConnection;
 import org.apache.phoenix.query.QueryServices;
@@ -24,7 +25,7 @@ import java.util.Properties;
 public class UpdateTableService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(UpdateTableService.class);
-    private static final String DROP_INDEX_SQL = "ALTER INDEX \"%s\" ON %s.\"%s\" DISABLE";
+    private static final String DROP_INDEX_SQL = "ALTER INDEX \"%s\" ON %s DISABLE";
 
     public static Map<String, Object> updateTable(Map<String, Object> request, String connectionUrl) {
         String tableName = (String) request.get(ApiMetadata.TABLE_NAME);
@@ -37,7 +38,7 @@ public class UpdateTableService {
                 if (indexUpdate.containsKey(ApiMetadata.DELETE)) {
                     Map<String, Object> deleteIndexUpdate = (Map<String, Object>) indexUpdate.get(ApiMetadata.DELETE);
                     String indexName = (String) deleteIndexUpdate.get(ApiMetadata.INDEX_NAME);
-                    String ddl = String.format(DROP_INDEX_SQL, indexName, "DDB", tableName);
+                    String ddl = String.format(DROP_INDEX_SQL, indexName, PhoenixUtils.getFullTableName(tableName, true));
                     LOGGER.debug("DDL for Disable Index: {}", ddl);
                     indexDDLs.add(ddl);
                 } else if (indexUpdate.containsKey(ApiMetadata.CREATE)) {
@@ -71,7 +72,7 @@ public class UpdateTableService {
         if (request.containsKey(ApiMetadata.STREAM_SPECIFICATION)) {
             try (Connection connection = ConnectionUtil.getConnection(connectionUrl)) {
                 PhoenixConnection pconn = connection.unwrap(PhoenixConnection.class);
-                PTable table = pconn.getTableNoCache(pconn.getTenantId(), "DDB." + tableName);
+                PTable table = pconn.getTableNoCache(pconn.getTenantId(), PhoenixUtils.getFullTableName(tableName, false));
                 for (String ddl : getCdcDdlsToExecute(table, request)) {
                     connection.createStatement().execute(ddl);
                 }

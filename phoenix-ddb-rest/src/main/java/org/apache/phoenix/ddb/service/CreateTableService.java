@@ -39,6 +39,7 @@ import org.slf4j.LoggerFactory;
 
 import org.apache.phoenix.ddb.service.utils.TableDescriptorUtils;
 import org.apache.phoenix.ddb.utils.CommonServiceUtils;
+import org.apache.phoenix.ddb.utils.PhoenixUtils;
 import org.apache.phoenix.jdbc.PhoenixConnection;
 import org.apache.phoenix.schema.PTable;
 import org.apache.phoenix.schema.PTableKey;
@@ -52,9 +53,9 @@ public class CreateTableService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CreateTableService.class);
 
-    private static final String CREATE_CDC_DDL = "CREATE CDC \"CDC_%s\" on %s.\"%s\"";
+    private static final String CREATE_CDC_DDL = "CREATE CDC \"CDC_%s\" on %s";
     private static final String ALTER_TABLE_STREAM_TYPE_DDL =
-            "ALTER TABLE %s.\"%s\" set SCHEMA_VERSION = '%s'";
+            "ALTER TABLE %s set SCHEMA_VERSION = '%s'";
 
     private static final Cache<String, ReentrantLock> CREATE_TABLE_LOCKS =
             CacheBuilder.newBuilder().expireAfterAccess(5, TimeUnit.MINUTES).build();
@@ -163,8 +164,8 @@ public class CreateTableService {
         }
 
         indexDDLs.add(
-                "CREATE INDEX \"" + indexName + "\" ON DDB.\"" + tableName
-                        + "\" (" + indexOn + ") INCLUDE (COL) WHERE " + indexHashKey + " IS NOT " +
+                "CREATE INDEX \"" + indexName + "\" ON " + PhoenixUtils.getFullTableName(tableName, true)
+                        + " (" + indexOn + ") INCLUDE (COL) WHERE " + indexHashKey + " IS NOT " +
                         "NULL " + ((indexSortKey != null) ? " AND " + indexSortKey + " IS NOT " +
                         "NULL " : "") + (isAsync ? " ASYNC " : "") + TableOptionsConfig.getIndexOptions());
     }
@@ -212,8 +213,8 @@ public class CreateTableService {
             if (StringUtils.isEmpty(streamType)) {
                 throw new ValidationException("STREAM_VIEW_TYPE attribute is required.");
             }
-            cdcDDLs.add(String.format(CREATE_CDC_DDL, tableName, "DDB", tableName));
-            cdcDDLs.add(String.format(ALTER_TABLE_STREAM_TYPE_DDL, "DDB", tableName, streamType));
+            cdcDDLs.add(String.format(CREATE_CDC_DDL, tableName, PhoenixUtils.getFullTableName(tableName, true)));
+            cdcDDLs.add(String.format(ALTER_TABLE_STREAM_TYPE_DDL, PhoenixUtils.getFullTableName(tableName, true), streamType));
         }
         return cdcDDLs;
     }
@@ -318,8 +319,8 @@ public class CreateTableService {
             }
             cols.append(", COL BSON CONSTRAINT pk PRIMARY KEY (").append(pkCols).append(")");
 
-            String createTableDDL = "CREATE TABLE DDB.\"" + tableName + "\" (" + cols + ") "
-                    + TableOptionsConfig.getTableOptions();
+            String createTableDDL = "CREATE TABLE " + PhoenixUtils.getFullTableName(tableName, true)
+                    + " (" + cols + ") " + TableOptionsConfig.getTableOptions();
             LOGGER.debug("Create Table Query: {}", createTableDDL);
 
             List<String> createIndexDDLs = getIndexDDLs(request);

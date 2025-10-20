@@ -50,6 +50,7 @@ import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.phoenix.ddb.bson.BsonDocumentToDdbAttributes;
 import org.apache.phoenix.ddb.rest.RESTServer;
+import org.apache.phoenix.ddb.utils.PhoenixUtils;
 import org.apache.phoenix.end2end.ServerMetadataCacheTestImpl;
 import org.apache.phoenix.jdbc.PhoenixDriver;
 import org.apache.phoenix.util.PhoenixRuntime;
@@ -140,7 +141,7 @@ public class PutItemIT {
         // query phoenix and compare row to item
         try (Connection connection = DriverManager.getConnection(url)) {
             ResultSet rs = connection.createStatement()
-                    .executeQuery("SELECT * FROM DDB.\"" + tableName + "\"");
+                    .executeQuery("SELECT * FROM " + PhoenixUtils.getFullTableName(tableName, true));
             Assert.assertTrue(rs.next());
             Assert.assertEquals(rs.getString(1), item.get("attr_0").s());
             BsonDocument bsonDoc = (BsonDocument) rs.getObject(2);
@@ -186,7 +187,7 @@ public class PutItemIT {
         // query phoenix and compare row to item
         try (Connection connection = DriverManager.getConnection(url)) {
             ResultSet rs = connection.createStatement()
-                    .executeQuery("SELECT * FROM DDB.\"" + tableName + "\"");
+                    .executeQuery("SELECT * FROM " + PhoenixUtils.getFullTableName(tableName, true));
             Assert.assertTrue(rs.next());
             Assert.assertEquals(rs.getString(1), item.get("attr_0").s());
             Assert.assertEquals(rs.getDouble(2), Double.parseDouble(item.get("attr_1").n()), 0.0);
@@ -235,7 +236,7 @@ public class PutItemIT {
         // query phoenix and compare row to item
         try (Connection connection = DriverManager.getConnection(url)) {
             ResultSet rs = connection.createStatement()
-                    .executeQuery("SELECT * FROM DDB.\"" + tableName + "\"");
+                    .executeQuery("SELECT * FROM " + PhoenixUtils.getFullTableName(tableName, true));
             Assert.assertTrue(rs.next());
             Assert.assertEquals(rs.getString(1), item.get("attr_0").s());
             Assert.assertEquals(rs.getDouble(2), Double.parseDouble(item.get("attr_1").n()), 0.0);
@@ -249,7 +250,7 @@ public class PutItemIT {
 
             // check index row (Title, attr_0, attr1, COL)
             rs = connection.createStatement()
-                    .executeQuery("SELECT * FROM DDB.\"g_IDX_" + tableName + "\"");
+                    .executeQuery("SELECT * FROM " + PhoenixUtils.getFullTableName("g_IDX_" + tableName, true));
             Assert.assertTrue(rs.next());
             Assert.assertEquals(rs.getString(1), item.get("Title").s());
             Assert.assertEquals(rs.getString(2), item.get("attr_0").s());
@@ -296,7 +297,7 @@ public class PutItemIT {
         // check index rows are sorted
         try (Connection connection = DriverManager.getConnection(url)) {
             ResultSet rs = connection.createStatement()
-                    .executeQuery("SELECT * FROM DDB.\"G_iDX_" + tableName + "\"");
+                    .executeQuery("SELECT * FROM " + PhoenixUtils.getFullTableName("G_iDX_" + tableName, true));
             Assert.assertTrue(rs.next());
             Double val = rs.getDouble(1);
             while (rs.next()) {
