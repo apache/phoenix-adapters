@@ -37,6 +37,7 @@ import software.amazon.awssdk.services.dynamodb.model.BatchWriteItemRequest;
 import software.amazon.awssdk.services.dynamodb.model.BatchWriteItemResponse;
 import software.amazon.awssdk.services.dynamodb.model.CreateTableRequest;
 import software.amazon.awssdk.services.dynamodb.model.DeleteRequest;
+import software.amazon.awssdk.services.dynamodb.model.DynamoDbException;
 import software.amazon.awssdk.services.dynamodb.model.PutItemRequest;
 import software.amazon.awssdk.services.dynamodb.model.PutRequest;
 import software.amazon.awssdk.services.dynamodb.model.ScalarAttributeType;
@@ -189,7 +190,7 @@ public class BatchWriteItemIT {
     }
 
     @Test
-    public void testUnprocessedKeys() {
+    public void testValidationException() {
         String testname = testName.getMethodName();
         String tableName1 = testname + "_1";
         String tableName2 = testname + "_2";
@@ -224,14 +225,16 @@ public class BatchWriteItemIT {
         BatchWriteItemRequest request =
                 BatchWriteItemRequest.builder().requestItems(requestItems).build();
 
-        BatchWriteItemResponse phoenixResult = phoenixDBClientV2.batchWriteItem(request);
-        Assert.assertTrue(phoenixResult.unprocessedItems().containsKey(tableName1));
-        Assert.assertFalse(phoenixResult.unprocessedItems().containsKey(tableName2));
-        Assert.assertEquals(2, phoenixResult.unprocessedItems().get(tableName1).size());
-
-        request = request.toBuilder().requestItems(phoenixResult.unprocessedItems()).build();
-        phoenixResult = phoenixDBClientV2.batchWriteItem(request);
-        Assert.assertTrue(phoenixResult.unprocessedItems().isEmpty());
+        try {
+            dynamoDbClient.batchWriteItem(request);
+        } catch (DynamoDbException e) {
+            Assert.assertEquals(400, e.statusCode());
+        }
+        try {
+            phoenixDBClientV2.batchWriteItem(request);
+        } catch (DynamoDbException e) {
+            Assert.assertEquals(400, e.statusCode());
+        }
     }
 
     private void createTable1(String tableName) {

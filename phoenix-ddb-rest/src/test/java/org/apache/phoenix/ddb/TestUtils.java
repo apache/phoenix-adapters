@@ -407,8 +407,8 @@ public class TestUtils {
         Assert.assertEquals("Item count mismatch.", expectedItems.size(), actualItems.size());
 
         // Sort both lists by primary key for consistent comparison
-        List<Map<String, AttributeValue>> sortedExpected = TestUtils.sortItemsByPartitionAndSortKey(expectedItems, hashKeyName, sortKeyName);
-        List<Map<String, AttributeValue>> sortedActual = TestUtils.sortItemsByPartitionAndSortKey(actualItems, hashKeyName, sortKeyName);
+        List<Map<String, AttributeValue>> sortedExpected = sortItemsByPartitionAndSortKey(expectedItems, hashKeyName, sortKeyName);
+        List<Map<String, AttributeValue>> sortedActual = sortItemsByPartitionAndSortKey(actualItems, hashKeyName, sortKeyName);
 
         // Use org.apache.phoenix.ddb.ItemComparator for proper item comparison
         Assert.assertTrue("Items don't match. ",  ItemComparator.areItemsEqual(sortedExpected, sortedActual));

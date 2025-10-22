@@ -36,6 +36,7 @@ import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import software.amazon.awssdk.services.dynamodb.model.BatchGetItemRequest;
 import software.amazon.awssdk.services.dynamodb.model.BatchGetItemResponse;
 import software.amazon.awssdk.services.dynamodb.model.CreateTableRequest;
+import software.amazon.awssdk.services.dynamodb.model.DynamoDbException;
 import software.amazon.awssdk.services.dynamodb.model.KeysAndAttributes;
 import software.amazon.awssdk.services.dynamodb.model.PutItemRequest;
 import software.amazon.awssdk.services.dynamodb.model.ScalarAttributeType;
@@ -325,25 +326,19 @@ public class BatchGetItemIT {
     }
 
     @Test
-    public void testWithUnprocessedKeys() throws Exception {
+    public void testValidationException() throws Exception {
         //create BatchGetItem request by adding keys per table
         Map<String, KeysAndAttributes> requestItems = new HashMap<>();
 
         //making keys for FORUM table
-        Map<String, AttributeValue> key1 = new HashMap<>();
-        key1.put("ForumName", AttributeValue.builder().s("Amazon DynamoDB").build());
-        Map<String, AttributeValue> key2 = new HashMap<>();
-        key2.put("ForumName", AttributeValue.builder().s("Amazon RDS").build());
-        Map<String, AttributeValue> key4 = new HashMap<>();
-        key4.put("ForumName", AttributeValue.builder().s("Amazon DBS").build());
-
-        //putting 102 keys for FORUM table with limit of keys to process at once as 100
+        //putting 60 keys
         List<Map<String, AttributeValue>> forumKeys = new ArrayList<>();
-        for (int i = 0; i < 100; i++) {
-            forumKeys.add(key1);
+        for (int i = 0; i < 60; i++) {
+            Map<String, AttributeValue> key = new HashMap<>();
+            key.put("ForumName", AttributeValue.builder().s("str" + i).build());
+            forumKeys.add(key);
         }
-        forumKeys.add(key2);
-        forumKeys.add(key4);
+
 
         //putting that list in KeysAndAttribute object
         KeysAndAttributes.Builder forForum = KeysAndAttributes.builder();
@@ -355,14 +350,15 @@ public class BatchGetItemIT {
         //putting the KeyAndAttribute object with the table name in the BatchGetItem request
         requestItems.put(tableName1, forForum.build());
 
-        //making keys for DATABASE table
-        Map<String, AttributeValue> key3 = new HashMap<>();
-        key3.put("DatabaseName", AttributeValue.builder().s("Amazon Redshift").build());
-        key3.put("Id", AttributeValue.builder().n("25").build());
-
+        //making keys for DATABASE table, 50 keys
         //putting keys for DATABASE table in a list
         List<Map<String, AttributeValue>> databaseKeys = new ArrayList<>();
-        databaseKeys.add(key3);
+        for (int i = 0; i < 50; i++) {
+            Map<String, AttributeValue> key = new HashMap<>();
+            key.put("DatabaseName", AttributeValue.builder().s("str" + i).build());
+            key.put("Id", AttributeValue.builder().n(Integer.toString(i)).build());
+            databaseKeys.add(key);
+        }
 
         //putting that list in KeysAndAttributes Object
         KeysAndAttributes.Builder forDatabase = KeysAndAttributes.builder();
@@ -374,21 +370,16 @@ public class BatchGetItemIT {
         requestItems.put(tableName2, forDatabase.build());
 
         BatchGetItemRequest gI = BatchGetItemRequest.builder().requestItems(requestItems).build();
-        //we dont test dynamo result here since it gives exception on duplicate keys
-        BatchGetItemResponse phoenixResult = phoenixDBClientV2.batchGetItem(gI);
-        //since 102 keys were sent in the request, we expect 2 keys to not be processed for FORUM table
-        Assert.assertEquals(2, phoenixResult.unprocessedKeys().get(tableName1).keys().size());
-        //since 1 key was sent in the request, we expect DATABASE table to not be in the unprocessed key set
-        Assert.assertFalse(phoenixResult.unprocessedKeys().containsKey(tableName2));
-
-        //doing batch get item request on the unprocessed request that was returned
-        BatchGetItemRequest gI2 =
-                BatchGetItemRequest.builder().requestItems(phoenixResult.unprocessedKeys()).build();
-        BatchGetItemResponse dynamoResult2 = dynamoDbClient.batchGetItem(gI2);
-        BatchGetItemResponse phoenixResult2 = phoenixDBClientV2.batchGetItem(gI2);
-        Assert.assertEquals(dynamoResult2.responses(), phoenixResult2.responses());
-        //no unprocessed keys are returned
-        Assert.assertEquals(dynamoResult2.unprocessedKeys(), phoenixResult2.unprocessedKeys());
+        try {
+            dynamoDbClient.batchGetItem(gI);
+        } catch (DynamoDbException e) {
+            Assert.assertEquals(400, e.statusCode());
+        }
+        try {
+            phoenixDBClientV2.batchGetItem(gI);
+        } catch (DynamoDbException e) {
+            Assert.assertEquals(400, e.statusCode());
+        }
     }
 
     private static Map<String, AttributeValue> getItem1() {

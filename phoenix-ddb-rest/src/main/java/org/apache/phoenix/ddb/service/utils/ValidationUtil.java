@@ -18,6 +18,7 @@
 
 package org.apache.phoenix.ddb.service.utils;
 
+import java.util.List;
 import java.util.Map;
 
 import org.apache.phoenix.ddb.rest.metrics.ApiOperation;
@@ -29,6 +30,38 @@ import org.apache.phoenix.ddb.utils.ApiMetadata;
  * Validation for various API requests.
  */
 public class ValidationUtil {
+
+    private static final int BATCH_WRITE_LIMIT = 25;
+    private static final int BATCH_GET_LIMIT = 100;
+
+    public static void validateBatchWriteItemRequest(Map<String, Object> request) {
+        int numItems = 0;
+        Map<String, Object> requestItems = (Map<String, Object>) request.get(ApiMetadata.REQUEST_ITEMS);
+        for (Map.Entry<String, Object> entry : requestItems.entrySet()) {
+            List<Object> ops = (List<Object>) entry.getValue();
+            if (ops != null) {
+                numItems += ops.size();
+                if (numItems > BATCH_WRITE_LIMIT) {
+                    throw new ValidationException("Too many items requested for the BatchGetItem call.");
+                }
+            }
+        }
+    }
+
+    public static void validateBatchGetItemRequest(Map<String, Object> request) {
+        int numItems = 0;
+        Map<String, Object> requestItems = (Map<String, Object>) request.get(ApiMetadata.REQUEST_ITEMS);
+        for (Map.Entry<String, Object> entry : requestItems.entrySet()) {
+            Map<String, Object> tableConfig = (Map<String, Object>) entry.getValue();
+            List<Object> keys = (List<Object>) tableConfig.get(ApiMetadata.KEYS);
+            if (keys != null) {
+                numItems += keys.size();
+                if (numItems > BATCH_GET_LIMIT) {
+                    throw new ValidationException("Too many items requested for the BatchGetItem call.");
+                }
+            }
+        }
+    }
 
     public static void validatePutItemRequest(Map<String, Object> request) {
         ValidationUtil.validateReturnValuesRequest((String) request.get(ApiMetadata.RETURN_VALUES),
