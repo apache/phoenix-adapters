@@ -23,7 +23,6 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.sql.Connection;
 import java.sql.DriverManager;
-import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -58,16 +57,12 @@ import software.amazon.awssdk.services.dynamodb.model.TableDescription;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
-import org.apache.hadoop.hbase.client.TableDescriptor;
 import org.apache.phoenix.ddb.rest.RESTServer;
-import org.apache.phoenix.ddb.utils.PhoenixUtils;
 import org.apache.phoenix.end2end.ServerMetadataCacheTestImpl;
 import org.apache.phoenix.exception.PhoenixIOException;
 import org.apache.phoenix.jdbc.PhoenixConnection;
 import org.apache.phoenix.jdbc.PhoenixDriver;
 import org.apache.phoenix.schema.PColumn;
-import org.apache.phoenix.schema.PTable;
-import org.apache.phoenix.schema.PTableKey;
 import org.apache.phoenix.util.PhoenixRuntime;
 import org.apache.phoenix.util.ServerUtil;
 
@@ -171,9 +166,9 @@ public class CreateTableIT {
         TableDescription tableDescription1 = CreateTableResponse1.tableDescription();
         TableDescription tableDescription2 = CreateTableResponse2.tableDescription();
         DDLTestUtils.assertTableDescriptions(tableDescription1, tableDescription2);
-        validateTableProps(tableName);
-        validateTableProps("IDX1_" + tableName);
-        validateTableProps("IDX2_" + tableName);
+        TestUtils.validateTableProps(url, tableName, true);
+        TestUtils.validateTableProps(url, "IDX1_" + tableName, true);
+        TestUtils.validateTableProps(url, "IDX2_" + tableName, true);
     }
 
     @Test(timeout = 120000)
@@ -297,6 +292,9 @@ public class CreateTableIT {
                         "sortKey", ScalarAttributeType.N);
 
         createTableRequest = DDLTestUtils.addStreamSpecToRequest(createTableRequest, "NEW_IMAGE");
+        createTableRequest =
+                DDLTestUtils.addIndexToRequest(true, createTableRequest, "IDX1_" + tableName,
+                        "COL1", ScalarAttributeType.N, "COL2", ScalarAttributeType.B);
 
         CreateTableResponse CreateTableResponse1 = dynamoDbClient.createTable(createTableRequest);
         CreateTableResponse CreateTableResponse2 =
@@ -309,6 +307,8 @@ public class CreateTableIT {
             DDLTestUtils.assertCDCMetadata(connection.unwrap(PhoenixConnection.class),
                     tableDescription2, "NEW_IMAGE");
         }
+        TestUtils.validateTableProps(url, tableName, false);
+        TestUtils.validateTableProps(url, "IDX1_" + tableName, true);
     }
 
     @Test(timeout = 120000)
@@ -346,24 +346,6 @@ public class CreateTableIT {
             // not expected
             Assert.fail("Unexpected ResourceInUseException from Phoenix REST on duplicate create");
 
-        }
-    }
-
-    private void validateTableProps(String tableName) throws SQLException {
-        String fullTableName = PhoenixUtils.getFullTableName(tableName, false);
-        try (Connection conn = DriverManager.getConnection(url)) {
-            PhoenixConnection phoenixConnection = conn.unwrap(PhoenixConnection.class);
-            PTable table = phoenixConnection.getTable(
-                    new PTableKey(phoenixConnection.getTenantId(), fullTableName));
-            Assert.assertFalse(table.isStrictTTL());
-            Assert.assertEquals(1800000, table.getUpdateCacheFrequency());
-            TableDescriptor td = phoenixConnection.getQueryServices()
-                    .getTableDescriptor(fullTableName.getBytes());
-            Assert.assertFalse(td.isMergeEnabled());
-            Assert.assertEquals(97200,
-                    Integer.parseInt(td.getValue("phoenix.max.lookback.age.seconds")));
-            Assert.assertEquals(172800000,
-                    Integer.parseInt(td.getValue("hbase.hregion.majorcompaction")));
         }
     }
 

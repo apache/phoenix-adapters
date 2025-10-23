@@ -319,19 +319,10 @@ public class CreateTableService {
             }
             cols.append(", COL BSON CONSTRAINT pk PRIMARY KEY (").append(pkCols).append(")");
 
-            String createTableDDL = "CREATE TABLE " + PhoenixUtils.getFullTableName(tableName, true)
-                    + " (" + cols + ") " + TableOptionsConfig.getTableOptions();
-            LOGGER.debug("Create Table Query: {}", createTableDDL);
-
-            List<String> createIndexDDLs = getIndexDDLs(request);
-            for (String createIndexDDL : createIndexDDLs) {
-                LOGGER.debug("Create Index Query: " + createIndexDDL);
-            }
-
             List<String> createCdcDDLs = getCdcDDL(request);
-            for (String ddl : createCdcDDLs) {
-                LOGGER.debug("CDC DDL: " + ddl);
-            }
+            String createTableDDL = "CREATE TABLE " + PhoenixUtils.getFullTableName(tableName, true)
+                    + " (" + cols + ") " + TableOptionsConfig.getTableOptions(createCdcDDLs.isEmpty());
+            List<String> createIndexDDLs = getIndexDDLs(request);
 
             try (Connection connection = ConnectionUtil.getConnection(connectionUrl)) {
                 PhoenixConnection phoenixConnection = connection.unwrap(PhoenixConnection.class);
@@ -345,11 +336,14 @@ public class CreateTableService {
                     // ignore
                 }
 
+                LOGGER.debug("Create Table Query: {}", createTableDDL);
                 connection.createStatement().execute(createTableDDL);
                 for (String createIndexDDL : createIndexDDLs) {
+                    LOGGER.debug("Create Index Query: {}", createIndexDDL);
                     connection.createStatement().execute(createIndexDDL);
                 }
                 for (String ddl : createCdcDDLs) {
+                    LOGGER.debug("CDC DDL: {}", ddl);
                     connection.createStatement().execute(ddl);
                 }
             } catch (SQLException e) {

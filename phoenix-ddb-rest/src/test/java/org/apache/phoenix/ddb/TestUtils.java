@@ -57,6 +57,7 @@ import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Admin;
 import org.apache.hadoop.hbase.client.ConnectionFactory;
 import org.apache.hadoop.hbase.client.RegionLocator;
+import org.apache.hadoop.hbase.client.TableDescriptor;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.phoenix.compile.ExplainPlan;
 import org.apache.phoenix.compile.ExplainPlanAttributes;
@@ -71,6 +72,8 @@ import org.apache.phoenix.jdbc.PhoenixConnection;
 import org.apache.phoenix.jdbc.PhoenixPreparedStatement;
 import org.apache.phoenix.query.ConnectionQueryServices;
 import org.apache.phoenix.schema.PColumn;
+import org.apache.phoenix.schema.PTable;
+import org.apache.phoenix.schema.PTableKey;
 
 import static software.amazon.awssdk.services.dynamodb.model.ShardIteratorType.TRIM_HORIZON;
 
@@ -476,5 +479,23 @@ public class TestUtils {
         
         // Fallback: convert to string for comparison
         return String.valueOf(value1).compareTo(String.valueOf(value2));
+    }
+
+    public static void validateTableProps(String url, String tableName, boolean mergeEnabled) throws SQLException {
+        String fullTableName = PhoenixUtils.getFullTableName(tableName, false);
+        try (Connection conn = DriverManager.getConnection(url)) {
+            PhoenixConnection phoenixConnection = conn.unwrap(PhoenixConnection.class);
+            PTable table = phoenixConnection.getTable(
+                    new PTableKey(phoenixConnection.getTenantId(), fullTableName));
+            Assert.assertFalse(table.isStrictTTL());
+            Assert.assertEquals(1800000, table.getUpdateCacheFrequency());
+            TableDescriptor td = phoenixConnection.getQueryServices()
+                    .getTableDescriptor(fullTableName.getBytes());
+            Assert.assertEquals(mergeEnabled, td.isMergeEnabled());
+            Assert.assertEquals(97200,
+                    Integer.parseInt(td.getValue("phoenix.max.lookback.age.seconds")));
+            Assert.assertEquals(172800000,
+                    Integer.parseInt(td.getValue("hbase.hregion.majorcompaction")));
+        }
     }
 }

@@ -28,11 +28,11 @@ public class TableOptionsConfig {
     /**
      * Get table options as formatted string for CREATE statements.
      */
-    public static String getTableOptions() {
+    public static String getTableOptions(boolean mergeEnabled) {
         if (tableOptionsString == null) {
             throw new IllegalStateException("Table Options Config not initialized.");
         }
-        return tableOptionsString;
+        return tableOptionsString + ",MERGE_ENABLED=" + mergeEnabled;
     }
 
     /**

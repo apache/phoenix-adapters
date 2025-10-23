@@ -235,9 +235,13 @@ public class UpdateTableIT {
     @Test(timeout = 120000)
     public void updateTableCreateCDC() throws Exception {
         final String tableName = testName.getMethodName();
+        final String indexName = "g_IDX" + tableName;
         CreateTableRequest createTableRequest =
                 DDLTestUtils.getCreateTableRequest(tableName, "ForumName", ScalarAttributeType.S,
                         "SubjectNumber", ScalarAttributeType.N);
+        createTableRequest =
+                DDLTestUtils.addIndexToRequest(true, createTableRequest, indexName, "title",
+                        ScalarAttributeType.S, null, null);
         phoenixDBClientV2.createTable(createTableRequest);
         dynamoDbClient.createTable(createTableRequest);
 
@@ -260,10 +264,14 @@ public class UpdateTableIT {
         Assert.assertTrue(describeTableResponse.table().streamSpecification().streamEnabled());
         Assert.assertEquals(StreamViewType.OLD_IMAGE,
                 describeTableResponse.table().streamSpecification().streamViewType());
+
+        // merges should be disabled for data table after enabling streams
+        TestUtils.validateTableProps(url, tableName, false);
+        TestUtils.validateTableProps(url, indexName, true);
     }
 
     @Test(timeout = 120000)
-    public void updateTableCreateCDCAndDropIndex() throws Exception {
+    public void updateTableCreateCDCAndDropIndex() {
         final String tableName = testName.getMethodName();
         final String indexName = "g_IDX" + tableName;
         CreateTableRequest createTableRequest =
@@ -288,10 +296,12 @@ public class UpdateTableIT {
 
         // response shows stream enabled and index dropped
         UpdateTableResponse utre = phoenixDBClientV2.updateTable(utr.build());
-        Assert.assertTrue(utre.tableDescription().streamSpecification().streamEnabled());
-        Assert.assertEquals(StreamViewType.OLD_IMAGE,
+        UpdateTableResponse ddbUpdateResponse = dynamoDbClient.updateTable(utr.build());
+        Assert.assertEquals(ddbUpdateResponse.tableDescription().streamSpecification().streamEnabled(),
+                utre.tableDescription().streamSpecification().streamEnabled());
+        Assert.assertEquals(ddbUpdateResponse.tableDescription().streamSpecification().streamViewType(),
                 utre.tableDescription().streamSpecification().streamViewType());
-        Assert.assertEquals("DELETING",
+        Assert.assertEquals(ddbUpdateResponse.tableDescription().globalSecondaryIndexes().get(0).indexStatus().toString(),
                 utre.tableDescription().globalSecondaryIndexes().get(0).indexStatus().toString());
 
         // describe table shows stream enabled and index dropped
@@ -299,22 +309,90 @@ public class UpdateTableIT {
                 DescribeTableRequest.builder().tableName(tableName).build();
         DescribeTableResponse describeTableResponse =
                 phoenixDBClientV2.describeTable(describeTableRequest);
-        Assert.assertTrue(describeTableResponse.table().streamSpecification().streamEnabled());
-        Assert.assertEquals(StreamViewType.OLD_IMAGE,
+        DescribeTableResponse ddbDescribeTableResponse =
+                dynamoDbClient.describeTable(describeTableRequest);
+        Assert.assertEquals(ddbDescribeTableResponse.table().streamSpecification().streamEnabled(),
+                describeTableResponse.table().streamSpecification().streamEnabled());
+        Assert.assertEquals(ddbDescribeTableResponse.table().streamSpecification().streamViewType(),
                 describeTableResponse.table().streamSpecification().streamViewType());
-        Assert.assertEquals("DELETING",
-                describeTableResponse.table().globalSecondaryIndexes().get(0).indexStatus()
-                        .toString());
+        Assert.assertEquals(ddbDescribeTableResponse.table().globalSecondaryIndexes().get(0).indexStatus().toString(),
+                describeTableResponse.table().globalSecondaryIndexes().get(0).indexStatus().toString());
+    }
+
+    @Test(timeout = 120000)
+    public void updateTableCreateCDCAndCreateIndex() throws Exception {
+        final String tableName = testName.getMethodName();
+        final String indexName = "g_IDX" + tableName;
+        CreateTableRequest createTableRequest =
+                DDLTestUtils.getCreateTableRequest(tableName, "ForumName", ScalarAttributeType.S,
+                        "SubjectNumber", ScalarAttributeType.N);
+
+        phoenixDBClientV2.createTable(createTableRequest);
+        dynamoDbClient.createTable(createTableRequest);
+
+        // update table, enable cdc
+        UpdateTableRequest.Builder utr = UpdateTableRequest.builder().tableName(tableName);
+        utr.streamSpecification(StreamSpecification.builder().streamEnabled(true)
+                .streamViewType(StreamViewType.OLD_IMAGE).build());
+        List<GlobalSecondaryIndexUpdate> indexUpdates = new ArrayList<>();
+        CreateGlobalSecondaryIndexAction.Builder createIndexAction =
+                CreateGlobalSecondaryIndexAction.builder().indexName(indexName);
+        List<KeySchemaElement> idxKeySchemaElements = new ArrayList<>();
+        idxKeySchemaElements.add(
+                KeySchemaElement.builder().attributeName("title").keyType(KeyType.HASH).build());
+        createIndexAction.keySchema(idxKeySchemaElements);
+        createIndexAction.projection(
+                Projection.builder().projectionType(ProjectionType.ALL).build());
+        createIndexAction.provisionedThroughput(
+                ProvisionedThroughput.builder().readCapacityUnits(50L).writeCapacityUnits(50L)
+                        .build());
+        GlobalSecondaryIndexUpdate createIndexUpdate =
+                GlobalSecondaryIndexUpdate.builder().create(createIndexAction.build()).build();
+        indexUpdates.add(createIndexUpdate);
+        utr.globalSecondaryIndexUpdates(indexUpdates);
+        List<AttributeDefinition> attrDefs =
+                new ArrayList<>(createTableRequest.attributeDefinitions());
+        attrDefs.add(AttributeDefinition.builder().attributeName("title")
+                .attributeType(ScalarAttributeType.S).build());
+        utr.attributeDefinitions(attrDefs);
+
+        // response shows stream enabled and index created
+        UpdateTableResponse utre = phoenixDBClientV2.updateTable(utr.build());
+        UpdateTableResponse ddbUpdateResponse = dynamoDbClient.updateTable(utr.build());
+        Assert.assertEquals(ddbUpdateResponse.tableDescription().streamSpecification().streamEnabled(),
+                utre.tableDescription().streamSpecification().streamEnabled());
+        Assert.assertEquals(ddbUpdateResponse.tableDescription().streamSpecification().streamViewType(),
+                utre.tableDescription().streamSpecification().streamViewType());
+        Assert.assertEquals(ddbUpdateResponse.tableDescription().globalSecondaryIndexes().get(0).indexStatus().toString(),
+                utre.tableDescription().globalSecondaryIndexes().get(0).indexStatus().toString());
+
+        // describe table shows stream enabled and index created
+        DescribeTableRequest describeTableRequest =
+                DescribeTableRequest.builder().tableName(tableName).build();
+        DescribeTableResponse describeTableResponse =
+                phoenixDBClientV2.describeTable(describeTableRequest);
+        DescribeTableResponse ddbDescribeTableResponse =
+                dynamoDbClient.describeTable(describeTableRequest);
+        Assert.assertEquals(ddbDescribeTableResponse.table().streamSpecification().streamEnabled(),
+                describeTableResponse.table().streamSpecification().streamEnabled());
+        Assert.assertEquals(ddbDescribeTableResponse.table().streamSpecification().streamViewType(),
+                describeTableResponse.table().streamSpecification().streamViewType());
+        Assert.assertEquals(ddbDescribeTableResponse.table().globalSecondaryIndexes().get(0).indexStatus().toString(),
+                describeTableResponse.table().globalSecondaryIndexes().get(0).indexStatus().toString());
+
+        // merges should be disabled for both table and index after enabling streams
+        TestUtils.validateTableProps(url, tableName, false);
+        TestUtils.validateTableProps(url, indexName, true);
     }
 
     // Stream disabled -> enable with a type
     @Test(timeout = 120000)
-    public void updateTableEnableStreamOnDisabledStream() throws Exception {
+    public void updateTableEnableStreamOnDisabledStream() {
         final String tableName = testName.getMethodName();
         CreateTableRequest createTableRequest =
                 DDLTestUtils.getCreateTableRequest(tableName, "ForumName", ScalarAttributeType.S,
                         "SubjectNumber", ScalarAttributeType.N);
-        
+
         phoenixDBClientV2.createTable(createTableRequest);
         dynamoDbClient.createTable(createTableRequest);
 
@@ -346,12 +424,12 @@ public class UpdateTableIT {
 
     // Stream disabled -> disable (should throw exception)
     @Test(timeout = 120000)
-    public void updateTableDisableStreamOnDisabledStream() throws Exception {
+    public void updateTableDisableStreamOnDisabledStream() {
         final String tableName = testName.getMethodName();
         CreateTableRequest createTableRequest =
                 DDLTestUtils.getCreateTableRequest(tableName, "ForumName", ScalarAttributeType.S,
                         "SubjectNumber", ScalarAttributeType.N);
-        
+
         phoenixDBClientV2.createTable(createTableRequest);
         dynamoDbClient.createTable(createTableRequest);
 
@@ -363,7 +441,7 @@ public class UpdateTableIT {
 
         UpdateTableRequest.Builder utr = UpdateTableRequest.builder().tableName(tableName);
         utr.streamSpecification(StreamSpecification.builder().streamEnabled(false).build());
-        
+
         int phoenixStatusCode = -1;
         try {
             phoenixDBClientV2.updateTable(utr.build());
@@ -389,7 +467,7 @@ public class UpdateTableIT {
 
     // Stream enabled -> enable with same type (should throw exception)
     @Test(timeout = 120000)
-    public void updateTableEnableStreamWithSameType() throws Exception {
+    public void updateTableEnableStreamWithSameType() {
         final String tableName = testName.getMethodName();
         CreateTableRequest createTableRequest =
                 DDLTestUtils.getCreateTableRequest(tableName, "ForumName", ScalarAttributeType.S,
@@ -398,7 +476,7 @@ public class UpdateTableIT {
                 .streamSpecification(StreamSpecification.builder().streamEnabled(true)
                         .streamViewType(StreamViewType.KEYS_ONLY).build())
                 .build();
-        
+
         phoenixDBClientV2.createTable(createTableRequest);
         dynamoDbClient.createTable(createTableRequest);
 
@@ -437,7 +515,7 @@ public class UpdateTableIT {
 
     // Stream enabled -> enable with different type (should throw exception)
     @Test(timeout = 120000)
-    public void updateTableChangeStreamType() throws Exception {
+    public void updateTableChangeStreamType() {
         final String tableName = testName.getMethodName();
         CreateTableRequest createTableRequest =
                 DDLTestUtils.getCreateTableRequest(tableName, "ForumName", ScalarAttributeType.S,
@@ -446,7 +524,7 @@ public class UpdateTableIT {
                 .streamSpecification(StreamSpecification.builder().streamEnabled(true)
                         .streamViewType(StreamViewType.OLD_IMAGE).build())
                 .build();
-        
+
         phoenixDBClientV2.createTable(createTableRequest);
         dynamoDbClient.createTable(createTableRequest);
 
@@ -485,7 +563,7 @@ public class UpdateTableIT {
 
     // Stream enabled -> disable (should throw exception)
     @Test(timeout = 120000)
-    public void updateTableDisableStreamOnEnabledStream() throws Exception {
+    public void updateTableDisableStreamOnEnabledStream() {
         final String tableName = testName.getMethodName();
         CreateTableRequest createTableRequest =
                 DDLTestUtils.getCreateTableRequest(tableName, "ForumName", ScalarAttributeType.S,
