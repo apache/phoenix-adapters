@@ -29,9 +29,11 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.phoenix.ddb.ConnectionUtil;
 import org.apache.phoenix.ddb.TableOptionsConfig;
 import org.apache.phoenix.ddb.service.exceptions.PhoenixServiceException;
+import org.apache.phoenix.ddb.service.exceptions.ResourceInUseException;
 import org.apache.phoenix.ddb.service.exceptions.ValidationException;
 import org.apache.phoenix.ddb.utils.ApiMetadata;
 import org.slf4j.Logger;
@@ -325,17 +327,13 @@ public class CreateTableService {
             List<String> createIndexDDLs = getIndexDDLs(request);
 
             try (Connection connection = ConnectionUtil.getConnection(connectionUrl)) {
+                connection.setAutoCommit(true);
                 PhoenixConnection phoenixConnection = connection.unwrap(PhoenixConnection.class);
-                try {
-                    PTable table = phoenixConnection.getTable(
-                            new PTableKey(phoenixConnection.getTenantId(), tableName));
-                    if (table != null) {
-                        return getCreateTableResponse(tableName, connectionUrl);
-                    }
-                } catch (TableNotFoundException e) {
-                    // ignore
+                Map<String, Object> response =
+                        checkTableExistence(connectionUrl, phoenixConnection, tableName);
+                if (response != null) {
+                    return response;
                 }
-
                 LOGGER.debug("Create Table Query: {}", createTableDDL);
                 connection.createStatement().execute(createTableDDL);
                 for (String createIndexDDL : createIndexDDLs) {
@@ -349,12 +347,46 @@ public class CreateTableService {
             } catch (SQLException e) {
                 if (!(e instanceof TableAlreadyExistsException)) {
                     throw new PhoenixServiceException(e);
+                } else {
+                    LOGGER.error("Error while creating table {}", tableName, e);
+                    try (Connection connection = ConnectionUtil.getConnection(connectionUrl)) {
+                        PhoenixConnection phoenixConnection =
+                                connection.unwrap(PhoenixConnection.class);
+                        Map<String, Object> response =
+                                checkTableExistence(connectionUrl, phoenixConnection, tableName);
+                        if (response != null) {
+                            return response;
+                        }
+                    } catch (SQLException ex) {
+                        throw new PhoenixServiceException(e);
+                    }
                 }
             }
-
             return getCreateTableResponse(tableName, connectionUrl);
         } finally {
             CREATE_TABLE_LOCKS.asMap().get(tableName).unlock();
         }
+    }
+
+    private static Map<String, Object> checkTableExistence(String connectionUrl,
+            PhoenixConnection phoenixConnection, String tableName) throws SQLException {
+        try {
+            PTable table = phoenixConnection.getTableNoCache(phoenixConnection.getTenantId(),
+                    PhoenixUtils.getFullTableName(tableName, false));
+            if (table != null) {
+                long tableTimestamp = table.getTimeStamp();
+                long elapsedMillis = EnvironmentEdgeManager.currentTime() - tableTimestamp;
+                if (elapsedMillis > 5000) {
+                    throw new ResourceInUseException("Table " + tableName + " already exists");
+                }
+                LOGGER.info("Table {} already exists but within 5 second window. "
+                        + "Returning success for idempotent behavior. Elapsed time after "
+                        + "table creation: {}ms", tableName, elapsedMillis);
+                return getCreateTableResponse(tableName, connectionUrl);
+            }
+        } catch (TableNotFoundException e) {
+            // ignore
+        }
+        return null;
     }
 }

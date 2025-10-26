@@ -327,25 +327,31 @@ public class CreateTableIT {
                 DDLTestUtils.getCreateTableRequest(tableName, "HK", ScalarAttributeType.B, null,
                         null);
 
-        // First create should succeed on both backends
         dynamoDbClient.createTable(request);
         phoenixDBClientV2.createTable(request);
 
-        // Second create should fail with ResourceInUseException on both backends
-        try {
-            dynamoDbClient.createTable(request);
-            Assert.fail("Expected ResourceInUseException from DynamoDB on duplicate create");
-        } catch (ResourceInUseException expected) {
-            // expected
-        }
-
-        // Second create should fail with ResourceInUseException on Phoenix, but it does not. Is this the behavior we want?
         try {
             phoenixDBClientV2.createTable(request);
-        } catch (ResourceInUseException expected) {
-            // not expected
-            Assert.fail("Unexpected ResourceInUseException from Phoenix REST on duplicate create");
+            // Should succeed within 5 seconds
+        } catch (ResourceInUseException e) {
+            Assert.fail("Should not throw ResourceInUseException within 5 seconds"
+                    + " of table creation");
+        }
 
+        Thread.sleep(6000);
+
+        try {
+            dynamoDbClient.createTable(request);
+            Assert.fail("Expected ResourceInUseException from DynamoDB after 5 seconds");
+        } catch (ResourceInUseException e) {
+            Assert.assertEquals(400, e.statusCode());
+        }
+
+        try {
+            phoenixDBClientV2.createTable(request);
+            Assert.fail("Expected ResourceInUseException from Phoenix REST after 5 seconds");
+        } catch (ResourceInUseException e) {
+            Assert.assertEquals(400, e.statusCode());
         }
     }
 

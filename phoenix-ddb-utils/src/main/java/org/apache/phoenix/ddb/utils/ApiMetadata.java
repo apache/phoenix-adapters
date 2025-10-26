@@ -181,6 +181,16 @@ public class ApiMetadata {
     public static final String EXCEPTION_TYPE = "__type";
     public static final String EXCEPTION_MESSAGE = "Message";
 
+    // Exception Types
+    private static final String DDB_EXCEPTION_PREFIX = "com.amazonaws.dynamodb.v20120810#";
+    public static final String VALIDATION_EXCEPTION = DDB_EXCEPTION_PREFIX + "ValidationException";
+    public static final String RESOURCE_NOT_FOUND_EXCEPTION =
+            DDB_EXCEPTION_PREFIX + "ResourceNotFoundException";
+    public static final String CONDITIONAL_CHECK_FAILED_EXCEPTION =
+            DDB_EXCEPTION_PREFIX + "ConditionalCheckFailedException";
+    public static final String RESOURCE_IN_USE_EXCEPTION =
+            DDB_EXCEPTION_PREFIX + "ResourceInUseException";
+
     // 1 MB response size max limit
     public static final int MAX_BYTES_SIZE = 1024 * 1024;
 }
