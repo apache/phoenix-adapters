@@ -237,8 +237,10 @@ public class ScanService {
         if (StringUtils.isEmpty(config.getIndexName())) {
             return new StringBuilder(String.format(SELECT_QUERY, fullTableName));
         } else {
-            return new StringBuilder(String.format(SELECT_QUERY_WITH_INDEX_HINT, 
-                    PhoenixUtils.SCHEMA_NAME, config.getTableName(), config.getIndexName(), fullTableName));
+            String fullIndexName = config.getTableName() + "_" + config.getIndexName();
+            return new StringBuilder(
+                    String.format(SELECT_QUERY_WITH_INDEX_HINT, PhoenixUtils.SCHEMA_NAME,
+                            config.getTableName(), fullIndexName, fullTableName));
         }
     }
 

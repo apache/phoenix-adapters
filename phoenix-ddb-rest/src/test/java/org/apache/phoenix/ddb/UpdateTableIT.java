@@ -267,7 +267,7 @@ public class UpdateTableIT {
 
         // merges should be disabled for data table after enabling streams
         TestUtils.validateTableProps(url, tableName, false);
-        TestUtils.validateTableProps(url, indexName, true);
+        TestUtils.validateTableProps(url, tableName + "_" + indexName, true);
     }
 
     @Test(timeout = 120000)
@@ -382,7 +382,7 @@ public class UpdateTableIT {
 
         // merges should be disabled for both table and index after enabling streams
         TestUtils.validateTableProps(url, tableName, false);
-        TestUtils.validateTableProps(url, indexName, true);
+        TestUtils.validateTableProps(url, tableName + "_" + indexName, true);
     }
 
     // Stream disabled -> enable with a type

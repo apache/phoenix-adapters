@@ -258,8 +258,9 @@ public class ConditionalPutItemIT {
             Assert.assertEquals(phoenixItem, dynamoItem);
 
             //check no update to index row [123, val1, (val1, 123)]
-            rs = connection.createStatement()
-                    .executeQuery("SELECT * FROM " + PhoenixUtils.getFullTableName("G_IDX_" + tableName, true));
+            rs = connection.createStatement().executeQuery(
+                    "SELECT * FROM " + PhoenixUtils.getFullTableName(
+                            tableName + "_G_IDX_" + tableName, true));
             Assert.assertTrue(rs.next());
             Assert.assertEquals(rs.getLong(1), Long.parseLong(item1.get("attr_1").n()));
             Assert.assertEquals(rs.getString(2), item1.get("attr_0").s());
@@ -627,8 +628,9 @@ public class ConditionalPutItemIT {
             Assert.assertEquals(phoenixItem, item2);
 
             // check index row is updated (Id2, attr_0, COL)
-            rs = connection.createStatement()
-                    .executeQuery("SELECT * FROM " + PhoenixUtils.getFullTableName("G_IDX_" + tableName, true));
+            rs = connection.createStatement().executeQuery(
+                    "SELECT * FROM " + PhoenixUtils.getFullTableName(
+                            tableName + "_G_IDX_" + tableName, true));
             Assert.assertTrue(rs.next());
             Assert.assertEquals(rs.getDouble(1), Double.parseDouble(item2.get("Id2").n()), 0.0);
             Assert.assertEquals(rs.getString(2), item2.get("attr_0").s());

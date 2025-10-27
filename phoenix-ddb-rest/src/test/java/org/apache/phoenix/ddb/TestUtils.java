@@ -98,7 +98,8 @@ public class TestUtils {
                     ps.unwrap(PhoenixPreparedStatement.class).optimizeQuery().getExplainPlan();
             ExplainPlanAttributes explainPlanAttributes = plan.getPlanStepsAsAttributes();
             Assert.assertEquals("RANGE SCAN ", explainPlanAttributes.getExplainScanType());
-            Assert.assertEquals(PhoenixUtils.getFullTableName(indexName, false), explainPlanAttributes.getTableName());
+            Assert.assertEquals(PhoenixUtils.getFullTableName(tableName + "_" + indexName, false),
+                    explainPlanAttributes.getTableName());
         }
     }
 
@@ -144,13 +145,15 @@ public class TestUtils {
     public static void validateIndexUsed(ScanRequest sr, String url, String scanType)
             throws SQLException {
         String indexName = sr.indexName();
+        String tableName = sr.tableName();
         try (Connection connection = DriverManager.getConnection(url)) {
             PreparedStatement ps = getPreparedStatementForScan(connection, getScanRequest(sr));
             ExplainPlan plan =
                     ps.unwrap(PhoenixPreparedStatement.class).optimizeQuery().getExplainPlan();
             ExplainPlanAttributes explainPlanAttributes = plan.getPlanStepsAsAttributes();
             Assert.assertEquals(scanType, explainPlanAttributes.getExplainScanType());
-            Assert.assertEquals(PhoenixUtils.getFullTableName(indexName, false), explainPlanAttributes.getTableName());
+            Assert.assertEquals(PhoenixUtils.getFullTableName(tableName + "_" + indexName, false),
+                    explainPlanAttributes.getTableName());
         }
     }
 
@@ -368,6 +371,7 @@ public class TestUtils {
             qr.exclusiveStartKey(phoenixResponse.lastEvaluatedKey());
         } while (phoenixResponse.hasLastEvaluatedKey());
 
+        qr.exclusiveStartKey(null);
         List<Map<String, AttributeValue>> ddbResult = new ArrayList<>();
         QueryResponse ddbResponse;
         do {
@@ -375,6 +379,7 @@ public class TestUtils {
             ddbResult.addAll(ddbResponse.items());
             qr.exclusiveStartKey(ddbResponse.lastEvaluatedKey());
         } while (ddbResponse.hasLastEvaluatedKey());
+        Assert.assertEquals(ddbResult.size(), phoenixResult.size());
         Assert.assertEquals(ddbResult, phoenixResult);
     }
 

@@ -28,7 +28,6 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.junit.Assert;
-import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.SdkBytes;
@@ -51,6 +50,7 @@ import software.amazon.awssdk.services.dynamodb.model.GetRecordsResponse;
 import software.amazon.awssdk.services.dynamodb.model.GetShardIteratorRequest;
 import software.amazon.awssdk.services.dynamodb.model.GlobalSecondaryIndex;
 import software.amazon.awssdk.services.dynamodb.model.KeySchemaElement;
+import software.amazon.awssdk.services.dynamodb.model.LocalSecondaryIndex;
 import software.amazon.awssdk.services.dynamodb.model.KeyType;
 import software.amazon.awssdk.services.dynamodb.model.ListStreamsRequest;
 import software.amazon.awssdk.services.dynamodb.model.ListStreamsResponse;
@@ -60,6 +60,7 @@ import software.amazon.awssdk.services.dynamodb.model.Projection;
 import software.amazon.awssdk.services.dynamodb.model.ProjectionType;
 import software.amazon.awssdk.services.dynamodb.model.PutItemRequest;
 import software.amazon.awssdk.services.dynamodb.model.PutRequest;
+import software.amazon.awssdk.services.dynamodb.model.QueryRequest;
 import software.amazon.awssdk.services.dynamodb.model.Record;
 import software.amazon.awssdk.services.dynamodb.model.ReturnConsumedCapacity;
 import software.amazon.awssdk.services.dynamodb.model.ReturnValuesOnConditionCheckFailure;
@@ -830,6 +831,443 @@ public class Misc1Util {
                             + localSortedItems.get(i) + " vs " + phoenixSortedItems.get(i),
                     ItemComparator.areItemsEqual(localSortedItems.get(i),
                             phoenixSortedItems.get(i)));
+        }
+    }
+
+    public static void test3(DynamoDbClient dynamoDbClient, DynamoDbClient phoenixDBClientV2,
+            DynamoDbStreamsClient dynamoDbStreamsClient,
+            DynamoDbStreamsClient phoenixDBStreamsClientV2) throws InterruptedException {
+
+        String table1Name = "test.highVolume_table1";
+        String table2Name = "test.highVolume_table2";
+
+        CreateTableRequest table1Request = createHighVolumeTableRequest(table1Name);
+        CreateTableRequest table2Request = createHighVolumeTableRequest(table2Name);
+
+        dynamoDbClient.createTable(table1Request);
+        phoenixDBClientV2.createTable(table1Request);
+        dynamoDbClient.createTable(table2Request);
+        phoenixDBClientV2.createTable(table2Request);
+
+        int totalItems = 10000;
+        int numPartitions = 13;
+
+        List<Map<String, AttributeValue>> table1Items =
+                generateItems(totalItems, numPartitions, "table1");
+        List<Map<String, AttributeValue>> table2Items =
+                generateItems(totalItems, numPartitions, "table2");
+
+        batchWriteItems(dynamoDbClient, phoenixDBClientV2, table1Name, table1Items);
+        batchWriteItems(dynamoDbClient, phoenixDBClientV2, table2Name, table2Items);
+
+        for (int partitionId = 0; partitionId < numPartitions; partitionId++) {
+            String pkValueTable1 = "pk_" + partitionId + "_t1";
+            String pkValueTable2 = "pk_" + partitionId + "_t2";
+
+            LOGGER.info("Querying and comparing partition {} for table1", pkValueTable1);
+            QueryRequest.Builder queryBuilder1 = QueryRequest.builder().tableName(table1Name)
+                    .keyConditionExpression("pk = :pkval").expressionAttributeValues(
+                            Collections.singletonMap(":pkval",
+                                    AttributeValue.builder().s(pkValueTable1).build()));
+            TestUtils.compareQueryOutputs(queryBuilder1, phoenixDBClientV2, dynamoDbClient);
+
+            LOGGER.info("Querying and comparing partition {} for table2", pkValueTable2);
+            QueryRequest.Builder queryBuilder2 = QueryRequest.builder().tableName(table2Name)
+                    .keyConditionExpression("pk = :pkval").expressionAttributeValues(
+                            Collections.singletonMap(":pkval",
+                                    AttributeValue.builder().s(pkValueTable2).build()));
+            TestUtils.compareQueryOutputs(queryBuilder2, phoenixDBClientV2, dynamoDbClient);
+        }
+
+        queryGSIsWithoutConditions(dynamoDbClient, phoenixDBClientV2, table1Name, "_t1");
+        queryGSIsWithSortKeyConditions(dynamoDbClient, phoenixDBClientV2, table2Name, "_t2");
+
+        queryLSIsWithSortKeyConditions(dynamoDbClient, phoenixDBClientV2, table1Name, "_t1");
+        queryLSIsWithSortKeyConditions(dynamoDbClient, phoenixDBClientV2, table2Name, "_t2");
+
+        TestUtils.compareAllStreamRecords(table1Name, dynamoDbStreamsClient,
+                phoenixDBStreamsClientV2);
+        TestUtils.compareAllStreamRecords(table2Name, dynamoDbStreamsClient,
+                phoenixDBStreamsClientV2);
+
+        dynamoDbClient.deleteTable(DeleteTableRequest.builder().tableName(table1Name).build());
+        phoenixDBClientV2.deleteTable(DeleteTableRequest.builder().tableName(table1Name).build());
+        dynamoDbClient.deleteTable(DeleteTableRequest.builder().tableName(table2Name).build());
+        phoenixDBClientV2.deleteTable(DeleteTableRequest.builder().tableName(table2Name).build());
+    }
+
+    private static CreateTableRequest createHighVolumeTableRequest(String tableName) {
+        return CreateTableRequest.builder().tableName(tableName).attributeDefinitions(
+                        AttributeDefinition.builder().attributeName("pk")
+                                .attributeType(ScalarAttributeType.S).build(),
+                        AttributeDefinition.builder().attributeName("sk")
+                                .attributeType(ScalarAttributeType.N).build(),
+                        AttributeDefinition.builder().attributeName("gsi1_pk")
+                                .attributeType(ScalarAttributeType.S).build(),
+                        AttributeDefinition.builder().attributeName("gsi2_pk")
+                                .attributeType(ScalarAttributeType.N).build(),
+                        AttributeDefinition.builder().attributeName("gsi3_pk")
+                                .attributeType(ScalarAttributeType.S).build(),
+                        AttributeDefinition.builder().attributeName("gsi1_sk")
+                                .attributeType(ScalarAttributeType.N).build(),
+                        AttributeDefinition.builder().attributeName("gsi2_sk")
+                                .attributeType(ScalarAttributeType.N).build(),
+                        AttributeDefinition.builder().attributeName("gsi3_sk")
+                                .attributeType(ScalarAttributeType.N).build(),
+                        AttributeDefinition.builder().attributeName("lsi1_sk")
+                                .attributeType(ScalarAttributeType.N).build(),
+                        AttributeDefinition.builder().attributeName("lsi2_sk")
+                                .attributeType(ScalarAttributeType.S).build(),
+                        AttributeDefinition.builder().attributeName("lsi3_sk")
+                                .attributeType(ScalarAttributeType.N).build()).keySchema(
+                        KeySchemaElement.builder().attributeName("pk").keyType(KeyType.HASH).build(),
+                        KeySchemaElement.builder().attributeName("sk").keyType(KeyType.RANGE).build())
+                .globalSecondaryIndexes(GlobalSecondaryIndex.builder().indexName("gsi_index_1")
+                        .keySchema(KeySchemaElement.builder().attributeName("gsi1_pk")
+                                        .keyType(KeyType.HASH).build(),
+                                KeySchemaElement.builder().attributeName("gsi1_sk")
+                                        .keyType(KeyType.RANGE).build())
+                        .projection(Projection.builder().projectionType(ProjectionType.ALL).build())
+                        .build(), GlobalSecondaryIndex.builder().indexName("gsi_index_2").keySchema(
+                                KeySchemaElement.builder().attributeName("gsi2_pk").keyType(KeyType.HASH)
+                                        .build(),
+                                KeySchemaElement.builder().attributeName("gsi2_sk").keyType(KeyType.RANGE)
+                                        .build())
+                        .projection(Projection.builder().projectionType(ProjectionType.ALL).build())
+                        .build(), GlobalSecondaryIndex.builder().indexName("gsi_index_3").keySchema(
+                                KeySchemaElement.builder().attributeName("gsi3_pk").keyType(KeyType.HASH)
+                                        .build(),
+                                KeySchemaElement.builder().attributeName("gsi3_sk").keyType(KeyType.RANGE)
+                                        .build())
+                        .projection(Projection.builder().projectionType(ProjectionType.ALL).build())
+                        .build()).localSecondaryIndexes(
+                        LocalSecondaryIndex.builder().indexName("lsi_index_1").keySchema(
+                                        KeySchemaElement.builder().attributeName("pk").keyType(KeyType.HASH)
+                                                .build(),
+                                        KeySchemaElement.builder().attributeName("lsi1_sk")
+                                                .keyType(KeyType.RANGE).build()).projection(
+                                        Projection.builder().projectionType(ProjectionType.ALL).build())
+                                .build(), LocalSecondaryIndex.builder().indexName("lsi_index_2")
+                                .keySchema(KeySchemaElement.builder().attributeName("pk")
+                                                .keyType(KeyType.HASH).build(),
+                                        KeySchemaElement.builder().attributeName("lsi2_sk")
+                                                .keyType(KeyType.RANGE).build()).projection(
+                                        Projection.builder().projectionType(ProjectionType.ALL)
+                                                .build()).build(),
+                        LocalSecondaryIndex.builder().indexName("lsi_index_3").keySchema(
+                                        KeySchemaElement.builder().attributeName("pk").keyType(KeyType.HASH)
+                                                .build(),
+                                        KeySchemaElement.builder().attributeName("lsi3_sk")
+                                                .keyType(KeyType.RANGE).build()).projection(
+                                        Projection.builder().projectionType(ProjectionType.ALL).build())
+                                .build()).billingMode(BillingMode.PAY_PER_REQUEST)
+                .streamSpecification(StreamSpecification.builder().streamEnabled(true)
+                        .streamViewType("NEW_AND_OLD_IMAGES").build()).build();
+    }
+
+    private static List<Map<String, AttributeValue>> generateItems(int totalItems,
+            int numPartitions, String tableId) {
+        List<Map<String, AttributeValue>> items = new ArrayList<>();
+        int itemsPerPartition = (int) Math.ceil((double) totalItems / numPartitions);
+
+        String tableSuffix = tableId.equals("table1") ? "_t1" : "_t2";
+        long timestampOffset = tableId.equals("table1") ? 0 : 1000000;
+        int sortKeyOffset = tableId.equals("table1") ? 0 : 1000000;
+
+        for (int partitionId = 0; partitionId < numPartitions; partitionId++) {
+            String pkValue = "pk_" + partitionId + tableSuffix;
+            int itemsForThisPartition = (partitionId == numPartitions - 1) ?
+                    (totalItems - items.size()) :
+                    itemsPerPartition;
+
+            for (int sortKeyId = 0; sortKeyId < itemsForThisPartition; sortKeyId++) {
+                Map<String, AttributeValue> item = new HashMap<>();
+                item.put("pk", AttributeValue.builder().s(pkValue).build());
+                item.put("sk", AttributeValue.builder().n(String.valueOf(sortKeyId + sortKeyOffset))
+                        .build());
+
+                int gsi1PartitionMod = partitionId % 10;
+                int gsi2PartitionMod = partitionId % 20;
+                int gsi3PartitionMod = partitionId % 5;
+
+                item.put("gsi1_pk",
+                        AttributeValue.builder().s("gsi1_" + gsi1PartitionMod + tableSuffix)
+                                .build());
+                item.put("gsi2_pk", AttributeValue.builder()
+                        .n(String.valueOf(gsi2PartitionMod + (tableId.equals("table1") ? 0 : 100)))
+                        .build());
+                item.put("gsi3_pk",
+                        AttributeValue.builder().s("gsi3_cat_" + gsi3PartitionMod + tableSuffix)
+                                .build());
+
+                int gsi1SortKey = sortKeyId + (partitionId * 10000) + sortKeyOffset;
+                int gsi2SortKey = sortKeyId + (partitionId * 5000) + sortKeyOffset;
+                int gsi3SortKey = sortKeyId + (partitionId * 20000) + sortKeyOffset;
+
+                item.put("gsi1_sk",
+                        AttributeValue.builder().n(String.valueOf(gsi1SortKey)).build());
+                item.put("gsi2_sk",
+                        AttributeValue.builder().n(String.valueOf(gsi2SortKey)).build());
+                item.put("gsi3_sk",
+                        AttributeValue.builder().n(String.valueOf(gsi3SortKey)).build());
+
+                int lsi1SortKey = 1000000 - sortKeyId + sortKeyOffset;
+                item.put("lsi1_sk",
+                        AttributeValue.builder().n(String.valueOf(lsi1SortKey)).build());
+
+                String lsi2SortKey = String.format("item_%05d%s", sortKeyId, tableSuffix);
+                item.put("lsi2_sk", AttributeValue.builder().s(lsi2SortKey).build());
+
+                long lsi3SortKey =
+                        System.currentTimeMillis() + (sortKeyId * 1000L) + timestampOffset;
+                item.put("lsi3_sk",
+                        AttributeValue.builder().n(String.valueOf(lsi3SortKey)).build());
+
+                item.put("data", AttributeValue.builder()
+                        .s("item_data_" + partitionId + "_" + sortKeyId + tableSuffix).build());
+                item.put("timestamp", AttributeValue.builder()
+                        .n(String.valueOf(System.currentTimeMillis() + sortKeyId + timestampOffset))
+                        .build());
+                item.put("category",
+                        AttributeValue.builder().s("category_" + (sortKeyId % 10) + tableSuffix)
+                                .build());
+
+                item.put("isActive", AttributeValue.builder()
+                        .bool(tableId.equals("table1") ? sortKeyId % 2 == 0 : sortKeyId % 3 == 0)
+                        .build());
+
+                String binaryData = "binary_" + partitionId + "_" + sortKeyId + tableSuffix;
+                item.put("binaryData",
+                        AttributeValue.builder().b(SdkBytes.fromUtf8String(binaryData)).build());
+
+                item.put("tags", AttributeValue.builder()
+                        .l(AttributeValue.builder().s("tag_" + sortKeyId + tableSuffix).build(),
+                                AttributeValue.builder().n(String.valueOf(sortKeyId)).build(),
+                                AttributeValue.builder().bool(tableId.equals("table1")).build())
+                        .build());
+
+                Map<String, AttributeValue> map = new HashMap<>();
+                map.put("region", AttributeValue.builder()
+                        .s(tableId.equals("table1") ? "us-west-2" : "us-east-1").build());
+                map.put("count",
+                        AttributeValue.builder().n(String.valueOf(sortKeyId % 100)).build());
+                map.put("enabled", AttributeValue.builder().bool(tableId.equals("table1")).build());
+                item.put("metadata", AttributeValue.builder().m(map).build());
+
+                item.put("stringSet", AttributeValue.builder()
+                        .ss("value1_" + sortKeyId + tableSuffix,
+                                "value2_" + partitionId + tableSuffix, "value3" + tableSuffix)
+                        .build());
+
+                item.put("numberSet", AttributeValue.builder()
+                        .ns(String.valueOf(sortKeyId), String.valueOf(10000 + partitionId),
+                                String.valueOf(20000 + (sortKeyId % 100))).build());
+
+                item.put("binarySet", AttributeValue.builder()
+                        .bs(SdkBytes.fromUtf8String("bin1_" + sortKeyId + tableSuffix),
+                                SdkBytes.fromUtf8String("bin2_" + partitionId + tableSuffix),
+                                SdkBytes.fromUtf8String("bin3" + tableSuffix)).build());
+
+                if (sortKeyId % 50 == 0) {
+                    item.put("optionalField", AttributeValue.builder().nul(true).build());
+                }
+                items.add(item);
+            }
+        }
+        return items;
+    }
+
+    private static void batchWriteItems(DynamoDbClient dynamoDbClient,
+            DynamoDbClient phoenixDBClientV2, String tableName,
+            List<Map<String, AttributeValue>> items) {
+        int batchSize = 25;
+        int totalBatches = (int) Math.ceil((double) items.size() / batchSize);
+
+        for (int batchNum = 0; batchNum < totalBatches; batchNum++) {
+            int startIdx = batchNum * batchSize;
+            int endIdx = Math.min(startIdx + batchSize, items.size());
+            List<Map<String, AttributeValue>> batchItems = items.subList(startIdx, endIdx);
+
+            List<WriteRequest> writeRequests = batchItems.stream()
+                    .map(item -> WriteRequest.builder()
+                            .putRequest(PutRequest.builder().item(item).build()).build())
+                    .collect(Collectors.toList());
+
+            Map<String, List<WriteRequest>> requestItems =
+                    Collections.singletonMap(tableName, writeRequests);
+
+            BatchWriteItemRequest batchWriteRequest =
+                    BatchWriteItemRequest.builder().requestItems(requestItems).build();
+
+            dynamoDbClient.batchWriteItem(batchWriteRequest);
+            phoenixDBClientV2.batchWriteItem(batchWriteRequest);
+        }
+    }
+
+    private static void queryGSIsWithoutConditions(DynamoDbClient dynamoDbClient,
+            DynamoDbClient phoenixDBClientV2, String tableName, String tableSuffix) {
+
+        // Query GSI 1 (gsi1_pk values: gsi1_0 to gsi1_9)
+        for (int i = 0; i < 10; i++) {
+            String gsi1Value = "gsi1_" + i + tableSuffix;
+            QueryRequest.Builder queryBuilder =
+                    QueryRequest.builder().tableName(tableName).indexName("gsi_index_1")
+                            .keyConditionExpression("gsi1_pk = :gsi1val").expressionAttributeValues(
+                                    Collections.singletonMap(":gsi1val",
+                                            AttributeValue.builder().s(gsi1Value).build()));
+            TestUtils.compareQueryOutputs(queryBuilder, phoenixDBClientV2, dynamoDbClient);
+        }
+
+        // Query GSI 2 (gsi2_pk values: 0 to 19 for table1, 100 to 119 for table2)
+        int gsi2Offset = tableSuffix.equals("_t1") ? 0 : 100;
+        for (int i = 0; i < 20; i++) {
+            QueryRequest.Builder queryBuilder =
+                    QueryRequest.builder().tableName(tableName).indexName("gsi_index_2")
+                            .keyConditionExpression("gsi2_pk = :gsi2val").expressionAttributeValues(
+                                    Collections.singletonMap(":gsi2val",
+                                            AttributeValue.builder().n(String.valueOf(i + gsi2Offset))
+                                                    .build()));
+            TestUtils.compareQueryOutputs(queryBuilder, phoenixDBClientV2, dynamoDbClient);
+        }
+
+        // Query GSI 3 (gsi3_pk values: gsi3_cat_0 to gsi3_cat_4)
+        for (int i = 0; i < 5; i++) {
+            String gsi3Value = "gsi3_cat_" + i + tableSuffix;
+            QueryRequest.Builder queryBuilder =
+                    QueryRequest.builder().tableName(tableName).indexName("gsi_index_3")
+                            .keyConditionExpression("gsi3_pk = :gsi3val").expressionAttributeValues(
+                                    Collections.singletonMap(":gsi3val",
+                                            AttributeValue.builder().s(gsi3Value).build()));
+            TestUtils.compareQueryOutputs(queryBuilder, phoenixDBClientV2, dynamoDbClient);
+        }
+    }
+
+    private static void queryGSIsWithSortKeyConditions(DynamoDbClient dynamoDbClient,
+            DynamoDbClient phoenixDBClientV2, String tableName, String tableSuffix) {
+
+        // Sort key offset: 0 for table1, 1000000 for table2
+        int sortKeyOffset = tableSuffix.equals("_t1") ? 0 : 1000000;
+
+        for (int i = 0; i < 10; i++) {
+            String gsi1Value = "gsi1_" + i + tableSuffix;
+            // Query items with gsi1_sk > threshold (adjusted for table offset)
+            int skThreshold = i * 10000 + 400 + sortKeyOffset;
+
+            Map<String, AttributeValue> expressionValues = new HashMap<>();
+            expressionValues.put(":gsi1val", AttributeValue.builder().s(gsi1Value).build());
+            expressionValues.put(":skval",
+                    AttributeValue.builder().n(String.valueOf(skThreshold)).build());
+
+            QueryRequest.Builder queryBuilder =
+                    QueryRequest.builder().tableName(tableName).indexName("gsi_index_1")
+                            .keyConditionExpression("gsi1_pk = :gsi1val AND gsi1_sk > :skval")
+                            .expressionAttributeValues(expressionValues);
+            TestUtils.compareQueryOutputs(queryBuilder, phoenixDBClientV2, dynamoDbClient);
+        }
+
+        // GSI 2 offset: 0 for table1, 100 for table2
+        int gsi2Offset = tableSuffix.equals("_t1") ? 0 : 100;
+        for (int i = 0; i < 20; i++) {
+            int baseOffset = i * 5000;
+            int lowerBound = baseOffset + 100 + sortKeyOffset;
+            int upperBound = baseOffset + 400 + sortKeyOffset;
+
+            Map<String, AttributeValue> expressionValues = new HashMap<>();
+            expressionValues.put(":gsi2val",
+                    AttributeValue.builder().n(String.valueOf(i + gsi2Offset)).build());
+            expressionValues.put(":lower",
+                    AttributeValue.builder().n(String.valueOf(lowerBound)).build());
+            expressionValues.put(":upper",
+                    AttributeValue.builder().n(String.valueOf(upperBound)).build());
+
+            QueryRequest.Builder queryBuilder =
+                    QueryRequest.builder().tableName(tableName).indexName("gsi_index_2")
+                            .keyConditionExpression(
+                                    "gsi2_pk = :gsi2val AND gsi2_sk BETWEEN :lower AND :upper")
+                            .expressionAttributeValues(expressionValues);
+            TestUtils.compareQueryOutputs(queryBuilder, phoenixDBClientV2, dynamoDbClient);
+        }
+
+        for (int i = 0; i < 5; i++) {
+            String gsi3Value = "gsi3_cat_" + i + tableSuffix;
+            // Query items with gsi3_sk < threshold (adjusted for table offset)
+            int skThreshold = i * 20000 + 500 + sortKeyOffset;
+
+            Map<String, AttributeValue> expressionValues = new HashMap<>();
+            expressionValues.put(":gsi3val", AttributeValue.builder().s(gsi3Value).build());
+            expressionValues.put(":skval",
+                    AttributeValue.builder().n(String.valueOf(skThreshold)).build());
+
+            QueryRequest.Builder queryBuilder =
+                    QueryRequest.builder().tableName(tableName).indexName("gsi_index_3")
+                            .keyConditionExpression("gsi3_pk = :gsi3val AND gsi3_sk < :skval")
+                            .expressionAttributeValues(expressionValues);
+            TestUtils.compareQueryOutputs(queryBuilder, phoenixDBClientV2, dynamoDbClient);
+        }
+    }
+
+    private static void queryLSIsWithSortKeyConditions(DynamoDbClient dynamoDbClient,
+            DynamoDbClient phoenixDBClientV2, String tableName, String tableSuffix) {
+
+        int sortKeyOffset = tableSuffix.equals("_t1") ? 0 : 1000000;
+
+        for (int partitionId = 0; partitionId < 5; partitionId++) {
+            String pkValue = "pk_" + partitionId + tableSuffix;
+
+            // LSI 1: Query with numeric sort key > condition (reverse order from base sk)
+            // lsi1_sk = 1000000 - sortKeyId + sortKeyOffset
+            int lsi1Threshold = 1000000 - 200 + sortKeyOffset; // Get items where original sk < 200
+            Map<String, AttributeValue> lsi1Expr = new HashMap<>();
+            lsi1Expr.put(":pkval", AttributeValue.builder().s(pkValue).build());
+            lsi1Expr.put(":skval",
+                    AttributeValue.builder().n(String.valueOf(lsi1Threshold)).build());
+
+            QueryRequest.Builder lsi1QueryBuilder =
+                    QueryRequest.builder().tableName(tableName).indexName("lsi_index_1")
+                            .keyConditionExpression("pk = :pkval AND lsi1_sk > :skval")
+                            .expressionAttributeValues(lsi1Expr);
+            TestUtils.compareQueryOutputs(lsi1QueryBuilder, phoenixDBClientV2, dynamoDbClient);
+
+            // LSI 2: Query with string sort key BETWEEN condition
+            // lsi2_sk format: "item_XXXXX_t1" or "item_XXXXX_t2"
+            String lsi2Lower = String.format("item_%05d%s", 100, tableSuffix);
+            String lsi2Upper = String.format("item_%05d%s", 300, tableSuffix);
+            Map<String, AttributeValue> lsi2Expr = new HashMap<>();
+            lsi2Expr.put(":pkval", AttributeValue.builder().s(pkValue).build());
+            lsi2Expr.put(":lower", AttributeValue.builder().s(lsi2Lower).build());
+            lsi2Expr.put(":upper", AttributeValue.builder().s(lsi2Upper).build());
+
+            QueryRequest.Builder lsi2QueryBuilder =
+                    QueryRequest.builder().tableName(tableName).indexName("lsi_index_2")
+                            .keyConditionExpression(
+                                    "pk = :pkval AND lsi2_sk BETWEEN :lower AND :upper")
+                            .expressionAttributeValues(lsi2Expr);
+            TestUtils.compareQueryOutputs(lsi2QueryBuilder, phoenixDBClientV2, dynamoDbClient);
+
+            // LSI 3: Query with timestamp-based sort key < condition
+            // lsi3_sk = currentTime + (sortKeyId * 1000) + timestampOffset
+            // Query for items with lsi3_sk less than a certain threshold
+            long lsi3Threshold =
+                    System.currentTimeMillis() + (150 * 1000) + (tableSuffix.equals("_t1") ?
+                            0 :
+                            1000000);
+            Map<String, AttributeValue> lsi3Expr = new HashMap<>();
+            lsi3Expr.put(":pkval", AttributeValue.builder().s(pkValue).build());
+            lsi3Expr.put(":skval",
+                    AttributeValue.builder().n(String.valueOf(lsi3Threshold)).build());
+
+            QueryRequest.Builder lsi3QueryBuilder =
+                    QueryRequest.builder().tableName(tableName).indexName("lsi_index_3")
+                            .keyConditionExpression("pk = :pkval AND lsi3_sk <= :skval")
+                            .expressionAttributeValues(lsi3Expr);
+            TestUtils.compareQueryOutputs(lsi3QueryBuilder, phoenixDBClientV2, dynamoDbClient);
+
+            QueryRequest.Builder lsi4QueryBuilder =
+                    QueryRequest.builder().tableName(tableName).indexName("lsi_index_3")
+                            .scanIndexForward(false)
+                            .keyConditionExpression("pk = :pkval AND lsi3_sk < :skval")
+                            .expressionAttributeValues(lsi3Expr);
+            TestUtils.compareQueryOutputs(lsi4QueryBuilder, phoenixDBClientV2, dynamoDbClient);
         }
     }
 

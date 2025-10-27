@@ -110,9 +110,12 @@ public class QueryService {
 
         // build SQL query
         StringBuilder queryBuilder = StringUtils.isEmpty(indexName) ?
-                new StringBuilder(String.format(SELECT_QUERY, PhoenixUtils.getFullTableName(tableName, true))) :
-                new StringBuilder(String.format(SELECT_QUERY_WITH_INDEX_HINT, PhoenixUtils.SCHEMA_NAME,
-                        tableName, indexName,  PhoenixUtils.getFullTableName(tableName, true)));
+                new StringBuilder(String.format(SELECT_QUERY,
+                        PhoenixUtils.getFullTableName(tableName, true))) :
+                new StringBuilder(
+                        String.format(SELECT_QUERY_WITH_INDEX_HINT, PhoenixUtils.SCHEMA_NAME,
+                                tableName, tableName + "_" + indexName,
+                                PhoenixUtils.getFullTableName(tableName, true)));
 
         // parse Key Conditions
         KeyConditionsHolder keyConditions = new KeyConditionsHolder(keyCondExpr, exprAttrNames,

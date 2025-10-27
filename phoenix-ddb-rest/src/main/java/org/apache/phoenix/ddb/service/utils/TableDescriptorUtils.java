@@ -57,6 +57,7 @@ public class TableDescriptorUtils {
                                                        Map<String, Object> tableDescription,
                                                        Set<Map<String, Object>> attributeDefinitionSet) {
         if (table.getIndexes() != null && !table.getIndexes().isEmpty()) {
+            String tableName = table.getTableName().getString();
             for (PTable index : table.getIndexes()) {
                 String indexName = index.getName().getString();
                 // skip the CDC index when building table descriptor
@@ -110,7 +111,8 @@ public class TableDescriptorUtils {
                             (List<Map<String, Object>>) tableDescription.get(ApiMetadata.LOCAL_SECONDARY_INDEXES);
 
                     Map<String, Object> localSecondaryIndexElement = new HashMap<>();
-                    localSecondaryIndexElement.put(ApiMetadata.INDEX_NAME, index.getTableName().getString());
+                    localSecondaryIndexElement.put(ApiMetadata.INDEX_NAME,
+                            index.getTableName().getString().split(tableName + "_")[1]);
                     localSecondaryIndexElement.put(ApiMetadata.KEY_SCHEMA, keySchemaList);
                     localSecondaryIndexElement.put(ApiMetadata.INDEX_STATUS, indexStateMap.get(index.getIndexState()));
                     localSecondaryIndexes.add(localSecondaryIndexElement);
@@ -121,7 +123,8 @@ public class TableDescriptorUtils {
                             (List<Map<String, Object>>) tableDescription.get(ApiMetadata.GLOBAL_SECONDARY_INDEXES);
 
                     Map<String, Object> globalSecondaryIndexElement = new HashMap<>();
-                    globalSecondaryIndexElement.put(ApiMetadata.INDEX_NAME, index.getTableName().getString());
+                    globalSecondaryIndexElement.put(ApiMetadata.INDEX_NAME,
+                            index.getTableName().getString().split(tableName + "_")[1]);
                     globalSecondaryIndexElement.put(ApiMetadata.KEY_SCHEMA, keySchemaList);
                     globalSecondaryIndexElement.put(ApiMetadata.INDEX_STATUS, indexStateMap.get(index.getIndexState()));
                     globalSecondaryIndexes.add(globalSecondaryIndexElement);

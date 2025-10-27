@@ -167,8 +167,8 @@ public class CreateTableIT {
         TableDescription tableDescription2 = CreateTableResponse2.tableDescription();
         DDLTestUtils.assertTableDescriptions(tableDescription1, tableDescription2);
         TestUtils.validateTableProps(url, tableName, true);
-        TestUtils.validateTableProps(url, "IDX1_" + tableName, true);
-        TestUtils.validateTableProps(url, "IDX2_" + tableName, true);
+        TestUtils.validateTableProps(url, tableName + "_IDX1_" + tableName, true);
+        TestUtils.validateTableProps(url, tableName + "_IDX2_" + tableName, true);
     }
 
     @Test(timeout = 120000)
@@ -308,7 +308,7 @@ public class CreateTableIT {
                     tableDescription2, "NEW_IMAGE");
         }
         TestUtils.validateTableProps(url, tableName, false);
-        TestUtils.validateTableProps(url, "IDX1_" + tableName, true);
+        TestUtils.validateTableProps(url, tableName + "_IDX1_" + tableName, true);
     }
 
     @Test(timeout = 120000)

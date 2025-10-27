@@ -249,8 +249,9 @@ public class PutItemIT {
             //Assert.assertEquals(dynamoItem, phoenixItem);
 
             // check index row (Title, attr_0, attr1, COL)
-            rs = connection.createStatement()
-                    .executeQuery("SELECT * FROM " + PhoenixUtils.getFullTableName("g_IDX_" + tableName, true));
+            rs = connection.createStatement().executeQuery(
+                    "SELECT * FROM " + PhoenixUtils.getFullTableName(
+                            tableName + "_g_IDX_" + tableName, true));
             Assert.assertTrue(rs.next());
             Assert.assertEquals(rs.getString(1), item.get("Title").s());
             Assert.assertEquals(rs.getString(2), item.get("attr_0").s());
@@ -296,8 +297,9 @@ public class PutItemIT {
 
         // check index rows are sorted
         try (Connection connection = DriverManager.getConnection(url)) {
-            ResultSet rs = connection.createStatement()
-                    .executeQuery("SELECT * FROM " + PhoenixUtils.getFullTableName("G_iDX_" + tableName, true));
+            ResultSet rs = connection.createStatement().executeQuery(
+                    "SELECT * FROM " + PhoenixUtils.getFullTableName(
+                            tableName + "_G_iDX_" + tableName, true));
             Assert.assertTrue(rs.next());
             Double val = rs.getDouble(1);
             while (rs.next()) {

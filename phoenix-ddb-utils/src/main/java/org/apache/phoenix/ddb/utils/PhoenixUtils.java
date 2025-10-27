@@ -109,7 +109,7 @@ public class PhoenixUtils {
             String tableName) throws SQLException {
         List<PColumn> indexPKCols = new ArrayList<>();
         List<PColumn> tablePKCols = getPKColumns(conn, tableName);
-        List<PColumn> indexAndTablePKCols = getPKColumns(conn, indexName);
+        List<PColumn> indexAndTablePKCols = getPKColumns(conn, tableName + "_" + indexName);
         int numIndexPKs = indexAndTablePKCols.size() - tablePKCols.size();
         for (int i = 0; i < numIndexPKs; i++) {
             indexPKCols.add(indexAndTablePKCols.get(i));

@@ -165,11 +165,12 @@ public class CreateTableService {
                     "BSON_VALUE(COL,'" + rangeKeyAttributeName + "','" + rangeKeyDataType + "')";
         }
 
-        indexDDLs.add(
-                "CREATE INDEX \"" + indexName + "\" ON " + PhoenixUtils.getFullTableName(tableName, true)
-                        + " (" + indexOn + ") INCLUDE (COL) WHERE " + indexHashKey + " IS NOT " +
-                        "NULL " + ((indexSortKey != null) ? " AND " + indexSortKey + " IS NOT " +
-                        "NULL " : "") + (isAsync ? " ASYNC " : "") + TableOptionsConfig.getIndexOptions());
+        final String finalIndexName = tableName + "_" + indexName;
+        indexDDLs.add("CREATE INDEX \"" + finalIndexName + "\" ON " + PhoenixUtils.getFullTableName(
+                tableName, true) + " (" + indexOn + ") INCLUDE (COL) WHERE " + indexHashKey
+                + " IS NOT " + "NULL " + ((indexSortKey != null) ?
+                " AND " + indexSortKey + " IS NOT " + "NULL " :
+                "") + (isAsync ? " ASYNC " : "") + TableOptionsConfig.getIndexOptions());
     }
 
     public static List<String> getIndexDDLs(Map<String, Object> request) {
