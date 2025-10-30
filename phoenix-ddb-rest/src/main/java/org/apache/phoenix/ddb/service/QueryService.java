@@ -114,7 +114,7 @@ public class QueryService {
                         PhoenixUtils.getFullTableName(tableName, true))) :
                 new StringBuilder(
                         String.format(SELECT_QUERY_WITH_INDEX_HINT, PhoenixUtils.SCHEMA_NAME,
-                                tableName, tableName + "_" + indexName,
+                                tableName, PhoenixUtils.getInternalIndexName(tableName, indexName),
                                 PhoenixUtils.getFullTableName(tableName, true)));
 
         // parse Key Conditions

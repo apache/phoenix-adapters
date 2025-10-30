@@ -61,7 +61,7 @@ public class UpdateTableService {
                     Map<String, Object> deleteIndexUpdate
                             = (Map<String, Object>) indexUpdate.get(ApiMetadata.DELETE);
                     String indexName = (String) deleteIndexUpdate.get(ApiMetadata.INDEX_NAME);
-                    final String finalIndexName = tableName + "_" + indexName;
+                    final String finalIndexName = PhoenixUtils.getInternalIndexName(tableName, indexName);
                     String ddl = String.format(DROP_INDEX_SQL, finalIndexName,
                             PhoenixUtils.getFullTableName(tableName, true));
                     LOGGER.debug("DDL for Disable Index: {}", ddl);

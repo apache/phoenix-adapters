@@ -165,7 +165,7 @@ public class CreateTableService {
                     "BSON_VALUE(COL,'" + rangeKeyAttributeName + "','" + rangeKeyDataType + "')";
         }
 
-        final String finalIndexName = tableName + "_" + indexName;
+        final String finalIndexName = PhoenixUtils.getInternalIndexName(tableName, indexName);
         indexDDLs.add("CREATE INDEX \"" + finalIndexName + "\" ON " + PhoenixUtils.getFullTableName(
                 tableName, true) + " (" + indexOn + ") INCLUDE (COL) WHERE " + indexHashKey
                 + " IS NOT " + "NULL " + ((indexSortKey != null) ?

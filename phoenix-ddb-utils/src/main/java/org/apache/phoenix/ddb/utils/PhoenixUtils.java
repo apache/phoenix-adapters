@@ -43,6 +43,18 @@ public class PhoenixUtils {
     public static final String SCHEMA_NAME_AND_DELIM = SCHEMA_NAME + SCHEMA_DELIMITER;
 
     /**
+     * To support same index names for different tables under DDB schema,
+     * we will prefix index names with the table names.
+     */
+    public static String getInternalIndexName(String tableName, String indexName) {
+        return tableName + "_" + indexName;
+    }
+
+    public static String getIndexNameFromInternalName(String tableName, String internalIndexName) {
+        return internalIndexName.split(tableName + "_")[1];
+    }
+
+    /**
      *  Append schema name to return the full table name.
      *  Escape tableName with quotes if case-sensitive.
      */
@@ -109,7 +121,7 @@ public class PhoenixUtils {
             String tableName) throws SQLException {
         List<PColumn> indexPKCols = new ArrayList<>();
         List<PColumn> tablePKCols = getPKColumns(conn, tableName);
-        List<PColumn> indexAndTablePKCols = getPKColumns(conn, tableName + "_" + indexName);
+        List<PColumn> indexAndTablePKCols = getPKColumns(conn, getInternalIndexName(tableName, indexName));
         int numIndexPKs = indexAndTablePKCols.size() - tablePKCols.size();
         for (int i = 0; i < numIndexPKs; i++) {
             indexPKCols.add(indexAndTablePKCols.get(i));

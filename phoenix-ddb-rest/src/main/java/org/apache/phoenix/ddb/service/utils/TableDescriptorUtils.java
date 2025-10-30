@@ -112,7 +112,7 @@ public class TableDescriptorUtils {
 
                     Map<String, Object> localSecondaryIndexElement = new HashMap<>();
                     localSecondaryIndexElement.put(ApiMetadata.INDEX_NAME,
-                            index.getTableName().getString().split(tableName + "_")[1]);
+                            PhoenixUtils.getIndexNameFromInternalName(tableName, index.getTableName().getString()));
                     localSecondaryIndexElement.put(ApiMetadata.KEY_SCHEMA, keySchemaList);
                     localSecondaryIndexElement.put(ApiMetadata.INDEX_STATUS, indexStateMap.get(index.getIndexState()));
                     localSecondaryIndexes.add(localSecondaryIndexElement);
@@ -124,7 +124,7 @@ public class TableDescriptorUtils {
 
                     Map<String, Object> globalSecondaryIndexElement = new HashMap<>();
                     globalSecondaryIndexElement.put(ApiMetadata.INDEX_NAME,
-                            index.getTableName().getString().split(tableName + "_")[1]);
+                           PhoenixUtils.getIndexNameFromInternalName(tableName, index.getTableName().getString()));
                     globalSecondaryIndexElement.put(ApiMetadata.KEY_SCHEMA, keySchemaList);
                     globalSecondaryIndexElement.put(ApiMetadata.INDEX_STATUS, indexStateMap.get(index.getIndexState()));
                     globalSecondaryIndexes.add(globalSecondaryIndexElement);
