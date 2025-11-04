@@ -274,10 +274,6 @@ if [ "$COMMAND" = "rest" ]; then
                 REST_CMD_ARGS+=("-p" "$2")
                 shift 2
                 ;;
-            -i|--infoport)
-                REST_CMD_ARGS+=("-i" "$2")
-                shift 2
-                ;;
             *)
                 echo "Unknown option: $1"
                 show_usage

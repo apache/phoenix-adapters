@@ -16,11 +16,18 @@
  * limitations under the License.
  */
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -298,6 +305,29 @@ public class CreateTableIT {
     public void createTableTest() throws Exception {
         createTable(dynamoDbClient);
         createTable(phoenixDBClientV2);
+        Thread.sleep(1000);
+        testJmxMetrics();
+    }
+
+    private static void testJmxMetrics() throws Exception {
+        URL url = new URL("http://" + restServer.getServerAddress()
+                + "/jmx?get=Hadoop:service=*,name=PHOENIX-REST::CreateTableSuccessTime_num_ops");
+
+        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+        connection.setRequestMethod("GET");
+        int responseCode = connection.getResponseCode();
+        Assert.assertEquals(HttpURLConnection.HTTP_OK, responseCode);
+
+        BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+        ObjectMapper objectMapper = new ObjectMapper();
+        Map<String, Object> jsonMap =
+                objectMapper.readValue(in, new TypeReference<Map<String, Object>>() {
+                });
+        Assert.assertTrue(
+                (Integer) ((Map<String, Object>) ((List) jsonMap.get("beans")).get(0)).get(
+                        "CreateTableSuccessTime_num_ops") > 0);
+        in.close();
+        connection.disconnect();
     }
 
     private static void createTable(DynamoDbClient db) {

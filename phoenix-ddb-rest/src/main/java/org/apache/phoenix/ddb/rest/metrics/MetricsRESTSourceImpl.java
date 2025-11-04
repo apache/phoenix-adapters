@@ -1,3 +1,21 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.apache.phoenix.ddb.rest.metrics;
 
 import org.apache.hadoop.hbase.metrics.BaseSourceImpl;
@@ -14,8 +32,9 @@ public class MetricsRESTSourceImpl extends BaseSourceImpl implements MetricsREST
 
     // rest metrics
     private MutableFastCounter request;
-    private MutableFastCounter ctS;
-    private MutableFastCounter ctF;
+
+    private MetricHistogram createTableSuccessTime;
+    private MetricHistogram createTableFailureTime;
 
     // pause monitor metrics
     private final MutableFastCounter infoPauseThresholdExceeded;
@@ -33,9 +52,11 @@ public class MetricsRESTSourceImpl extends BaseSourceImpl implements MetricsREST
 
         // pause monitor metrics
         infoPauseThresholdExceeded =
-                getMetricsRegistry().newCounter(INFO_THRESHOLD_COUNT_KEY, INFO_THRESHOLD_COUNT_DESC, 0L);
+                getMetricsRegistry().newCounter(INFO_THRESHOLD_COUNT_KEY, INFO_THRESHOLD_COUNT_DESC,
+                        0L);
         warnPauseThresholdExceeded =
-                getMetricsRegistry().newCounter(WARN_THRESHOLD_COUNT_KEY, WARN_THRESHOLD_COUNT_DESC, 0L);
+                getMetricsRegistry().newCounter(WARN_THRESHOLD_COUNT_KEY, WARN_THRESHOLD_COUNT_DESC,
+                        0L);
         pausesWithGc = getMetricsRegistry().newTimeHistogram(PAUSE_TIME_WITH_GC_KEY);
         pausesWithoutGc = getMetricsRegistry().newTimeHistogram(PAUSE_TIME_WITHOUT_GC_KEY);
     }
@@ -44,8 +65,10 @@ public class MetricsRESTSourceImpl extends BaseSourceImpl implements MetricsREST
     public void init() {
         super.init();
         request = getMetricsRegistry().getCounter(REQUEST_KEY, 0L);
-        ctS = getMetricsRegistry().getCounter(CREATE_TABLE_SUCCESS_KEY, 0L);
-        ctF = getMetricsRegistry().getCounter(CREATE_TABLE_FAIL_KEY, 0L);
+        createTableSuccessTime = getMetricsRegistry().newTimeHistogram(CREATE_TABLE_SUCCESS_KEY,
+                CREATE_TABLE_SUCCESS_DESC);
+        createTableFailureTime = getMetricsRegistry().newTimeHistogram(CREATE_TABLE_FAIL_KEY,
+                CREATE_TABLE_FAIL_DESC);
     }
 
     @Override
@@ -54,13 +77,13 @@ public class MetricsRESTSourceImpl extends BaseSourceImpl implements MetricsREST
     }
 
     @Override
-    public void incrementCreateTableSuccessRequests(int inc) {
-        ctS.incr(inc);
+    public void createTableSuccessTime(long time) {
+        createTableSuccessTime.add(time);
     }
 
     @Override
-    public void incrementCreateTableFailedRequests(int inc) {
-        ctF.incr(inc);
+    public void createTableFailureTime(long time) {
+        createTableFailureTime.add(time);
     }
 
     @Override

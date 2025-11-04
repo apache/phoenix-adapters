@@ -1,6 +1,22 @@
-package org.apache.phoenix.ddb.rest.metrics;
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-import org.apache.hadoop.hbase.CompatibilitySingletonFactory;
+package org.apache.phoenix.ddb.rest.metrics;
 
 public class MetricsREST {
 
@@ -22,17 +38,17 @@ public class MetricsREST {
     }
 
     /**
-     * @param inc How much to add to create table success requests.
+     * @param time taken for the successful Create Table requests.
      */
-    public void incrementCreateTableSuccessRequests(int inc) {
-        source.incrementCreateTableSuccessRequests(inc);
+    public void createTableSuccessTime(long time) {
+        source.createTableSuccessTime(time);
     }
 
     /**
-     * @param inc How much to add to create table failure requests.
+     * @param time taken for the failed Create Table requests.
      */
-    public void incrementCreateTableFailedRequests(int inc) {
-        source.incrementCreateTableFailedRequests(inc);
+    public void createTableFailureTime(long time) {
+        source.createTableFailureTime(time);
     }
 
 }

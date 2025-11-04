@@ -1,3 +1,21 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.apache.phoenix.ddb.rest;
 
 import java.lang.management.ManagementFactory;
@@ -81,7 +99,6 @@ public class RESTServer {
         Options options = new Options();
         options.addOption("p", "port", true,
                 "Port to bind to [default: " + Constants.DEFAULT_LISTEN_PORT + "]");
-        options.addOption("i", "infoport", true, "Port for WEB UI");
         options.addOption("z", "zkquorum", true, "ZK Quorum to be used for Phoenix Connection");
 
         CommandLine commandLine = null;
@@ -97,13 +114,6 @@ public class RESTServer {
             String val = commandLine.getOptionValue("port");
             conf.setInt(Constants.PHOENIX_DDB_REST_PORT, Integer.parseInt(val));
             LOG.debug("port set to {}", val);
-        }
-
-        // check for user-defined info server port setting, if so override the conf
-        if (commandLine != null && commandLine.hasOption("infoport")) {
-            String val = commandLine.getOptionValue("infoport");
-            conf.setInt(Constants.PHOENIX_DDB_REST_INFO_PORT, Integer.parseInt(val));
-            LOG.debug("WEB UI port set to {}", val);
         }
 
         // check for user-defined zookeeper quorum setting, if so override the conf
@@ -162,6 +172,9 @@ public class RESTServer {
         ServletContainer servletContainer =
                 ReflectionUtils.newInstance(containerClass, application);
         ServletHolder sh = new ServletHolder(servletContainer);
+
+        // ServletHolder for JMX metrics
+        ServletHolder jmxSh = new ServletHolder("jmx", JMXJsonServlet.class);
 
         // Set the default max thread number to 100 to limit
         // the number of concurrent requests so that REST server doesn't OOM easily.
@@ -225,23 +238,14 @@ public class RESTServer {
         ServletContextHandler ctxHandler =
                 new ServletContextHandler(server, "/", ServletContextHandler.SESSIONS);
         ctxHandler.addServlet(sh, Constants.PATH_SPEC_ANY);
+        ctxHandler.addServlet(jmxSh, "/jmx");
 
         HttpServerUtil.constrainHttpMethods(ctxHandler, servlet.getConfiguration()
                 .getBoolean(Constants.REST_HTTP_ALLOW_OPTIONS_METHOD,
                         Constants.REST_HTTP_ALLOW_OPTIONS_METHOD_DEFAULT));
 
-        // Put up info server.
-        int port = conf.getInt(Constants.PHOENIX_DDB_REST_INFO_PORT, Constants.DEFAULT_INFO_PORT);
-        if (port >= 0) {
-            final long startCode = EnvironmentEdgeManager.currentTime();
-            this.serverName = ServerName.valueOf(getHostName(conf), servicePort, startCode);
-            String addr =
-                    conf.get(Constants.PHOENIX_DDB_REST_INFO_BIND_ADDRESS, Constants.DEFAULT_HOST);
-            //            this.infoServer = new InfoServer(REST_SERVER, addr, port, false, conf);
-            //            this.infoServer.setAttribute(REST_SERVER, this);
-            //            this.infoServer.start();
-        }
-        // start server
+        final long startCode = EnvironmentEdgeManager.currentTime();
+        this.serverName = ServerName.valueOf(getHostName(conf), servicePort, startCode);
         server.start();
     }
 
