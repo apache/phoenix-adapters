@@ -105,7 +105,7 @@ public class ListStreamsIT {
 
         Assert.assertEquals(dynamoResult.streams().size(), phoenixResult.streams().size());
         Stream phoenixStream = phoenixResult.streams().get(0);
-        Assert.assertEquals(tableName, phoenixStream.tableName());
+        Assert.assertEquals("DDB." + tableName, phoenixStream.tableName());
         SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS zzz");
         Date date = df.parse(phoenixStream.streamLabel());
         Assert.assertTrue(phoenixStream.streamArn().contains(String.valueOf(date.getTime())));

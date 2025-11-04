@@ -193,8 +193,8 @@ public class DeleteItemIT {
 
         //since item was not deleted we will still see 1 item in the table
         try (Connection connection = DriverManager.getConnection(url)) {
-            ResultSet rs =
-                    connection.createStatement().executeQuery("SELECT COUNT(*) FROM \"" + tableName + "\"");
+            ResultSet rs = connection.createStatement()
+                    .executeQuery("SELECT COUNT(*) FROM DDB.\"" + tableName + "\"");
             Assert.assertTrue(rs.next());
             Assert.assertEquals(1, rs.getInt(1));
         }
@@ -229,8 +229,8 @@ public class DeleteItemIT {
 
         //since item was not deleted we will still see 1 item in the table
         try (Connection connection = DriverManager.getConnection(url)) {
-            ResultSet rs =
-                    connection.createStatement().executeQuery("SELECT COUNT(*) FROM \"" + tableName + "\"");
+            ResultSet rs = connection.createStatement()
+                    .executeQuery("SELECT COUNT(*) FROM DDB.\"" + tableName + "\"");
             Assert.assertTrue(rs.next());
             Assert.assertEquals(1, rs.getInt(1));
         }

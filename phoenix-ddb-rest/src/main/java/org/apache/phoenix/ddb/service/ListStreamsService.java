@@ -23,8 +23,7 @@ public class ListStreamsService {
         Map<String, Object> result = new HashMap<>();
         try (Connection connection = DriverManager.getConnection(connectionUrl)) {
             PhoenixConnection pconn = connection.unwrap(PhoenixConnection.class);
-            PTable table = pconn.getTable(
-                    new PTableKey(pconn.getTenantId(), tableName));
+            PTable table = pconn.getTable(new PTableKey(pconn.getTenantId(), "DDB." + tableName));
             List<Map<String, Object>> streams = new ArrayList<>();
             // For now, we will only return the currently enabled or enabling stream
             // TODO: once phoenix can handle disable stream, we will also return historical streams.

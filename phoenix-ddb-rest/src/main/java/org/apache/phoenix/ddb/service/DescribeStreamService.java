@@ -83,7 +83,8 @@ public class DescribeStreamService {
         PTable table = pconn.getTable(tableName);
         Map<String, Object> streamDesc = new HashMap<>();
         streamDesc.put("StreamArn", streamName);
-        streamDesc.put("TableName", tableName);
+        streamDesc.put("TableName",
+                tableName.startsWith("DDB.") ? tableName.split("DDB.")[1] : tableName);
         long creationTS = DDBShimCDCUtils.getCDCIndexTimestampFromStreamName(streamName);
         Instant instant = Instant.ofEpochMilli(creationTS);
         streamDesc.put("StreamLabel", DDBShimCDCUtils.getStreamLabel(creationTS));

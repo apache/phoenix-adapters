@@ -93,14 +93,15 @@ public class PutItemIT {
         //create table
         final String tableName = testName.getMethodName();
         CreateTableRequest createTableRequest =
-                DDLTestUtils.getCreateTableRequest(tableName, "attr_0",
-                        ScalarAttributeType.S, null, null);
+                DDLTestUtils.getCreateTableRequest(tableName, "attr_0", ScalarAttributeType.S, null,
+                        null);
         phoenixDBClientV2.createTable(createTableRequest);
         dynamoDbClient.createTable(createTableRequest);
 
         //put item
         Map<String, AttributeValue> item = DocumentDdbAttributesTest.getItem1();
-        PutItemRequest putItemRequest = PutItemRequest.builder().tableName(tableName).item(item).build();
+        PutItemRequest putItemRequest =
+                PutItemRequest.builder().tableName(tableName).item(item).build();
         phoenixDBClientV2.putItem(putItemRequest);
         dynamoDbClient.putItem(putItemRequest);
 
@@ -114,14 +115,15 @@ public class PutItemIT {
         Assert.assertEquals(1, result.items().size());
         Map<String, AttributeValue> dynamoItem = result.items().get(0);
 
-
         // query phoenix and compare row to item
         try (Connection connection = DriverManager.getConnection(url)) {
-            ResultSet rs = connection.createStatement().executeQuery("SELECT * FROM \"" + tableName + "\"");
+            ResultSet rs = connection.createStatement()
+                    .executeQuery("SELECT * FROM DDB.\"" + tableName + "\"");
             Assert.assertTrue(rs.next());
             Assert.assertEquals(rs.getString(1), item.get("attr_0").s());
             BsonDocument bsonDoc = (BsonDocument) rs.getObject(2);
-            Map<String, AttributeValue> phoenixItem = BsonDocumentToDdbAttributes.getFullItem(bsonDoc);
+            Map<String, AttributeValue> phoenixItem =
+                    BsonDocumentToDdbAttributes.getFullItem(bsonDoc);
             Assert.assertEquals(item, phoenixItem);
 
             //TODO: uncomment when we have utility to compare sets,
@@ -136,14 +138,15 @@ public class PutItemIT {
         //create table
         final String tableName = testName.getMethodName();
         CreateTableRequest createTableRequest =
-                DDLTestUtils.getCreateTableRequest(tableName, "attr_0",
-                        ScalarAttributeType.S, "attr_1", ScalarAttributeType.N);
+                DDLTestUtils.getCreateTableRequest(tableName, "attr_0", ScalarAttributeType.S,
+                        "attr_1", ScalarAttributeType.N);
         phoenixDBClientV2.createTable(createTableRequest);
         dynamoDbClient.createTable(createTableRequest);
 
         //put item
         Map<String, AttributeValue> item = DocumentDdbAttributesTest.getItem1();
-        PutItemRequest putItemRequest = PutItemRequest.builder().tableName(tableName).item(item).build();
+        PutItemRequest putItemRequest =
+                PutItemRequest.builder().tableName(tableName).item(item).build();
         phoenixDBClientV2.putItem(putItemRequest);
         dynamoDbClient.putItem(putItemRequest);
 
@@ -160,12 +163,14 @@ public class PutItemIT {
 
         // query phoenix and compare row to item
         try (Connection connection = DriverManager.getConnection(url)) {
-            ResultSet rs = connection.createStatement().executeQuery("SELECT * FROM \"" + tableName + "\"");
+            ResultSet rs = connection.createStatement()
+                    .executeQuery("SELECT * FROM DDB.\"" + tableName + "\"");
             Assert.assertTrue(rs.next());
             Assert.assertEquals(rs.getString(1), item.get("attr_0").s());
             Assert.assertEquals(rs.getDouble(2), Double.parseDouble(item.get("attr_1").n()), 0.0);
             BsonDocument bsonDoc = (BsonDocument) rs.getObject(3);
-            Map<String, AttributeValue> phoenixItem = BsonDocumentToDdbAttributes.getFullItem(bsonDoc);
+            Map<String, AttributeValue> phoenixItem =
+                    BsonDocumentToDdbAttributes.getFullItem(bsonDoc);
             Assert.assertEquals(item, phoenixItem);
 
             //TODO: uncomment when we have utility to compare sets
@@ -178,17 +183,19 @@ public class PutItemIT {
         // create table
         final String tableName = testName.getMethodName();
         CreateTableRequest createTableRequest =
-                DDLTestUtils.getCreateTableRequest(tableName, "attr_0",
-                        ScalarAttributeType.S, "attr_1", ScalarAttributeType.N);
+                DDLTestUtils.getCreateTableRequest(tableName, "attr_0", ScalarAttributeType.S,
+                        "attr_1", ScalarAttributeType.N);
         // add index on Title
-        createTableRequest = DDLTestUtils.addIndexToRequest(true, createTableRequest, "g_IDX_" + tableName, "Title",
-                ScalarAttributeType.S, null, null);
+        createTableRequest =
+                DDLTestUtils.addIndexToRequest(true, createTableRequest, "g_IDX_" + tableName,
+                        "Title", ScalarAttributeType.S, null, null);
         phoenixDBClientV2.createTable(createTableRequest);
         dynamoDbClient.createTable(createTableRequest);
 
         //put item
         Map<String, AttributeValue> item = DocumentDdbAttributesTest.getItem1();
-        PutItemRequest putItemRequest = PutItemRequest.builder().tableName(tableName).item(item).build();
+        PutItemRequest putItemRequest =
+                PutItemRequest.builder().tableName(tableName).item(item).build();
         phoenixDBClientV2.putItem(putItemRequest);
         dynamoDbClient.putItem(putItemRequest);
 
@@ -205,25 +212,29 @@ public class PutItemIT {
 
         // query phoenix and compare row to item
         try (Connection connection = DriverManager.getConnection(url)) {
-            ResultSet rs = connection.createStatement().executeQuery("SELECT * FROM \"" + tableName + "\"");
+            ResultSet rs = connection.createStatement()
+                    .executeQuery("SELECT * FROM DDB.\"" + tableName + "\"");
             Assert.assertTrue(rs.next());
             Assert.assertEquals(rs.getString(1), item.get("attr_0").s());
             Assert.assertEquals(rs.getDouble(2), Double.parseDouble(item.get("attr_1").n()), 0.0);
             BsonDocument bsonDoc = (BsonDocument) rs.getObject(3);
-            Map<String, AttributeValue> phoenixItem = BsonDocumentToDdbAttributes.getFullItem(bsonDoc);
+            Map<String, AttributeValue> phoenixItem =
+                    BsonDocumentToDdbAttributes.getFullItem(bsonDoc);
             Assert.assertEquals(item, phoenixItem);
 
             //TODO: uncomment when we have utility to compare sets
             //Assert.assertEquals(dynamoItem, phoenixItem);
 
             // check index row (Title, attr_0, attr1, COL)
-            rs = connection.createStatement().executeQuery("SELECT * FROM \"g_IDX_" + tableName + "\"");
+            rs = connection.createStatement()
+                    .executeQuery("SELECT * FROM DDB.\"g_IDX_" + tableName + "\"");
             Assert.assertTrue(rs.next());
             Assert.assertEquals(rs.getString(1), item.get("Title").s());
             Assert.assertEquals(rs.getString(2), item.get("attr_0").s());
             Assert.assertEquals(rs.getDouble(3), Double.parseDouble(item.get("attr_1").n()), 0.0);
             bsonDoc = (BsonDocument) rs.getObject(4);
-            Map<String, AttributeValue> indexItem = BsonDocumentToDdbAttributes.getFullItem(bsonDoc);
+            Map<String, AttributeValue> indexItem =
+                    BsonDocumentToDdbAttributes.getFullItem(bsonDoc);
             Assert.assertEquals(item, indexItem);
 
             //TODO: uncomment when we have utility to compare sets
@@ -236,27 +247,34 @@ public class PutItemIT {
         // create table [attr_0, idx_attr]
         final String tableName = testName.getMethodName();
         CreateTableRequest createTableRequest =
-                DDLTestUtils.getCreateTableRequest(tableName, "attr_0",
-                        ScalarAttributeType.S, null, null);
+                DDLTestUtils.getCreateTableRequest(tableName, "attr_0", ScalarAttributeType.S, null,
+                        null);
         // add index on Title
-        createTableRequest = DDLTestUtils.addIndexToRequest(true, createTableRequest, "G_iDX_" + tableName, "idx_attr",
-                ScalarAttributeType.N, null, null);
+        createTableRequest =
+                DDLTestUtils.addIndexToRequest(true, createTableRequest, "G_iDX_" + tableName,
+                        "idx_attr", ScalarAttributeType.N, null, null);
         phoenixDBClientV2.createTable(createTableRequest);
 
         // put some items
-        phoenixDBClientV2.putItem(getPutItemRequestForIndexSortingTest(tableName,"val1", "123"));
-        phoenixDBClientV2.putItem(getPutItemRequestForIndexSortingTest(tableName,"val2", "123.0001"));
-        phoenixDBClientV2.putItem(getPutItemRequestForIndexSortingTest(tableName,"val3", "-123.01"));
-        phoenixDBClientV2.putItem(getPutItemRequestForIndexSortingTest(tableName,"val4", "-123"));
-        phoenixDBClientV2.putItem(getPutItemRequestForIndexSortingTest(tableName,"val5", "122.999"));
-        phoenixDBClientV2.putItem(getPutItemRequestForIndexSortingTest(tableName,"val6", "-122.9999"));
-        phoenixDBClientV2.putItem(getPutItemRequestForIndexSortingTest(tableName,"val7", "122.9999"));
-        phoenixDBClientV2.putItem(getPutItemRequestForIndexSortingTest(tableName,"val8", "0"));
-        phoenixDBClientV2.putItem(getPutItemRequestForIndexSortingTest(tableName,"val9", "0.123"));
+        phoenixDBClientV2.putItem(getPutItemRequestForIndexSortingTest(tableName, "val1", "123"));
+        phoenixDBClientV2.putItem(
+                getPutItemRequestForIndexSortingTest(tableName, "val2", "123.0001"));
+        phoenixDBClientV2.putItem(
+                getPutItemRequestForIndexSortingTest(tableName, "val3", "-123.01"));
+        phoenixDBClientV2.putItem(getPutItemRequestForIndexSortingTest(tableName, "val4", "-123"));
+        phoenixDBClientV2.putItem(
+                getPutItemRequestForIndexSortingTest(tableName, "val5", "122.999"));
+        phoenixDBClientV2.putItem(
+                getPutItemRequestForIndexSortingTest(tableName, "val6", "-122.9999"));
+        phoenixDBClientV2.putItem(
+                getPutItemRequestForIndexSortingTest(tableName, "val7", "122.9999"));
+        phoenixDBClientV2.putItem(getPutItemRequestForIndexSortingTest(tableName, "val8", "0"));
+        phoenixDBClientV2.putItem(getPutItemRequestForIndexSortingTest(tableName, "val9", "0.123"));
 
         // check index rows are sorted
         try (Connection connection = DriverManager.getConnection(url)) {
-            ResultSet rs = connection.createStatement().executeQuery("SELECT * FROM \"G_iDX_" + tableName + "\"");
+            ResultSet rs = connection.createStatement()
+                    .executeQuery("SELECT * FROM DDB.\"G_iDX_" + tableName + "\"");
             Assert.assertTrue(rs.next());
             Double val = rs.getDouble(1);
             while (rs.next()) {
@@ -266,7 +284,8 @@ public class PutItemIT {
         }
     }
 
-    private PutItemRequest getPutItemRequestForIndexSortingTest(String tableName, String k, String v) {
+    private PutItemRequest getPutItemRequestForIndexSortingTest(String tableName, String k,
+            String v) {
         Map<String, AttributeValue> item = new HashMap<>();
         item.put("attr_0", AttributeValue.builder().s(k).build());
         item.put("idx_attr", AttributeValue.builder().n(v).build());

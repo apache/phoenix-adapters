@@ -73,7 +73,7 @@ public class PhoenixUtils {
             throws SQLException {
         PhoenixConnection phoenixConnection = conn.unwrap(PhoenixConnection.class);
         PTable table = phoenixConnection.getTable(
-                new PTableKey(phoenixConnection.getTenantId(), tableName));
+                new PTableKey(phoenixConnection.getTenantId(), "DDB." + tableName));
         return table.getPKColumns();
     }
 

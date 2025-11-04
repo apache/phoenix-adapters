@@ -21,9 +21,9 @@ public class QueryService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(QueryService.class);
 
-    public static final String SELECT_QUERY = "SELECT COL FROM \"%s\" WHERE ";
+    public static final String SELECT_QUERY = "SELECT COL FROM %s.\"%s\" WHERE ";
     public static final String SELECT_QUERY_WITH_INDEX_HINT =
-            "SELECT /*+ INDEX(\"%s\" \"%s\") */ COL FROM \"%s\" WHERE ";
+            "SELECT /*+ INDEX(\"%s.%s\" \"%s\") */ COL FROM %s.\"%s\" WHERE ";
 
     private static final int MAX_QUERY_LIMIT = 500;
 
@@ -68,9 +68,9 @@ public class QueryService {
 
         // build SQL query
         StringBuilder queryBuilder = StringUtils.isEmpty(indexName) ?
-                new StringBuilder(String.format(SELECT_QUERY, tableName)) :
-                new StringBuilder(String.format(SELECT_QUERY_WITH_INDEX_HINT, tableName, indexName,
-                        tableName));
+                new StringBuilder(String.format(SELECT_QUERY, "DDB", tableName)) :
+                new StringBuilder(String.format(SELECT_QUERY_WITH_INDEX_HINT, "DDB",
+                        tableName, indexName, "DDB", tableName));
 
         // parse Key Conditions
         KeyConditionsHolder keyConditions = new KeyConditionsHolder(keyCondExpr, exprAttrNames,

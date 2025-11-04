@@ -21,9 +21,9 @@ public class ScanService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ScanService.class);
 
-    private static final String SELECT_QUERY = "SELECT COL FROM \"%s\" ";
+    private static final String SELECT_QUERY = "SELECT COL FROM %s.\"%s\" ";
     private static final String SELECT_QUERY_WITH_INDEX_HINT =
-            "SELECT /*+ INDEX(\"%s\" \"%s\") */ COL FROM \"%s\" ";
+            "SELECT /*+ INDEX(\"%s.%s\" \"%s\") */ COL FROM %s.\"%s\" ";
 
     private static final int MAX_SCAN_LIMIT = 500;
 
@@ -72,9 +72,10 @@ public class ScanService {
                 (Map<String, Object>) request.get("ExpressionAttributeValues");
 
         StringBuilder queryBuilder = StringUtils.isEmpty(indexName) ?
-                new StringBuilder(String.format(SELECT_QUERY, tableName)) :
-                new StringBuilder(String.format(SELECT_QUERY_WITH_INDEX_HINT, tableName, indexName,
-                        tableName));
+                new StringBuilder(String.format(SELECT_QUERY, "DDB", tableName)) :
+                new StringBuilder(
+                        String.format(SELECT_QUERY_WITH_INDEX_HINT, "DDB", tableName, indexName,
+                                "DDB", tableName));
         String filterExpr = (String) request.get("FilterExpression");
         Map<String, Object> exclusiveStartKey =
                 (Map<String, Object>) request.get("ExclusiveStartKey");

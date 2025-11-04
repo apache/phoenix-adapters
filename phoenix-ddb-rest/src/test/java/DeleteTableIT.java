@@ -88,6 +88,7 @@ public class DeleteTableIT {
                         ScalarAttributeType.S);
         //creating table for aws
         dynamoDbClient.createTable(createTableRequest);
+        Thread.sleep(2000);
         //creating table for phoenix
         phoenixDBClientV2.createTable(createTableRequest);
 
@@ -119,6 +120,7 @@ public class DeleteTableIT {
                         ScalarAttributeType.B, "PK2", ScalarAttributeType.S);
         //creating table for aws
         dynamoDbClient.createTable(createTableRequest);
+        Thread.sleep(2000);
         //creating table for phoenix
         phoenixDBClientV2.createTable(createTableRequest);
 

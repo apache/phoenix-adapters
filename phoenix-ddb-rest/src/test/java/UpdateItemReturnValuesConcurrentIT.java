@@ -36,6 +36,7 @@ import org.apache.phoenix.jdbc.PhoenixDriver;
 import org.apache.phoenix.util.PhoenixRuntime;
 import org.apache.phoenix.util.ServerUtil;
 
+import static org.apache.phoenix.query.BaseTest.generateUniqueName;
 import static org.apache.phoenix.query.BaseTest.setUpConfigForMiniCluster;
 import static software.amazon.awssdk.services.dynamodb.model.ReturnValue.ALL_NEW;
 import static software.amazon.awssdk.services.dynamodb.model.ReturnValuesOnConditionCheckFailure.ALL_OLD;
@@ -123,7 +124,8 @@ public class UpdateItemReturnValuesConcurrentIT {
 
     @Test(timeout = 120000)
     public void test() {
-        final String tableName = testName.getMethodName().replaceAll("[\\[\\]]", "");
+        final String tableName =
+                "--_Loop_Simulate__99.ErrorBeacon.Subnet-Shadow_Rift.X_X" + generateUniqueName();
         createTableAndPutItem(tableName);
         UpdateItemRequest uir = getUpdateItemRequest(tableName);
         int[] dynamoResult = getUpdateAndErrorCounts(uir, dynamoDbClient);

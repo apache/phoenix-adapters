@@ -148,7 +148,7 @@ public class DescribeStreamIT {
 
         // split table
         try (Connection connection = DriverManager.getConnection(url)) {
-            TestUtils.splitTable(connection, tableName, Bytes.toBytes("foo"));
+            TestUtils.splitTable(connection, "DDB." + tableName, Bytes.toBytes("foo"));
         }
 
         //local dynamodb does not support multiple shards so we will only verify phoenix here

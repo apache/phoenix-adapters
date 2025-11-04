@@ -57,7 +57,8 @@ public class TestUtils {
             ExplainPlan plan =
                     ps.unwrap(PhoenixPreparedStatement.class).optimizeQuery().getExplainPlan();
             ExplainPlanAttributes explainPlanAttributes = plan.getPlanStepsAsAttributes();
-            Assert.assertEquals(indexName, explainPlanAttributes.getTableName());
+            Assert.assertEquals("RANGE SCAN ", explainPlanAttributes.getExplainScanType());
+            Assert.assertEquals("DDB." + indexName, explainPlanAttributes.getTableName());
         }
     }
 
@@ -100,7 +101,8 @@ public class TestUtils {
     /**
      * Verify index is used for a SQL query formed using a ScanRequest.
      */
-    public static void validateIndexUsed(ScanRequest sr, String url) throws SQLException {
+    public static void validateIndexUsed(ScanRequest sr, String url, String scanType)
+            throws SQLException {
         String tableName = sr.tableName();
         String indexName = sr.indexName();
         List<PColumn> tablePKCols, indexPKCols;
@@ -113,7 +115,8 @@ public class TestUtils {
             ExplainPlan plan =
                     ps.unwrap(PhoenixPreparedStatement.class).optimizeQuery().getExplainPlan();
             ExplainPlanAttributes explainPlanAttributes = plan.getPlanStepsAsAttributes();
-            Assert.assertEquals(indexName, explainPlanAttributes.getTableName());
+            Assert.assertEquals(scanType, explainPlanAttributes.getExplainScanType());
+            Assert.assertEquals("DDB." + indexName, explainPlanAttributes.getTableName());
         }
     }
 

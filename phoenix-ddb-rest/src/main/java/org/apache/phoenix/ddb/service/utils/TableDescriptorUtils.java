@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.phoenix.ddb.utils.CommonServiceUtils;
 import org.apache.phoenix.ddb.utils.DDBShimCDCUtils;
 import org.apache.phoenix.schema.PIndexState;
@@ -58,8 +59,10 @@ public class TableDescriptorUtils {
                                                        Set<AttributeDefinition> attributeDefinitionSet) {
         if (table.getIndexes() != null && !table.getIndexes().isEmpty()) {
             for (PTable index : table.getIndexes()) {
+                String indexName = index.getName().getString();
                 // skip the CDC index when building table descriptor
-                if (CDCUtil.isCDCIndex(index.getName().getString())) {
+                if (indexName.startsWith("DDB.") && CDCUtil.isCDCIndex(
+                        indexName.split("DDB.")[1])) {
                     continue;
                 }
 
@@ -150,7 +153,8 @@ public class TableDescriptorUtils {
         Set<AttributeDefinition> attributeDefinitionSet = new LinkedHashSet<>();
         try (Connection connection = DriverManager.getConnection(connectionUrl)) {
             PhoenixConnection phoenixConnection = connection.unwrap(PhoenixConnection.class);
-            PTable table = phoenixConnection.getTableNoCache(phoenixConnection.getTenantId(), tableName);
+            PTable table = phoenixConnection.getTableNoCache(phoenixConnection.getTenantId(),
+                    "DDB." + tableName);
             List<PColumn> respPkColumns = table.getPKColumns();
 
             Map<String, Object> tableDescriptionResponse = new HashMap<>();

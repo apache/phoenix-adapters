@@ -89,8 +89,8 @@ public class QueryIndex1IT {
     @Test(timeout = 120000)
     public void testGlobalIndexNoSortKey1() throws SQLException {
         // create table with keys [attr_0]
-        final String tableName = testName.getMethodName();
-        final String indexName = "G_IDx_" + tableName;
+        final String tableName = "_X__Error.Chain__99.Recursive_Trap";
+        final String indexName = "_Y__Error.Chain__98.Recursive_Trap";
         CreateTableRequest createTableRequest =
                 DDLTestUtils.getCreateTableRequest(tableName, "attr_0",
                         ScalarAttributeType.S, null, null);
@@ -143,8 +143,8 @@ public class QueryIndex1IT {
     @Test(timeout = 120000)
     public void testGlobalIndexNoSortKey2() throws SQLException {
         // create table with keys [attr_0, attr_1]
-        final String tableName = testName.getMethodName();
-        final String indexName = "g_IDX_" + tableName;
+        final String tableName = "_414-Unicorn.MemoryHole--..--_";
+        final String indexName = "....." + tableName;
         CreateTableRequest createTableRequest =
                 DDLTestUtils.getCreateTableRequest(tableName, "attr_0",
                         ScalarAttributeType.S, "attr_1", ScalarAttributeType.N);

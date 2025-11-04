@@ -86,7 +86,7 @@ public class QueryIT {
     @Test(timeout = 120000)
     public void queryLimitAndFilterTest() throws Exception {
         //create table
-        final String tableName = testName.getMethodName();
+        final String tableName = "42We149X_TaBlE...--___";
         CreateTableRequest createTableRequest =
                 DDLTestUtils.getCreateTableRequest(tableName, "attr_0",
                         ScalarAttributeType.S, "attr_1", ScalarAttributeType.N);

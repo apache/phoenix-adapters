@@ -24,20 +24,20 @@ public class UpdateItemService {
     private static final Logger LOGGER = LoggerFactory.getLogger(UpdateItemService.class);
 
     private static final String UPDATE_WITH_HASH_KEY =
-            "UPSERT INTO \"%s\" VALUES (?) " + " ON DUPLICATE KEY UPDATE\n"
+            "UPSERT INTO %s.\"%s\" VALUES (?) " + " ON DUPLICATE KEY UPDATE\n"
                     + " COL = BSON_UPDATE_EXPRESSION(COL,'%s')";
 
     private static final String UPDATE_WITH_HASH_SORT_KEY =
-            "UPSERT INTO \"%s\" VALUES (?,?) " + " ON DUPLICATE KEY UPDATE\n"
+            "UPSERT INTO %s.\"%s\" VALUES (?,?) " + " ON DUPLICATE KEY UPDATE\n"
                     + " COL = BSON_UPDATE_EXPRESSION(COL,'%s')";
 
     private static final String CONDITIONAL_UPDATE_WITH_HASH_KEY =
-            "UPSERT INTO \"%s\" VALUES (?) " + " ON DUPLICATE KEY UPDATE\n"
+            "UPSERT INTO %s.\"%s\" VALUES (?) " + " ON DUPLICATE KEY UPDATE\n"
                     + " COL = CASE WHEN BSON_CONDITION_EXPRESSION(COL,'%s') "
                     + " THEN BSON_UPDATE_EXPRESSION(COL,'%s') \n" + " ELSE COL END";
 
     private static final String CONDITIONAL_UPDATE_WITH_HASH_SORT_KEY =
-            "UPSERT INTO \"%s\" VALUES (?,?) " + " ON DUPLICATE KEY UPDATE\n"
+            "UPSERT INTO %s.\"%s\" VALUES (?,?) " + " ON DUPLICATE KEY UPDATE\n"
                     + " COL = CASE WHEN BSON_CONDITION_EXPRESSION(COL,'%s') "
                     + " THEN BSON_UPDATE_EXPRESSION(COL,'%s') \n" + " ELSE COL END";
 
@@ -48,7 +48,7 @@ public class UpdateItemService {
             // get PTable and PK PColumns
             PhoenixConnection phoenixConnection = connection.unwrap(PhoenixConnection.class);
             PTable table = phoenixConnection.getTable(new PTableKey(phoenixConnection.getTenantId(),
-                    (String) request.get("TableName")));
+                    "DDB." + request.get("TableName")));
             List<PColumn> pkCols = table.getPKColumns();
 
             //create statement based on PKs and conditional expression
@@ -88,10 +88,10 @@ public class UpdateItemService {
                     CONDITIONAL_UPDATE_WITH_HASH_KEY :
                     CONDITIONAL_UPDATE_WITH_HASH_SORT_KEY;
             stmt = conn.prepareStatement(
-                    String.format(QUERY_FORMAT, tableName, bsonCondExpr, updateExpr));
+                    String.format(QUERY_FORMAT, "DDB", tableName, bsonCondExpr, updateExpr));
         } else {
             String QUERY_FORMAT = (numPKs == 1) ? UPDATE_WITH_HASH_KEY : UPDATE_WITH_HASH_SORT_KEY;
-            stmt = conn.prepareStatement(String.format(QUERY_FORMAT, tableName, updateExpr));
+            stmt = conn.prepareStatement(String.format(QUERY_FORMAT, "DDB", tableName, updateExpr));
         }
         return stmt;
     }

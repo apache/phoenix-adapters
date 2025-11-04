@@ -209,12 +209,12 @@ public class DDLTestUtils {
         Assert.assertTrue(td.latestStreamArn().startsWith("phoenix-cdc-stream-"));
         Assert.assertTrue(td.latestStreamArn().contains(tableName));
 
-        PTable dataTable = pconn.getTable(tableName);
+        PTable dataTable = pconn.getTable("DDB." + tableName);
         Assert.assertEquals(streamType, dataTable.getSchemaVersion());
         boolean cdcIndexPresent = false;
         PTable cdcIndex = null;
         for (PTable index : dataTable.getIndexes()) {
-            if (CDCUtil.isCDCIndex(index.getName().getString())) {
+            if (CDCUtil.isCDCIndex(index.getName().getString().split("DDB.")[1])) {
                 cdcIndexPresent = true;
                 cdcIndex = index;
             }

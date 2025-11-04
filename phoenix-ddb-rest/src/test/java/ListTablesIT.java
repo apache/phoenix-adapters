@@ -82,8 +82,10 @@ public class ListTablesIT {
     public void listTablesTest() throws Exception {
         CreateTableRequest createTableRequest;
         for (int i=0; i<10; i++) {
-            createTableRequest = DDLTestUtils.getCreateTableRequest("tbl-" + generateUniqueName(),
-                    "PK1", ScalarAttributeType.B, "PK2", ScalarAttributeType.S);
+            createTableRequest = DDLTestUtils.getCreateTableRequest(
+                    "tbl-Parallel._Runtime-Void--EndPoint_Shred.DaemonCloud_17X-XX.9."
+                            + generateUniqueName(), "PK1", ScalarAttributeType.B, "PK2",
+                    ScalarAttributeType.S);
             phoenixDBClientV2.createTable(createTableRequest);
             dynamoDbClient.createTable(createTableRequest);
         }

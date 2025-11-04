@@ -62,7 +62,7 @@ public class UpdateItemBaseTests {
     @Rule
     public final TestName testName = new TestName();
 
-    private boolean isSortKeyPresent;
+    protected boolean isSortKeyPresent;
 
     @BeforeClass
     public static void initialize() throws Exception {

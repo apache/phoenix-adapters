@@ -30,7 +30,7 @@ public class UpdateItemIT extends UpdateItemBaseTests {
 
     @Test(timeout = 120000)
     public void testConditionalCheckSuccess() {
-        final String tableName = testName.getMethodName().replaceAll("[\\[\\]]", "");
+        final String tableName = "._404-" + isSortKeyPresent + "DR1FT-Crystal_Echo__";
         createTableAndPutItem(tableName);
 
         // update item
@@ -61,7 +61,7 @@ public class UpdateItemIT extends UpdateItemBaseTests {
 
     @Test(timeout = 120000)
     public void testConditionalCheckFailure() {
-        final String tableName = testName.getMethodName().replaceAll("[\\[\\]]", "");
+        final String tableName = "-_-" + isSortKeyPresent + "Ax0n.D3t0nate-Memory_Blue123....";
         createTableAndPutItem(tableName);
         // update item
         Map<String, AttributeValue> key = getKey();
@@ -94,7 +94,7 @@ public class UpdateItemIT extends UpdateItemBaseTests {
 
     @Test(timeout = 120000)
     public void testConditionalCheckFailureReturnValue() {
-        final String tableName = testName.getMethodName().replaceAll("[\\[\\]]", "");
+        final String tableName = "__---Quasar__Glitch-Surge--O.o" + isSortKeyPresent;
         createTableAndPutItem(tableName);
         // update item
         Map<String, AttributeValue> key = getKey();
@@ -127,7 +127,7 @@ public class UpdateItemIT extends UpdateItemBaseTests {
 
     @Test(timeout = 120000)
     public void testConcurrentConditionalUpdateWithReturnValues() {
-        final String tableName = testName.getMethodName().replaceAll("[\\[\\]]", "");
+        final String tableName = "Ne0N._Crypt-x_B0tNet_Transmission-23X__" + isSortKeyPresent;
         createTableAndPutItem(tableName);
 
         ExecutorService executorService = Executors.newFixedThreadPool(5);

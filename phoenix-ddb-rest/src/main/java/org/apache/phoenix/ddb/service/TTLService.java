@@ -17,7 +17,7 @@ import java.util.Map;
 public class TTLService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(TTLService.class);
-    private static final String ALTER_TTL_STMT = "ALTER TABLE \"%s\" SET TTL = '%s'";
+    private static final String ALTER_TTL_STMT = "ALTER TABLE %s.\"%s\" SET TTL = '%s'";
 
     public static Map<String, Object> updateTimeToLive(Map<String, Object> request,
                                                        String connectionUrl) {
@@ -28,9 +28,9 @@ public class TTLService {
         String alterStmt;
         if (enabled) {
             String ttlExpression = String.format(PhoenixUtils.TTL_EXPRESSION, colName, colName);
-            alterStmt = String.format(ALTER_TTL_STMT, tableName, ttlExpression);
+            alterStmt = String.format(ALTER_TTL_STMT, "DDB", tableName, ttlExpression);
         } else {
-            alterStmt = String.format(ALTER_TTL_STMT, tableName, HConstants.FOREVER);
+            alterStmt = String.format(ALTER_TTL_STMT, "DDB", tableName, HConstants.FOREVER);
         }
         LOGGER.info("SQL for UpdateTimeToLive: " + alterStmt);
         try (Connection connection = DriverManager.getConnection(connectionUrl)) {
@@ -45,7 +45,7 @@ public class TTLService {
 
     public static Map<String, Object> describeTimeToLive(Map<String, Object> request,
                                                          String connectionUrl) {
-        String tableName = (String) request.get("TableName");
+        String tableName = "DDB." + request.get("TableName");
         Map<String, Object> ttlDesc = new HashMap<>();
         try (Connection connection = DriverManager.getConnection(connectionUrl)) {
             PTable pTable = connection.unwrap(PhoenixConnection.class).getTable(tableName);

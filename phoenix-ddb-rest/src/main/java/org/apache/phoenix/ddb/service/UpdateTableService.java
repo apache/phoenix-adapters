@@ -17,7 +17,7 @@ import java.util.Properties;
 public class UpdateTableService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(UpdateTableService.class);
-    private static String DROP_INDEX_SQL = "ALTER INDEX \"%s\" ON \"%s\" DISABLE";
+    private static String DROP_INDEX_SQL = "ALTER INDEX \"%s\" ON %s.\"%s\" DISABLE";
 
     public static Map<String, Object> updateTable(Map<String, Object> request, String connectionUrl) {
         String tableName = (String) request.get("TableName");
@@ -30,7 +30,7 @@ public class UpdateTableService {
                 if (indexUpdate.containsKey("Delete")) {
                     Map<String, Object> deleteIndexUpdate = (Map<String, Object>) indexUpdate.get("Delete");
                     String indexName = (String) deleteIndexUpdate.get("IndexName");
-                    String ddl = String.format(DROP_INDEX_SQL, indexName, tableName);
+                    String ddl = String.format(DROP_INDEX_SQL, indexName, "DDB", tableName);
                     LOGGER.info("DDL for Disable Index: {}", ddl);
                     ddls.add(ddl);
                 } else if (indexUpdate.containsKey("Create")) {

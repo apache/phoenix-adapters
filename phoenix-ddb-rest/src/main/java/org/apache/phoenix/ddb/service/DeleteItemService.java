@@ -22,12 +22,13 @@ public class DeleteItemService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DeleteItemService.class);
 
-    private static final String DELETE_QUERY = "DELETE FROM \"%s\" WHERE %s = ? ";
-    private static final String DELETE_QUERY_WITH_SORT = "DELETE FROM \"%s\" WHERE %s = ? AND %s = ?";
+    private static final String DELETE_QUERY = "DELETE FROM %s.\"%s\" WHERE %s = ? ";
+    private static final String DELETE_QUERY_WITH_SORT =
+            "DELETE FROM %s.\"%s\" WHERE %s = ? AND %s = ?";
     private static final String DELETE_QUERY_NO_SORT_WITH_COND_EXPR =
-            "DELETE FROM \"%s\" WHERE %s = ? AND BSON_CONDITION_EXPRESSION(COL,'%s')";
+            "DELETE FROM %s.\"%s\" WHERE %s = ? AND BSON_CONDITION_EXPRESSION(COL,'%s')";
     private static final String DELETE_QUERY_SORT_WITH_COND_EXPR =
-            "DELETE FROM \"%s\" WHERE %s = ? AND %s = ? AND BSON_CONDITION_EXPRESSION(COL,'%s')";
+            "DELETE FROM %s.\"%s\" WHERE %s = ? AND %s = ? AND BSON_CONDITION_EXPRESSION(COL,'%s')";
 
     public static Map<String, Object> deleteItem(Map<String, Object> request,
             String connectionUrl) {
@@ -44,8 +45,8 @@ public class DeleteItemService {
     public static Map<String, Object> deleteItemWithConn(Connection connection,
             Map<String, Object> request) throws SQLException {
         PhoenixConnection phoenixConnection = connection.unwrap(PhoenixConnection.class);
-        PTable table = phoenixConnection.getTable(
-                new PTableKey(phoenixConnection.getTenantId(), (String) request.get("TableName")));
+        PTable table = phoenixConnection.getTable(new PTableKey(phoenixConnection.getTenantId(),
+                "DDB." + request.get("TableName")));
         // get PKs from phoenix
         List<PColumn> pkCols = table.getPKColumns();
         //build prepared statement and execute
@@ -83,22 +84,22 @@ public class DeleteItemService {
                             exprAttrVals);
             if (sortKeyPKCol != null) {
                 stmt = conn.prepareStatement(
-                        String.format(DELETE_QUERY_SORT_WITH_COND_EXPR, tableName,
+                        String.format(DELETE_QUERY_SORT_WITH_COND_EXPR, "DDB", tableName,
                                 CommonServiceUtils.getEscapedArgument(partitionKeyPKCol),
                                 CommonServiceUtils.getEscapedArgument(sortKeyPKCol), bsonCondExpr));
             } else {
                 stmt = conn.prepareStatement(
-                        String.format(DELETE_QUERY_NO_SORT_WITH_COND_EXPR, tableName,
+                        String.format(DELETE_QUERY_NO_SORT_WITH_COND_EXPR, "DDB", tableName,
                                 CommonServiceUtils.getEscapedArgument(partitionKeyPKCol),
                                 bsonCondExpr));
             }
         } else {
             if (sortKeyPKCol != null) {
-                stmt = conn.prepareStatement(String.format(DELETE_QUERY_WITH_SORT, tableName,
+                stmt = conn.prepareStatement(String.format(DELETE_QUERY_WITH_SORT, "DDB", tableName,
                         CommonServiceUtils.getEscapedArgument(partitionKeyPKCol),
                         CommonServiceUtils.getEscapedArgument(sortKeyPKCol)));
             } else {
-                stmt = conn.prepareStatement(String.format(DELETE_QUERY, tableName,
+                stmt = conn.prepareStatement(String.format(DELETE_QUERY, "DDB", tableName,
                         CommonServiceUtils.getEscapedArgument(partitionKeyPKCol)));
             }
         }

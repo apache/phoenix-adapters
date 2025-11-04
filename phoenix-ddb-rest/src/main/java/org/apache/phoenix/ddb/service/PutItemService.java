@@ -24,16 +24,16 @@ public class PutItemService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PutItemService.class);
 
-    private static final String PUT_WITH_HASH_KEY = "UPSERT INTO \"%s\" VALUES (?,?)";
-    private static final String PUT_WITH_HASH_SORT_KEY = "UPSERT INTO \"%s\" VALUES (?,?,?)";
+    private static final String PUT_WITH_HASH_KEY = "UPSERT INTO %s.\"%s\" VALUES (?,?)";
+    private static final String PUT_WITH_HASH_SORT_KEY = "UPSERT INTO %s.\"%s\" VALUES (?,?,?)";
 
-    private static final String CONDITIONAL_PUT_WITH_HASH_KEY = "UPSERT INTO \"%s\" VALUES (?) " +
+    private static final String CONDITIONAL_PUT_WITH_HASH_KEY = "UPSERT INTO %s.\"%s\" VALUES (?) " +
             " ON DUPLICATE KEY UPDATE\n" +
             " COL = CASE WHEN BSON_CONDITION_EXPRESSION(COL,'%s') THEN ? \n" +
             " ELSE COL END";
 
     private static final String CONDITIONAL_PUT_WITH_HASH_SORT_KEY
-            = "UPSERT INTO \"%s\" VALUES (?, ?) " + " ON DUPLICATE KEY UPDATE\n" +
+            = "UPSERT INTO %s.\"%s\" VALUES (?, ?) " + " ON DUPLICATE KEY UPDATE\n" +
             " COL = CASE WHEN BSON_CONDITION_EXPRESSION(COL,'%s') THEN ? \n" +
             " ELSE COL END";
 
@@ -54,8 +54,8 @@ public class PutItemService {
         BsonDocument bsonDoc = MapToBsonDocument.getBsonDocument(item);
         // get PTable and PK PColumns
         PhoenixConnection phoenixConnection = connection.unwrap(PhoenixConnection.class);
-        PTable table = phoenixConnection.getTable(
-                new PTableKey(phoenixConnection.getTenantId(), (String) request.get("TableName")));
+        PTable table = phoenixConnection.getTable(new PTableKey(phoenixConnection.getTenantId(),
+                "DDB." + request.get("TableName")));
         List<PColumn> pkCols = table.getPKColumns();
 
         //create statement based on PKs and conditional expression
@@ -92,11 +92,11 @@ public class PutItemService {
             String QUERY_FORMAT = (numPKs == 1)
                     ? CONDITIONAL_PUT_WITH_HASH_KEY : CONDITIONAL_PUT_WITH_HASH_SORT_KEY;
             stmt = conn.prepareStatement(
-                    String.format(QUERY_FORMAT, tableName, bsonCondExpr));
+                    String.format(QUERY_FORMAT, "DDB", tableName, bsonCondExpr));
         } else {
             String QUERY_FORMAT = (numPKs == 1)
                     ? PUT_WITH_HASH_KEY : PUT_WITH_HASH_SORT_KEY;
-            stmt = conn.prepareStatement(String.format(QUERY_FORMAT, tableName));
+            stmt = conn.prepareStatement(String.format(QUERY_FORMAT, "DDB", tableName));
         }
         return stmt;
     }

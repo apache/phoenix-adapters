@@ -86,22 +86,28 @@ public class ScanIndexIT {
     @Test(timeout = 120000)
     public void testScanIndexOnlyHashKey() throws SQLException {
         //create table
-        final String tableName = testName.getMethodName();
-        final String indexName = "G_IDx" + tableName;
+        final String tableName = "X_x-X.xFRACTAL_.void-0mega__99xX-x_X";
+        final String indexName = "G_IDx123-345aoe.jh";
         CreateTableRequest createTableRequest =
-                DDLTestUtils.getCreateTableRequest(tableName, "attr_0",
-                        ScalarAttributeType.S, "attr_1", ScalarAttributeType.N);
+                DDLTestUtils.getCreateTableRequest(tableName, "DataGrave-_-Obscure_Dream_.404",
+                        ScalarAttributeType.S, ".-_.-_AnOtHeR_We1rD-Attr_9_9_9_._.-_.-",
+                        ScalarAttributeType.N);
 
-        createTableRequest = DDLTestUtils.addIndexToRequest(true, createTableRequest, indexName, "title",
-                ScalarAttributeType.S, null, null);
+        createTableRequest =
+                DDLTestUtils.addIndexToRequest(true, createTableRequest, indexName, "title",
+                        ScalarAttributeType.S, null, null);
         phoenixDBClientV2.createTable(createTableRequest);
         dynamoDbClient.createTable(createTableRequest);
 
         //put
-        PutItemRequest putItemRequest1 = PutItemRequest.builder().tableName(tableName).item(getItem1()).build();
-        PutItemRequest putItemRequest2 = PutItemRequest.builder().tableName(tableName).item(getItem2()).build();
-        PutItemRequest putItemRequest3 = PutItemRequest.builder().tableName(tableName).item(getItem3()).build();
-        PutItemRequest putItemRequest4 = PutItemRequest.builder().tableName(tableName).item(getItem4()).build();
+        PutItemRequest putItemRequest1 =
+                PutItemRequest.builder().tableName(tableName).item(getItem1()).build();
+        PutItemRequest putItemRequest2 =
+                PutItemRequest.builder().tableName(tableName).item(getItem2()).build();
+        PutItemRequest putItemRequest3 =
+                PutItemRequest.builder().tableName(tableName).item(getItem3()).build();
+        PutItemRequest putItemRequest4 =
+                PutItemRequest.builder().tableName(tableName).item(getItem4()).build();
         phoenixDBClientV2.putItem(putItemRequest1);
         phoenixDBClientV2.putItem(putItemRequest2);
         phoenixDBClientV2.putItem(putItemRequest3);
@@ -114,7 +120,7 @@ public class ScanIndexIT {
         ScanRequest.Builder sr = ScanRequest.builder().tableName(tableName);
         sr.indexName(indexName);
         sr.filterExpression("#0 BETWEEN :v1 AND :v2");
-        Map<String,String> exprAttrNames = new HashMap<>();
+        Map<String, String> exprAttrNames = new HashMap<>();
         exprAttrNames.put("#0", "title");
         sr.expressionAttributeNames(exprAttrNames);
         Map<String, AttributeValue> exprAttrVals = new HashMap();
@@ -128,28 +134,34 @@ public class ScanIndexIT {
         Assert.assertEquals(dynamoResult.scannedCount(), phoenixResult.scannedCount());
 
         // explain plan
-        TestUtils.validateIndexUsed(sr.build(), url);
+        TestUtils.validateIndexUsed(sr.build(), url, "FULL SCAN ");
     }
 
     @Test(timeout = 120000)
     public void testScanIndexBothKeys() throws SQLException {
         //create table
-        final String tableName = testName.getMethodName();
-        final String indexName = "G_IDX" + tableName;
+        final String tableName = ".no_Signal--FuzZy_Matrix_XOX";
+        final String indexName = "..no_Signal--FuzZy_Matrix_XOX";
         CreateTableRequest createTableRequest =
-                DDLTestUtils.getCreateTableRequest(tableName, "attr_0",
-                        ScalarAttributeType.S, "attr_1", ScalarAttributeType.N);
+                DDLTestUtils.getCreateTableRequest(tableName, "DataGrave-_-Obscure_Dream_.404",
+                        ScalarAttributeType.S, ".-_.-_AnOtHeR_We1rD-Attr_9_9_9_._.-_.-",
+                        ScalarAttributeType.N);
 
-        createTableRequest = DDLTestUtils.addIndexToRequest(true, createTableRequest, indexName, "title",
-                ScalarAttributeType.S, "Id2", ScalarAttributeType.N);
+        createTableRequest =
+                DDLTestUtils.addIndexToRequest(true, createTableRequest, indexName, "title",
+                        ScalarAttributeType.S, "Id2", ScalarAttributeType.N);
         phoenixDBClientV2.createTable(createTableRequest);
         dynamoDbClient.createTable(createTableRequest);
 
         //put
-        PutItemRequest putItemRequest1 = PutItemRequest.builder().tableName(tableName).item(getItem1()).build();
-        PutItemRequest putItemRequest2 = PutItemRequest.builder().tableName(tableName).item(getItem2()).build();
-        PutItemRequest putItemRequest3 = PutItemRequest.builder().tableName(tableName).item(getItem3()).build();
-        PutItemRequest putItemRequest4 = PutItemRequest.builder().tableName(tableName).item(getItem4()).build();
+        PutItemRequest putItemRequest1 =
+                PutItemRequest.builder().tableName(tableName).item(getItem1()).build();
+        PutItemRequest putItemRequest2 =
+                PutItemRequest.builder().tableName(tableName).item(getItem2()).build();
+        PutItemRequest putItemRequest3 =
+                PutItemRequest.builder().tableName(tableName).item(getItem3()).build();
+        PutItemRequest putItemRequest4 =
+                PutItemRequest.builder().tableName(tableName).item(getItem4()).build();
         phoenixDBClientV2.putItem(putItemRequest1);
         phoenixDBClientV2.putItem(putItemRequest2);
         phoenixDBClientV2.putItem(putItemRequest3);
@@ -162,7 +174,7 @@ public class ScanIndexIT {
         ScanRequest.Builder sr = ScanRequest.builder().tableName(tableName);
         sr.indexName(indexName);
         sr.filterExpression("#1 > :v3 AND #0 BETWEEN :v1 AND :v2");
-        Map<String,String> exprAttrNames = new HashMap<>();
+        Map<String, String> exprAttrNames = new HashMap<>();
         exprAttrNames.put("#0", "title");
         exprAttrNames.put("#1", "Id2");
         sr.expressionAttributeNames(exprAttrNames);
@@ -178,7 +190,7 @@ public class ScanIndexIT {
         Assert.assertEquals(dynamoResult.scannedCount(), phoenixResult.scannedCount());
 
         // explain plan
-        TestUtils.validateIndexUsed(sr.build(), url);
+        TestUtils.validateIndexUsed(sr.build(), url, "FULL SCAN ");
     }
 
     @Test(timeout = 120000)
@@ -187,19 +199,25 @@ public class ScanIndexIT {
         final String tableName = testName.getMethodName();
         final String indexName = "g_IDX" + tableName;
         CreateTableRequest createTableRequest =
-                DDLTestUtils.getCreateTableRequest(tableName, "attr_0",
-                        ScalarAttributeType.S, "attr_1", ScalarAttributeType.N);
+                DDLTestUtils.getCreateTableRequest(tableName, "DataGrave-_-Obscure_Dream_.404",
+                        ScalarAttributeType.S, ".-_.-_AnOtHeR_We1rD-Attr_9_9_9_._.-_.-",
+                        ScalarAttributeType.N);
 
-        createTableRequest = DDLTestUtils.addIndexToRequest(true, createTableRequest, indexName, "title",
-                ScalarAttributeType.S, null, null);
+        createTableRequest =
+                DDLTestUtils.addIndexToRequest(true, createTableRequest, indexName, "title",
+                        ScalarAttributeType.S, null, null);
         phoenixDBClientV2.createTable(createTableRequest);
         dynamoDbClient.createTable(createTableRequest);
 
         //put
-        PutItemRequest putItemRequest1 = PutItemRequest.builder().tableName(tableName).item(getItem1()).build();
-        PutItemRequest putItemRequest2 = PutItemRequest.builder().tableName(tableName).item(getItem2()).build();
-        PutItemRequest putItemRequest3 = PutItemRequest.builder().tableName(tableName).item(getItem3()).build();
-        PutItemRequest putItemRequest4 = PutItemRequest.builder().tableName(tableName).item(getItem4()).build();
+        PutItemRequest putItemRequest1 =
+                PutItemRequest.builder().tableName(tableName).item(getItem1()).build();
+        PutItemRequest putItemRequest2 =
+                PutItemRequest.builder().tableName(tableName).item(getItem2()).build();
+        PutItemRequest putItemRequest3 =
+                PutItemRequest.builder().tableName(tableName).item(getItem3()).build();
+        PutItemRequest putItemRequest4 =
+                PutItemRequest.builder().tableName(tableName).item(getItem4()).build();
         phoenixDBClientV2.putItem(putItemRequest1);
         phoenixDBClientV2.putItem(putItemRequest2);
         phoenixDBClientV2.putItem(putItemRequest3);
@@ -212,7 +230,7 @@ public class ScanIndexIT {
         ScanRequest.Builder sr = ScanRequest.builder().tableName(tableName);
         sr.indexName(indexName);
         sr.filterExpression("#0 BETWEEN :v1 AND :v2");
-        Map<String,String> exprAttrNames = new HashMap<>();
+        Map<String, String> exprAttrNames = new HashMap<>();
         exprAttrNames.put("#0", "title");
         sr.expressionAttributeNames(exprAttrNames);
         Map<String, AttributeValue> exprAttrVals = new HashMap();
@@ -227,7 +245,8 @@ public class ScanIndexIT {
             dynamoResult = dynamoDbClient.scan(sr.build());
             Assert.assertEquals(dynamoResult.items(), phoenixResult.items());
             paginationCount++;
-            TestUtils.validateIndexUsed(sr.build(), url);
+            TestUtils.validateIndexUsed(sr.build(), url,
+                    paginationCount == 1 ? "FULL SCAN " : "RANGE SCAN ");
             sr.exclusiveStartKey(phoenixResult.lastEvaluatedKey());
         } while (phoenixResult.count() > 0);
         // 1 more than total number of results expected
@@ -236,23 +255,24 @@ public class ScanIndexIT {
 
     private static Map<String, AttributeValue> getItem1() {
         Map<String, AttributeValue> item = new HashMap<>();
-        item.put("attr_0", AttributeValue.builder().s("A").build());
-        item.put("attr_1", AttributeValue.builder().n("1").build());
+        item.put("DataGrave-_-Obscure_Dream_.404", AttributeValue.builder().s("A").build());
+        item.put(".-_.-_AnOtHeR_We1rD-Attr_9_9_9_._.-_.-", AttributeValue.builder().n("1").build());
         item.put("Id1", AttributeValue.builder().n("-5").build());
         item.put("Id2", AttributeValue.builder().n("10.10").build());
         item.put("title", AttributeValue.builder().s("Title1").build());
         Map<String, AttributeValue> reviewMap1 = new HashMap<>();
         reviewMap1.put("reviewer", AttributeValue.builder().s("Alice").build());
         Map<String, AttributeValue> fiveStarMap = new HashMap<>();
-        fiveStarMap.put("FiveStar", AttributeValue.builder().l(AttributeValue.builder().m(reviewMap1).build()).build());
+        fiveStarMap.put("FiveStar",
+                AttributeValue.builder().l(AttributeValue.builder().m(reviewMap1).build()).build());
         item.put("Reviews", AttributeValue.builder().m(fiveStarMap).build());
         return item;
     }
 
     private static Map<String, AttributeValue> getItem2() {
         Map<String, AttributeValue> item = new HashMap<>();
-        item.put("attr_0", AttributeValue.builder().s("B").build());
-        item.put("attr_1", AttributeValue.builder().n("2").build());
+        item.put("DataGrave-_-Obscure_Dream_.404", AttributeValue.builder().s("B").build());
+        item.put(".-_.-_AnOtHeR_We1rD-Attr_9_9_9_._.-_.-", AttributeValue.builder().n("2").build());
         item.put("Id1", AttributeValue.builder().n("-15").build());
         item.put("Id2", AttributeValue.builder().n("150.10").build());
         item.put("title", AttributeValue.builder().s("Title2").build());
@@ -261,39 +281,41 @@ public class ScanIndexIT {
         Map<String, AttributeValue> reviewMap2 = new HashMap<>();
         reviewMap2.put("reviewer", AttributeValue.builder().s("Bob2").build());
         Map<String, AttributeValue> fiveStarMap = new HashMap<>();
-        fiveStarMap.put("FiveStar", AttributeValue.builder().l(
-                AttributeValue.builder().m(reviewMap1).build(),
-                AttributeValue.builder().m(reviewMap2).build()).build());
+        fiveStarMap.put("FiveStar", AttributeValue.builder()
+                .l(AttributeValue.builder().m(reviewMap1).build(),
+                        AttributeValue.builder().m(reviewMap2).build()).build());
         item.put("Reviews", AttributeValue.builder().m(fiveStarMap).build());
         return item;
     }
 
     private static Map<String, AttributeValue> getItem3() {
         Map<String, AttributeValue> item = new HashMap<>();
-        item.put("attr_0", AttributeValue.builder().s("C").build());
-        item.put("attr_1", AttributeValue.builder().n("3").build());
+        item.put("DataGrave-_-Obscure_Dream_.404", AttributeValue.builder().s("C").build());
+        item.put(".-_.-_AnOtHeR_We1rD-Attr_9_9_9_._.-_.-", AttributeValue.builder().n("3").build());
         item.put("Id1", AttributeValue.builder().n("11").build());
         item.put("Id2", AttributeValue.builder().n("1000.10").build());
         item.put("title", AttributeValue.builder().s("Title3").build());
         Map<String, AttributeValue> reviewMap1 = new HashMap<>();
         reviewMap1.put("reviewer", AttributeValue.builder().s("Carl").build());
         Map<String, AttributeValue> fiveStarMap = new HashMap<>();
-        fiveStarMap.put("FiveStar", AttributeValue.builder().l(AttributeValue.builder().m(reviewMap1).build()).build());
+        fiveStarMap.put("FiveStar",
+                AttributeValue.builder().l(AttributeValue.builder().m(reviewMap1).build()).build());
         item.put("Reviews", AttributeValue.builder().m(fiveStarMap).build());
         return item;
     }
 
     private static Map<String, AttributeValue> getItem4() {
         Map<String, AttributeValue> item = new HashMap<>();
-        item.put("attr_0", AttributeValue.builder().s("D").build());
-        item.put("attr_1", AttributeValue.builder().n("4").build());
+        item.put("DataGrave-_-Obscure_Dream_.404", AttributeValue.builder().s("D").build());
+        item.put(".-_.-_AnOtHeR_We1rD-Attr_9_9_9_._.-_.-", AttributeValue.builder().n("4").build());
         item.put("Id1", AttributeValue.builder().n("-23").build());
         item.put("Id2", AttributeValue.builder().n("99.10").build());
         item.put("title", AttributeValue.builder().s("Title40").build());
         Map<String, AttributeValue> reviewMap1 = new HashMap<>();
         reviewMap1.put("reviewer", AttributeValue.builder().s("Drake").build());
         Map<String, AttributeValue> fiveStarMap = new HashMap<>();
-        fiveStarMap.put("FiveStar", AttributeValue.builder().l(AttributeValue.builder().m(reviewMap1).build()).build());
+        fiveStarMap.put("FiveStar",
+                AttributeValue.builder().l(AttributeValue.builder().m(reviewMap1).build()).build());
         item.put("Reviews", AttributeValue.builder().m(fiveStarMap).build());
         return item;
     }

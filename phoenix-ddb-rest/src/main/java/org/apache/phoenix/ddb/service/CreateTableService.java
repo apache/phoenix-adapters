@@ -49,9 +49,9 @@ public class CreateTableService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CreateTableService.class);
 
-    private static final String CREATE_CDC_DDL = "CREATE CDC \"CDC_%s\" on \"%s\"";
+    private static final String CREATE_CDC_DDL = "CREATE CDC \"CDC_%s\" on %s.\"%s\"";
     private static final String ALTER_TABLE_STREAM_TYPE_DDL =
-            "ALTER TABLE \"%s\" set SCHEMA_VERSION = '%s'";
+            "ALTER TABLE %s.\"%s\" set SCHEMA_VERSION = '%s'";
 
     private static final Cache<String, ReentrantLock> CREATE_TABLE_LOCKS =
             CacheBuilder.newBuilder().expireAfterAccess(5, TimeUnit.MINUTES).build();
@@ -150,7 +150,7 @@ public class CreateTableService {
         }
 
         indexDDLs.add(
-                "CREATE INDEX \"" + indexName + "\" ON \"" + tableName
+                "CREATE INDEX \"" + indexName + "\" ON DDB.\"" + tableName
                         + "\" (" + indexOn + ") INCLUDE (COL) WHERE " + indexHashKey + " IS NOT " +
                         "NULL" + ((indexSortKey != null) ? " AND " + indexSortKey + " IS NOT " +
                         "NULL" : ""));
@@ -196,8 +196,8 @@ public class CreateTableService {
         if (streamSpec != null && (Boolean) streamSpec.get("StreamEnabled")) {
             String tableName = (String) request.get("TableName");
             String streamType = (String) streamSpec.get("StreamViewType");
-            cdcDDLs.add(String.format(CREATE_CDC_DDL, tableName, tableName));
-            cdcDDLs.add(String.format(ALTER_TABLE_STREAM_TYPE_DDL, tableName, streamType));
+            cdcDDLs.add(String.format(CREATE_CDC_DDL, tableName, "DDB", tableName));
+            cdcDDLs.add(String.format(ALTER_TABLE_STREAM_TYPE_DDL, "DDB", tableName, streamType));
         }
         return cdcDDLs;
     }
@@ -302,8 +302,8 @@ public class CreateTableService {
             }
             cols.append(", COL BSON CONSTRAINT pk PRIMARY KEY (").append(pkCols).append(")");
 
-            String createTableDDL =
-                    "CREATE TABLE \"" + tableName + "\" (" + cols + ") " + PhoenixUtils.getTableOptions();
+            String createTableDDL = "CREATE TABLE DDB.\"" + tableName + "\" (" + cols + ") "
+                    + PhoenixUtils.getTableOptions();
             LOGGER.info("Create Table Query: {}", createTableDDL);
 
             List<String> createIndexDDLs = getIndexDDLs(request);

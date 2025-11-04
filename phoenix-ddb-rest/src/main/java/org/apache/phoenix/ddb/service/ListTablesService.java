@@ -17,8 +17,9 @@ public class ListTablesService {
     private static final Logger LOGGER = LoggerFactory.getLogger(ListTablesService.class);
     // TODO: we will use TABLE_SCHEM later on to differentiate ddb tables
     private static String SYSCAT_QUERY =
-            "SELECT TABLE_NAME FROM SYSTEM.CATALOG WHERE TENANT_ID IS NULL AND TABLE_SCHEM IS NULL " +
-                    " AND COLUMN_NAME IS NULL AND COLUMN_FAMILY IS NULL AND TABLE_TYPE = 'u' %s LIMIT %d";
+            "SELECT TABLE_NAME FROM SYSTEM.CATALOG WHERE TENANT_ID IS NULL AND TABLE_SCHEM = 'DDB'"
+                    + " AND COLUMN_NAME IS NULL AND COLUMN_FAMILY IS NULL AND "
+                    + "TABLE_TYPE = 'u' %s LIMIT %d";
 
     public static Map<String, Object> listTables(Map<String, Object> request, String connectionUrl) {
         String exclusiveStartTableName = (String) request.getOrDefault("ExclusiveStartTableName", null);

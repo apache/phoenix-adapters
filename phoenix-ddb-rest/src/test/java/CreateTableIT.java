@@ -18,6 +18,7 @@
 
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.util.Arrays;
 import java.util.List;
 
 import org.junit.AfterClass;
@@ -29,8 +30,17 @@ import org.junit.rules.TestName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
+import software.amazon.awssdk.services.dynamodb.model.AttributeDefinition;
+import software.amazon.awssdk.services.dynamodb.model.BillingMode;
 import software.amazon.awssdk.services.dynamodb.model.CreateTableRequest;
 import software.amazon.awssdk.services.dynamodb.model.CreateTableResponse;
+import software.amazon.awssdk.services.dynamodb.model.DescribeTableRequest;
+import software.amazon.awssdk.services.dynamodb.model.GlobalSecondaryIndex;
+import software.amazon.awssdk.services.dynamodb.model.KeySchemaElement;
+import software.amazon.awssdk.services.dynamodb.model.KeyType;
+import software.amazon.awssdk.services.dynamodb.model.Projection;
+import software.amazon.awssdk.services.dynamodb.model.ProjectionType;
+import software.amazon.awssdk.services.dynamodb.model.ResourceNotFoundException;
 import software.amazon.awssdk.services.dynamodb.model.ScalarAttributeType;
 import software.amazon.awssdk.services.dynamodb.model.TableDescription;
 
@@ -282,5 +292,54 @@ public class CreateTableIT {
             DDLTestUtils.assertCDCMetadata(connection.unwrap(PhoenixConnection.class),
                     tableDescription2, "NEW_IMAGE");
         }
+    }
+
+    @Test(timeout = 120000)
+    public void createTableTest() throws Exception {
+        createTable(dynamoDbClient);
+        createTable(phoenixDBClientV2);
+    }
+
+    private static void createTable(DynamoDbClient db) {
+        DescribeTableRequest request =
+                DescribeTableRequest.builder().tableName("Weo495bfl-TaBLe_9_9_9_._.-_.-").build();
+        try {
+            db.describeTable(request);
+        } catch (ResourceNotFoundException e) {
+            // Ignore ResourceNotFoundException
+        }
+
+        CreateTableRequest createTableRequest =
+                CreateTableRequest.builder().tableName("Weo495bfl-TaBLe_9_9_9_._.-_.-")
+                        .billingMode(BillingMode.PAY_PER_REQUEST).globalSecondaryIndexes(
+                                Arrays.asList(GlobalSecondaryIndex.builder().indexName("outstanding_tasks")
+                                        .keySchema(Arrays.asList(KeySchemaElement.builder()
+                                                        .attributeName("outstanding_tasks_hk").keyType(KeyType.HASH)
+                                                        .build(),
+                                                KeySchemaElement.builder().attributeName("execute_after")
+                                                        .keyType(KeyType.RANGE).build()
+
+                                        )).projection(
+                                                Projection.builder().projectionType(ProjectionType.ALL)
+                                                        .build()).build()
+
+                                )).attributeDefinitions(Arrays.asList(
+                                AttributeDefinition.builder().attributeName("hk")
+                                        .attributeType(ScalarAttributeType.B).build(),
+                                AttributeDefinition.builder().attributeName("sk")
+                                        .attributeType(ScalarAttributeType.B).build(),
+                                AttributeDefinition.builder().attributeName("outstanding_tasks_hk")
+                                        .attributeType(ScalarAttributeType.B).build(),
+                                AttributeDefinition.builder().attributeName("execute_after")
+                                        .attributeType(ScalarAttributeType.B).build()
+
+                        )).keySchema(Arrays.asList(
+                                KeySchemaElement.builder().attributeName("hk").keyType(KeyType.HASH)
+                                        .build(),
+                                KeySchemaElement.builder().attributeName("sk").keyType(KeyType.RANGE)
+                                        .build()
+
+                        )).build();
+        db.createTable(createTableRequest);
     }
 }

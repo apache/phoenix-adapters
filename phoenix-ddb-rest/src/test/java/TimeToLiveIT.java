@@ -87,7 +87,7 @@ public class TimeToLiveIT {
 
     @Test(timeout = 120000)
     public void updateTimeToLiveTest() {
-        final String tableName = testName.getMethodName();
+        final String tableName = "1298-.Node.Stream._OverflowStack";
         CreateTableRequest createTableRequest = DDLTestUtils.getCreateTableRequest(tableName,
                 "PK1", ScalarAttributeType.B, "PK2", ScalarAttributeType.S);
 

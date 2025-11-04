@@ -152,7 +152,7 @@ public class GetRecordsShardLineageIT extends GetRecordsBaseTest {
 
         //split table between the 2 records
         try (Connection connection = DriverManager.getConnection(url)) {
-            TestUtils.splitTable(connection, tableName, Bytes.toBytes("LMN"));
+            TestUtils.splitTable(connection, "DDB." + tableName, Bytes.toBytes("LMN"));
         }
 
         //update item1 --> change should go to left daughter
