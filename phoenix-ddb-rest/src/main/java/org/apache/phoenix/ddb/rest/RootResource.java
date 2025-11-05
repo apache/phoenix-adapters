@@ -37,6 +37,7 @@ import org.apache.phoenix.ddb.service.ListStreamsService;
 import org.apache.phoenix.ddb.service.ListTablesService;
 import org.apache.phoenix.ddb.service.UpdateTableService;
 import org.apache.phoenix.ddb.utils.ApiMetadata;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -99,33 +100,40 @@ public class RootResource {
         try {
             LOG.info("Content Type: {}, api: {}, Request: {}", contentType, api, request);
             servlet.getMetrics().incrementRequests(1);
-            final Map<String, Object> responseObject;
 
-            switch (api) {
-                case "DynamoDB_20120810.CreateTable": {
+            if (!api.contains(".")) {
+                return getResponseForInvalidApiName(api);
+            }
+
+            final Map<String, Object> responseObject;
+            String operation = getOperationName(api);
+
+            switch (operation) {
+                case ApiMetadata.CREATE_TABLE: {
                     responseObject = CreateTableService.createTable(request, jdbcConnectionUrl);
                     servlet.getMetrics().createTableSuccessTime(
                             EnvironmentEdgeManager.currentTime() - startTime);
                     break;
                 }
-                case "DynamoDB_20120810.DeleteTable": {
+                case ApiMetadata.DELETE_TABLE: {
                     responseObject = DeleteTableService.deleteTable(request, jdbcConnectionUrl);
                     break;
                 }
-                case "DynamoDB_20120810.DescribeTable": {
+                case ApiMetadata.DESCRIBE_TABLE: {
                     responseObject = TableDescriptorUtils.getTableDescription(
-                            (String) request.get(ApiMetadata.TABLE_NAME), jdbcConnectionUrl, "Table");
+                            (String) request.get(ApiMetadata.TABLE_NAME), jdbcConnectionUrl,
+                            "Table");
                     break;
                 }
-                case "DynamoDB_20120810.ListTables": {
+                case ApiMetadata.LIST_TABLES: {
                     responseObject = ListTablesService.listTables(request, jdbcConnectionUrl);
                     break;
                 }
-                case "DynamoDB_20120810.UpdateTable": {
+                case ApiMetadata.UPDATE_TABLE: {
                     responseObject = UpdateTableService.updateTable(request, jdbcConnectionUrl);
                     break;
                 }
-                case "DynamoDB_20120810.PutItem": {
+                case ApiMetadata.PUT_ITEM: {
                     try {
                         responseObject = PutItemService.putItem(request, jdbcConnectionUrl);
                     } catch (ConditionCheckFailedException e) {
@@ -133,7 +141,7 @@ public class RootResource {
                     }
                     break;
                 }
-                case "DynamoDB_20120810.UpdateItem": {
+                case ApiMetadata.UPDATE_ITEM: {
                     try {
                         responseObject = UpdateItemService.updateItem(request, jdbcConnectionUrl);
                     } catch (ConditionCheckFailedException e) {
@@ -141,7 +149,7 @@ public class RootResource {
                     }
                     break;
                 }
-                case "DynamoDB_20120810.DeleteItem": {
+                case ApiMetadata.DELETE_ITEM: {
                     try {
                         responseObject = DeleteItemService.deleteItem(request, jdbcConnectionUrl);
                     } catch (ConditionCheckFailedException e) {
@@ -149,50 +157,50 @@ public class RootResource {
                     }
                     break;
                 }
-                case "DynamoDB_20120810.GetItem": {
+                case ApiMetadata.GET_ITEM: {
                     responseObject = GetItemService.getItem(request, jdbcConnectionUrl);
                     break;
                 }
-                case "DynamoDB_20120810.BatchGetItem": {
+                case ApiMetadata.BATCH_GET_ITEM: {
                     responseObject = BatchGetItemService.batchGetItem(request, jdbcConnectionUrl);
                     break;
                 }
-                case "DynamoDB_20120810.BatchWriteItem": {
+                case ApiMetadata.BATCH_WRITE_ITEM: {
                     responseObject =
                             BatchWriteItemService.batchWriteItem(request, jdbcConnectionUrl);
                     break;
                 }
-                case "DynamoDB_20120810.Query": {
+                case ApiMetadata.QUERY: {
                     responseObject = QueryService.query(request, jdbcConnectionUrl);
                     break;
                 }
-                case "DynamoDB_20120810.Scan": {
+                case ApiMetadata.SCAN: {
                     responseObject = ScanService.scan(request, jdbcConnectionUrl);
                     break;
                 }
-                case "DynamoDB_20120810.UpdateTimeToLive": {
+                case ApiMetadata.UPDATE_TIME_TO_LIVE: {
                     responseObject = TTLService.updateTimeToLive(request, jdbcConnectionUrl);
                     break;
                 }
-                case "DynamoDB_20120810.DescribeTimeToLive": {
+                case ApiMetadata.DESCRIBE_TIME_TO_LIVE: {
                     responseObject = TTLService.describeTimeToLive(request, jdbcConnectionUrl);
                     break;
                 }
-                case "DynamoDBStreams_20120810.ListStreams": {
+                case ApiMetadata.LIST_STREAMS: {
                     responseObject = ListStreamsService.listStreams(request, jdbcConnectionUrl);
                     break;
                 }
-                case "DynamoDBStreams_20120810.DescribeStream": {
+                case ApiMetadata.DESCRIBE_STREAM: {
                     responseObject =
                             DescribeStreamService.describeStream(request, jdbcConnectionUrl);
                     break;
                 }
-                case "DynamoDBStreams_20120810.GetShardIterator": {
+                case ApiMetadata.GET_SHARD_ITERATOR: {
                     responseObject =
                             GetShardIteratorService.getShardIterator(request, jdbcConnectionUrl);
                     break;
                 }
-                case "DynamoDBStreams_20120810.GetRecords": {
+                case ApiMetadata.GET_RECORDS: {
                     responseObject = GetRecordsService.getRecords(request, jdbcConnectionUrl);
                     break;
                 }
@@ -213,31 +221,32 @@ public class RootResource {
                         contentType, api, request, e.getCause().getMessage());
             }
             // TODO : metrics for error response
-            switch (api) {
-                case "DynamoDB_20120810.CreateTable": {
+            String operation = getOperationName(api);
+            switch (operation) {
+                case ApiMetadata.CREATE_TABLE: {
                     servlet.getMetrics().createTableFailureTime(
                             EnvironmentEdgeManager.currentTime() - startTime);
                     break;
                 }
-                case "DynamoDB_20120810.DeleteTable": {
+                case ApiMetadata.DELETE_TABLE: {
                     break;
                 }
-                case "DynamoDB_20120810.DescribeTable": {
+                case ApiMetadata.DESCRIBE_TABLE: {
                     break;
                 }
-                case "DynamoDB_20120810.PutItem": {
+                case ApiMetadata.PUT_ITEM: {
                     break;
                 }
-                case "DynamoDB_20120810.DeleteItem": {
+                case ApiMetadata.DELETE_ITEM: {
                     break;
                 }
-                case "DynamoDB_20120810.GetItem": {
+                case ApiMetadata.GET_ITEM: {
                     break;
                 }
-                case "DynamoDB_20120810.Query": {
+                case ApiMetadata.QUERY: {
                     break;
                 }
-                case "DynamoDB_20120810.Scan": {
+                case ApiMetadata.SCAN: {
                     break;
                 }
                 default: {
@@ -248,6 +257,14 @@ public class RootResource {
             }
             throw e;
         }
+    }
+
+    private static Response getResponseForInvalidApiName(String api) {
+        Map<String, Object> respObj = new HashMap<>();
+        respObj.put("__type", "com.amazonaws.dynamodb.v20120810#ValidationException");
+        respObj.put("message",
+                "Invalid API format. Expected format: <Service>.<Operation>, got: " + api);
+        return Response.status(Response.Status.BAD_REQUEST).entity(respObj).build();
     }
 
     private static boolean isTableNotFoundError(Exception e) {
@@ -272,6 +289,11 @@ public class RootResource {
             respObj.put("Item", item);
         }
         return Response.status(Response.Status.BAD_REQUEST).entity(respObj).build();
+    }
+
+    private static String getOperationName(String api) {
+        int lastDot = api.lastIndexOf('.');
+        return api.substring(lastDot + 1);
     }
 
 }

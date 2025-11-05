@@ -117,4 +117,25 @@ public class ApiMetadata {
     public static final String NEW_IMAGE = "NewImage";
     public static final String OLD_IMAGE = "OldImage";
     public static final String KEYS = "Keys";
+
+    // API Operation Names
+    public static final String CREATE_TABLE = "CreateTable";
+    public static final String DELETE_TABLE = "DeleteTable";
+    public static final String DESCRIBE_TABLE = "DescribeTable";
+    public static final String LIST_TABLES = "ListTables";
+    public static final String UPDATE_TABLE = "UpdateTable";
+    public static final String PUT_ITEM = "PutItem";
+    public static final String UPDATE_ITEM = "UpdateItem";
+    public static final String DELETE_ITEM = "DeleteItem";
+    public static final String GET_ITEM = "GetItem";
+    public static final String BATCH_GET_ITEM = "BatchGetItem";
+    public static final String BATCH_WRITE_ITEM = "BatchWriteItem";
+    public static final String QUERY = "Query";
+    public static final String SCAN = "Scan";
+    public static final String UPDATE_TIME_TO_LIVE = "UpdateTimeToLive";
+    public static final String DESCRIBE_TIME_TO_LIVE = "DescribeTimeToLive";
+    public static final String LIST_STREAMS = "ListStreams";
+    public static final String DESCRIBE_STREAM = "DescribeStream";
+    public static final String GET_SHARD_ITERATOR = "GetShardIterator";
+    public static final String GET_RECORDS = "GetRecords";
 }
