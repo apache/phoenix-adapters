@@ -6,6 +6,7 @@ import org.apache.phoenix.ddb.service.exceptions.ValidationException;
 import org.apache.phoenix.ddb.utils.ApiMetadata;
 import org.apache.phoenix.ddb.utils.CommonServiceUtils;
 import org.apache.phoenix.ddb.utils.PhoenixUtils;
+import org.apache.phoenix.jdbc.PhoenixResultSet;
 import org.apache.phoenix.schema.PColumn;
 
 import org.bson.BsonDocument;
@@ -36,6 +37,7 @@ public class DQLUtils {
             List<PColumn> tablePKCols, List<PColumn> indexPKCols, String tableName,
             boolean isSingleRowExpected) throws SQLException {
         int count = 0;
+        int bytesSize = 0;
         List<Map<String, Object>> items = new ArrayList<>();
         RawBsonDocument lastBsonDoc = null;
         try (ResultSet rs = stmt.executeQuery()) {
@@ -45,6 +47,11 @@ public class DQLUtils {
                         BsonDocumentToMap.getProjectedItem(lastBsonDoc, projectionAttributes);
                 items.add(item);
                 count++;
+                bytesSize +=
+                        (int) rs.unwrap(PhoenixResultSet.class).getCurrentRow().getSerializedSize();
+                if (bytesSize >= ApiMetadata.MAX_BYTES_SIZE) {
+                    break;
+                }
             }
             Map<String, Object> lastKey = isSingleRowExpected ? null
                     : DQLUtils.getKeyFromDoc(lastBsonDoc, useIndex, tablePKCols, indexPKCols);

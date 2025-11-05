@@ -1,6 +1,8 @@
 package org.apache.phoenix.ddb.service;
 
 import org.apache.phoenix.ddb.utils.ApiMetadata;
+import org.apache.phoenix.jdbc.PhoenixResultSet;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,9 +36,15 @@ public class ListTablesService {
         String lastEvaluatedTableName = null;
         try (Connection connection = DriverManager.getConnection(connectionUrl)) {
             ResultSet rs = connection.createStatement().executeQuery(query);
+            int bytesSize = 0;
             while (rs.next()) {
                 lastEvaluatedTableName = rs.getString(1);
                 tableNames.add(lastEvaluatedTableName);
+                bytesSize +=
+                        (int) rs.unwrap(PhoenixResultSet.class).getCurrentRow().getSerializedSize();
+                if (bytesSize >= ApiMetadata.MAX_BYTES_SIZE) {
+                    break;
+                }
             }
         } catch (SQLException e) {
             throw new RuntimeException(e);

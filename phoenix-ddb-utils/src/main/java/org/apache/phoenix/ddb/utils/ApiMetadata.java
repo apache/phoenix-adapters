@@ -162,4 +162,7 @@ public class ApiMetadata {
             = Arrays.asList("AttributesToGet");
     public static final List<String> DELETE_LEGACY_PARAMS
             = Arrays.asList("ConditionalOperator", "Expected");
+
+    // 1 MB response size max limit
+    public static final int MAX_BYTES_SIZE = 1024 * 1024;
 }

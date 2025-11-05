@@ -136,7 +136,7 @@ public class TestUtils {
         DescribeStreamRequest dsr = DescribeStreamRequest.builder().streamArn(streamArn).build();
         StreamDescription streamDesc = client.describeStream(dsr).streamDescription();
         int i = 0;
-        while (i < 20 && StreamStatus.ENABLING == streamDesc.streamStatus()) {
+        while (i < 200 && StreamStatus.ENABLING == streamDesc.streamStatus()) {
             streamDesc = client.describeStream(dsr).streamDescription();
             if (StreamStatus.ENABLED == streamDesc.streamStatus()) {
                 break;

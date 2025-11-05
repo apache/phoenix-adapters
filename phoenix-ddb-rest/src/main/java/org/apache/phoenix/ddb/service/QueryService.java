@@ -28,7 +28,7 @@ public class QueryService {
     public static final String SELECT_QUERY_WITH_INDEX_HINT =
             "SELECT /*+ INDEX(\"%s.%s\" \"%s\") */ COL FROM %s.\"%s\" WHERE ";
 
-    private static final int MAX_QUERY_LIMIT = 500;
+    private static final int MAX_QUERY_LIMIT = 100;
 
     public static Map<String, Object> query(Map<String, Object> request, String connectionUrl) {
         ValidationUtil.validateQueryRequest(request);

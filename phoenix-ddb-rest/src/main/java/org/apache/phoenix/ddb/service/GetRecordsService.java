@@ -33,7 +33,7 @@ public class GetRecordsService {
             " FROM %s.\"%s\" WHERE PARTITION_ID() = ? " +
             " AND PHOENIX_ROW_TIMESTAMP() >= CAST(CAST(? AS BIGINT) AS TIMESTAMP) LIMIT ? ";
 
-    private static final int MAX_GET_RECORDS_LIMIT = 1000;
+    private static final int MAX_GET_RECORDS_LIMIT = 100;
     private static final String OLD_IMAGE = "OLD_IMAGE";
     private static final String NEW_IMAGE = "NEW_IMAGE";
     private static final String NEW_AND_OLD_IMAGES = "NEW_AND_OLD_IMAGES";
@@ -70,6 +70,7 @@ public class GetRecordsService {
             PreparedStatement ps = getPreparedStatement(conn, pIter, limit+1);
             ResultSet rs = ps.executeQuery();
             int count = 0;
+            int bytesSize = 0;
             while (count < limit && rs.next()) {
                 long ts = rs.getDate(1).getTime();
                 if (ts == lastTs) {
@@ -83,6 +84,11 @@ public class GetRecordsService {
                         DDBShimCDCUtils.getSequenceNumber(lastTs, lastOffset));
                 records.add(record);
                 count++;
+                bytesSize +=
+                        (int) rs.unwrap(PhoenixResultSet.class).getCurrentRow().getSerializedSize();
+                if (bytesSize >= ApiMetadata.MAX_BYTES_SIZE) {
+                    break;
+                }
             }
             partitionEndTime = DDBShimCDCUtils.getPartitionEndTime(conn, pIter);
             hasMore = rs.next();
