@@ -208,7 +208,7 @@ CLASSPATH="${PHOENIX_SHIM_CONF_DIR}:$JAVA_HOME/lib/tools.jar"
 
 # Set up logging options
 if [ -z "${PHOENIX_SHIM_LOGGING_OPTS}" ]; then
-    PHOENIX_SHIM_LOGGING_OPTS="-Dlog4j.configuration=file:$PHOENIX_SHIM_CONF_DIR/log4j.properties"
+    PHOENIX_SHIM_LOGGING_OPTS="-Dlog4j2.configurationFile=file:$PHOENIX_SHIM_CONF_DIR/log4j2.properties"
     export PHOENIX_SHIM_LOGGING_OPTS
 fi
 
