@@ -833,6 +833,329 @@ public class QueryIndex2IT {
         TestUtils.validateIndexUsed(qr1.build(), url);
     }
 
+    @Test(timeout = 120000)
+    public void testQueryWithContainsFilter() throws SQLException {
+        final String tableName = testName.getMethodName();
+        final String indexName = "idx_contains_" + tableName;
+        CreateTableRequest createTableRequest =
+                DDLTestUtils.getCreateTableRequest(tableName, "pk", ScalarAttributeType.S, "sk",
+                        ScalarAttributeType.N);
+        createTableRequest =
+                DDLTestUtils.addIndexToRequest(true, createTableRequest, indexName, "category",
+                        ScalarAttributeType.S, "num_attr", ScalarAttributeType.N);
+        phoenixDBClientV2.createTable(createTableRequest);
+        dynamoDbClient.createTable(createTableRequest);
+
+        putItemsForQueryWithContainsFilter(tableName);
+
+        // Test 1: contains() with String attribute - substring search
+        QueryRequest.Builder qr1 = QueryRequest.builder().tableName(tableName);
+        qr1.indexName(indexName);
+        qr1.keyConditionExpression("#cat = :cat");
+        qr1.filterExpression("contains(#strAttr, :substring)");
+        Map<String, String> exprAttrNames1 = new HashMap<>();
+        exprAttrNames1.put("#cat", "category");
+        exprAttrNames1.put("#strAttr", "stringAttr");
+        qr1.expressionAttributeNames(exprAttrNames1);
+        Map<String, AttributeValue> exprAttrVal1 = new HashMap<>();
+        exprAttrVal1.put(":cat", AttributeValue.builder().s("electronics").build());
+        exprAttrVal1.put(":substring", AttributeValue.builder().s("world").build());
+        qr1.expressionAttributeValues(exprAttrVal1);
+
+        QueryResponse phoenixResult1 = phoenixDBClientV2.query(qr1.build());
+        QueryResponse dynamoResult1 = dynamoDbClient.query(qr1.build());
+
+        Assert.assertEquals(1, dynamoResult1.count().intValue());
+        Assert.assertEquals(dynamoResult1.count(), phoenixResult1.count());
+        Assert.assertEquals(dynamoResult1.scannedCount(), phoenixResult1.scannedCount());
+        Assert.assertTrue(
+                ItemComparator.areItemsEqual(dynamoResult1.items(), phoenixResult1.items()));
+
+        // Test 2: contains() with String Set - element search
+        QueryRequest.Builder qr2 = QueryRequest.builder().tableName(tableName);
+        qr2.indexName(indexName);
+        qr2.keyConditionExpression("#cat = :cat");
+        qr2.filterExpression("contains(stringSet, :element)");
+        Map<String, String> exprAttrNames2 = new HashMap<>();
+        exprAttrNames2.put("#cat", "category");
+        qr2.expressionAttributeNames(exprAttrNames2);
+        Map<String, AttributeValue> exprAttrVal2 = new HashMap<>();
+        exprAttrVal2.put(":cat", AttributeValue.builder().s("electronics").build());
+        exprAttrVal2.put(":element", AttributeValue.builder().s("apple").build());
+        qr2.expressionAttributeValues(exprAttrVal2);
+
+        QueryResponse phoenixResult2 = phoenixDBClientV2.query(qr2.build());
+        QueryResponse dynamoResult2 = dynamoDbClient.query(qr2.build());
+
+        Assert.assertEquals(1, dynamoResult2.count().intValue());
+        Assert.assertEquals(dynamoResult2.count(), phoenixResult2.count());
+        Assert.assertEquals(dynamoResult2.scannedCount(), phoenixResult2.scannedCount());
+        Assert.assertTrue(
+                ItemComparator.areItemsEqual(dynamoResult2.items(), phoenixResult2.items()));
+
+        // Test 3: contains() with Number Set - element search
+        QueryRequest.Builder qr3 = QueryRequest.builder().tableName(tableName);
+        qr3.indexName(indexName);
+        qr3.keyConditionExpression("#cat = :cat");
+        qr3.filterExpression("contains(numberSet, :number)");
+        Map<String, String> exprAttrNames3 = new HashMap<>();
+        exprAttrNames3.put("#cat", "category");
+        qr3.expressionAttributeNames(exprAttrNames3);
+        Map<String, AttributeValue> exprAttrVal3 = new HashMap<>();
+        exprAttrVal3.put(":cat", AttributeValue.builder().s("books").build());
+        exprAttrVal3.put(":number", AttributeValue.builder().n("5").build());
+        qr3.expressionAttributeValues(exprAttrVal3);
+
+        QueryResponse phoenixResult3 = phoenixDBClientV2.query(qr3.build());
+        QueryResponse dynamoResult3 = dynamoDbClient.query(qr3.build());
+
+        Assert.assertEquals(1, dynamoResult3.count().intValue());
+        Assert.assertEquals(dynamoResult3.count(), phoenixResult3.count());
+        Assert.assertEquals(dynamoResult3.scannedCount(), phoenixResult3.scannedCount());
+        Assert.assertTrue(
+                ItemComparator.areItemsEqual(dynamoResult3.items(), phoenixResult3.items()));
+
+        // Test 4: contains() with Binary Set - element search
+        QueryRequest.Builder qr4 = QueryRequest.builder().tableName(tableName);
+        qr4.indexName(indexName);
+        qr4.keyConditionExpression("#cat = :cat");
+        qr4.filterExpression("contains(binarySet, :binaryElement)");
+        Map<String, String> exprAttrNames4 = new HashMap<>();
+        exprAttrNames4.put("#cat", "category");
+        qr4.expressionAttributeNames(exprAttrNames4);
+        Map<String, AttributeValue> exprAttrVal4 = new HashMap<>();
+        exprAttrVal4.put(":cat", AttributeValue.builder().s("electronics").build());
+        exprAttrVal4.put(":binaryElement",
+                AttributeValue.builder().b(SdkBytes.fromByteArray(new byte[] {1, 2})).build());
+        qr4.expressionAttributeValues(exprAttrVal4);
+
+        QueryResponse phoenixResult4 = phoenixDBClientV2.query(qr4.build());
+        QueryResponse dynamoResult4 = dynamoDbClient.query(qr4.build());
+
+        Assert.assertEquals(1, dynamoResult4.count().intValue());
+        Assert.assertEquals(dynamoResult4.count(), phoenixResult4.count());
+        Assert.assertEquals(dynamoResult4.scannedCount(), phoenixResult4.scannedCount());
+        Assert.assertTrue(
+                ItemComparator.areItemsEqual(dynamoResult4.items(), phoenixResult4.items()));
+
+        // Test 5: contains() with List attribute - element search (String)
+        QueryRequest.Builder qr5 = QueryRequest.builder().tableName(tableName);
+        qr5.indexName(indexName);
+        qr5.keyConditionExpression("#cat = :cat");
+        qr5.filterExpression("contains(listAttr, :listElement)");
+        Map<String, String> exprAttrNames5 = new HashMap<>();
+        exprAttrNames5.put("#cat", "category");
+        qr5.expressionAttributeNames(exprAttrNames5);
+        Map<String, AttributeValue> exprAttrVal5 = new HashMap<>();
+        exprAttrVal5.put(":cat", AttributeValue.builder().s("electronics").build());
+        exprAttrVal5.put(":listElement", AttributeValue.builder().s("red").build());
+        qr5.expressionAttributeValues(exprAttrVal5);
+
+        QueryResponse phoenixResult5 = phoenixDBClientV2.query(qr5.build());
+        QueryResponse dynamoResult5 = dynamoDbClient.query(qr5.build());
+
+        Assert.assertEquals(1, dynamoResult5.count().intValue());
+        Assert.assertEquals(dynamoResult5.count(), phoenixResult5.count());
+        Assert.assertEquals(dynamoResult5.scannedCount(), phoenixResult5.scannedCount());
+        Assert.assertTrue(
+                ItemComparator.areItemsEqual(dynamoResult5.items(), phoenixResult5.items()));
+
+        // Test 6: contains() with List attribute - element search (Number)
+        QueryRequest.Builder qr6 = QueryRequest.builder().tableName(tableName);
+        qr6.indexName(indexName);
+        qr6.keyConditionExpression("#cat = :cat");
+        qr6.filterExpression("contains(listAttr, :listElement)");
+        Map<String, String> exprAttrNames6 = new HashMap<>();
+        exprAttrNames6.put("#cat", "category");
+        qr6.expressionAttributeNames(exprAttrNames6);
+        Map<String, AttributeValue> exprAttrVal6 = new HashMap<>();
+        exprAttrVal6.put(":cat", AttributeValue.builder().s("books").build());
+        exprAttrVal6.put(":listElement", AttributeValue.builder().n("42").build());
+        qr6.expressionAttributeValues(exprAttrVal6);
+
+        QueryResponse phoenixResult6 = phoenixDBClientV2.query(qr6.build());
+        QueryResponse dynamoResult6 = dynamoDbClient.query(qr6.build());
+
+        Assert.assertEquals(1, dynamoResult6.count().intValue());
+        Assert.assertEquals(dynamoResult6.count(), phoenixResult6.count());
+        Assert.assertEquals(dynamoResult6.scannedCount(), phoenixResult6.scannedCount());
+        Assert.assertTrue(
+                ItemComparator.areItemsEqual(dynamoResult6.items(), phoenixResult6.items()));
+
+        // Test 7: contains() combined with AND condition
+        QueryRequest.Builder qr7 = QueryRequest.builder().tableName(tableName);
+        qr7.indexName(indexName);
+        qr7.keyConditionExpression("#cat = :cat");
+        qr7.filterExpression("contains(stringAttr, :substring) AND contains(stringSet, :element)");
+        Map<String, String> exprAttrNames7 = new HashMap<>();
+        exprAttrNames7.put("#cat", "category");
+        qr7.expressionAttributeNames(exprAttrNames7);
+        Map<String, AttributeValue> exprAttrVal7 = new HashMap<>();
+        exprAttrVal7.put(":cat", AttributeValue.builder().s("electronics").build());
+        exprAttrVal7.put(":substring", AttributeValue.builder().s("world").build());
+        exprAttrVal7.put(":element", AttributeValue.builder().s("apple").build());
+        qr7.expressionAttributeValues(exprAttrVal7);
+
+        QueryResponse phoenixResult7 = phoenixDBClientV2.query(qr7.build());
+        QueryResponse dynamoResult7 = dynamoDbClient.query(qr7.build());
+
+        Assert.assertEquals(1, dynamoResult7.count().intValue());
+        Assert.assertEquals(dynamoResult7.count(), phoenixResult7.count());
+        Assert.assertEquals(dynamoResult7.scannedCount(), phoenixResult7.scannedCount());
+        Assert.assertTrue(
+                ItemComparator.areItemsEqual(dynamoResult7.items(), phoenixResult7.items()));
+
+        // Test 8: contains() with OR condition
+        QueryRequest.Builder qr8 = QueryRequest.builder().tableName(tableName);
+        qr8.indexName(indexName);
+        qr8.keyConditionExpression("#cat = :cat");
+        qr8.filterExpression("contains(stringSet, :fruit1) OR contains(stringSet, :fruit2)");
+        Map<String, String> exprAttrNames8 = new HashMap<>();
+        exprAttrNames8.put("#cat", "category");
+        qr8.expressionAttributeNames(exprAttrNames8);
+        Map<String, AttributeValue> exprAttrVal8 = new HashMap<>();
+        exprAttrVal8.put(":cat", AttributeValue.builder().s("books").build());
+        exprAttrVal8.put(":fruit1", AttributeValue.builder().s("orange").build());
+        exprAttrVal8.put(":fruit2", AttributeValue.builder().s("grape").build());
+        qr8.expressionAttributeValues(exprAttrVal8);
+
+        QueryResponse phoenixResult8 = phoenixDBClientV2.query(qr8.build());
+        QueryResponse dynamoResult8 = dynamoDbClient.query(qr8.build());
+
+        Assert.assertEquals(1, dynamoResult8.count().intValue());
+        Assert.assertEquals(dynamoResult8.count(), phoenixResult8.count());
+        Assert.assertEquals(dynamoResult8.scannedCount(), phoenixResult8.scannedCount());
+        Assert.assertTrue(
+                ItemComparator.areItemsEqual(dynamoResult8.items(), phoenixResult8.items()));
+
+        // Test 9: contains() with NOT operator
+        QueryRequest.Builder qr9 = QueryRequest.builder().tableName(tableName);
+        qr9.indexName(indexName);
+        qr9.keyConditionExpression("#cat = :cat");
+        qr9.filterExpression("NOT contains(stringAttr, :substring)");
+        Map<String, String> exprAttrNames9 = new HashMap<>();
+        exprAttrNames9.put("#cat", "category");
+        qr9.expressionAttributeNames(exprAttrNames9);
+        Map<String, AttributeValue> exprAttrVal9 = new HashMap<>();
+        exprAttrVal9.put(":cat", AttributeValue.builder().s("electronics").build());
+        exprAttrVal9.put(":substring", AttributeValue.builder().s("world").build());
+        qr9.expressionAttributeValues(exprAttrVal9);
+
+        QueryResponse phoenixResult9 = phoenixDBClientV2.query(qr9.build());
+        QueryResponse dynamoResult9 = dynamoDbClient.query(qr9.build());
+
+        Assert.assertEquals(1, dynamoResult9.count().intValue());
+        Assert.assertEquals(dynamoResult9.count(), phoenixResult9.count());
+        Assert.assertEquals(dynamoResult9.scannedCount(), phoenixResult9.scannedCount());
+        Assert.assertTrue(
+                ItemComparator.areItemsEqual(dynamoResult9.items(), phoenixResult9.items()));
+
+        // Test 10: contains() with empty string (should match all strings)
+        QueryRequest.Builder qr10 = QueryRequest.builder().tableName(tableName);
+        qr10.indexName(indexName);
+        qr10.keyConditionExpression("#cat = :cat");
+        qr10.filterExpression("contains(stringAttr, :emptyString)");
+        Map<String, String> exprAttrNames10 = new HashMap<>();
+        exprAttrNames10.put("#cat", "category");
+        qr10.expressionAttributeNames(exprAttrNames10);
+        Map<String, AttributeValue> exprAttrVal10 = new HashMap<>();
+        exprAttrVal10.put(":cat", AttributeValue.builder().s("electronics").build());
+        exprAttrVal10.put(":emptyString", AttributeValue.builder().s("").build());
+        qr10.expressionAttributeValues(exprAttrVal10);
+
+        QueryResponse phoenixResult10 = phoenixDBClientV2.query(qr10.build());
+        QueryResponse dynamoResult10 = dynamoDbClient.query(qr10.build());
+
+        Assert.assertEquals(2, dynamoResult10.count().intValue());
+        Assert.assertEquals(dynamoResult10.count(), phoenixResult10.count());
+        Assert.assertEquals(dynamoResult10.scannedCount(), phoenixResult10.scannedCount());
+        Assert.assertTrue(
+                ItemComparator.areItemsEqual(dynamoResult10.items(), phoenixResult10.items()));
+
+        // Test 11: contains() for non-existent attribute
+        QueryRequest.Builder qr11 = QueryRequest.builder().tableName(tableName);
+        qr11.indexName(indexName);
+        qr11.keyConditionExpression("#cat = :cat");
+        qr11.filterExpression("NOT contains(nonExistentAttr, :value)");
+        Map<String, String> exprAttrNames11 = new HashMap<>();
+        exprAttrNames11.put("#cat", "category");
+        qr11.expressionAttributeNames(exprAttrNames11);
+        Map<String, AttributeValue> exprAttrVal11 = new HashMap<>();
+        exprAttrVal11.put(":cat", AttributeValue.builder().s("electronics").build());
+        exprAttrVal11.put(":value", AttributeValue.builder().s("test").build());
+        qr11.expressionAttributeValues(exprAttrVal11);
+
+        QueryResponse phoenixResult11 = phoenixDBClientV2.query(qr11.build());
+        QueryResponse dynamoResult11 = dynamoDbClient.query(qr11.build());
+
+        Assert.assertEquals(2, dynamoResult11.count().intValue());
+        Assert.assertEquals(dynamoResult11.count(), phoenixResult11.count());
+        Assert.assertEquals(dynamoResult11.scannedCount(), phoenixResult11.scannedCount());
+        Assert.assertTrue(
+                ItemComparator.areItemsEqual(dynamoResult11.items(), phoenixResult11.items()));
+
+        // explain plan for index test
+        TestUtils.validateIndexUsed(qr1.build(), url);
+    }
+
+    private void putItemsForQueryWithContainsFilter(String tableName) {
+        Map<String, AttributeValue> item1 = new HashMap<>();
+        item1.put("pk", AttributeValue.builder().s("item1").build());
+        item1.put("sk", AttributeValue.builder().n("1").build());
+        item1.put("stringAttr", AttributeValue.builder().s("hello world test").build());
+        item1.put("stringSet", AttributeValue.builder().ss("apple", "banana", "cherry").build());
+        item1.put("numberSet", AttributeValue.builder().ns("1", "2", "3").build());
+        item1.put("binarySet", AttributeValue.builder()
+                .bs(SdkBytes.fromByteArray(new byte[] {1, 2}),
+                        SdkBytes.fromByteArray(new byte[] {3, 4})).build());
+        item1.put("listAttr", AttributeValue.builder().l(AttributeValue.builder().s("red").build(),
+                AttributeValue.builder().s("green").build()).build());
+        item1.put("category", AttributeValue.builder().s("electronics").build());
+        item1.put("num_attr", AttributeValue.builder().n("100").build());
+
+        Map<String, AttributeValue> item2 = new HashMap<>();
+        item2.put("pk", AttributeValue.builder().s("item2").build());
+        item2.put("sk", AttributeValue.builder().n("2").build());
+        item2.put("stringAttr", AttributeValue.builder().s("testing contains function").build());
+        item2.put("stringSet", AttributeValue.builder().ss("orange", "grape", "kiwi").build());
+        item2.put("numberSet", AttributeValue.builder().ns("4", "5", "6").build());
+        item2.put("binarySet",
+                AttributeValue.builder().bs(SdkBytes.fromByteArray(new byte[] {7, 8})).build());
+        item2.put("listAttr", AttributeValue.builder()
+                .l(AttributeValue.builder().s("black").build(),
+                        AttributeValue.builder().n("42").build()).build());
+        item2.put("category", AttributeValue.builder().s("books").build());
+        item2.put("num_attr", AttributeValue.builder().n("200").build());
+
+        Map<String, AttributeValue> item3 = new HashMap<>();
+        item3.put("pk", AttributeValue.builder().s("item3").build());
+        item3.put("sk", AttributeValue.builder().n("3").build());
+        item3.put("stringAttr", AttributeValue.builder().s("sample data").build());
+        item3.put("stringSet", AttributeValue.builder().ss("mango", "watermelon").build());
+        item3.put("numberSet", AttributeValue.builder().ns("7", "8", "9").build());
+        item3.put("binarySet",
+                AttributeValue.builder().bs(SdkBytes.fromByteArray(new byte[] {9, 10})).build());
+        item3.put("listAttr", AttributeValue.builder().l(AttributeValue.builder().s("blue").build(),
+                AttributeValue.builder().s("yellow").build()).build());
+        item3.put("category", AttributeValue.builder().s("electronics").build());
+        item3.put("num_attr", AttributeValue.builder().n("300").build());
+
+        // Put items into both DynamoDB and Phoenix
+        PutItemRequest putItemRequest1 =
+                PutItemRequest.builder().tableName(tableName).item(item1).build();
+        PutItemRequest putItemRequest2 =
+                PutItemRequest.builder().tableName(tableName).item(item2).build();
+        PutItemRequest putItemRequest3 =
+                PutItemRequest.builder().tableName(tableName).item(item3).build();
+
+        phoenixDBClientV2.putItem(putItemRequest1);
+        phoenixDBClientV2.putItem(putItemRequest2);
+        phoenixDBClientV2.putItem(putItemRequest3);
+        dynamoDbClient.putItem(putItemRequest1);
+        dynamoDbClient.putItem(putItemRequest2);
+        dynamoDbClient.putItem(putItemRequest3);
+    }
+
     private Map<String, AttributeValue> getItem1() {
         Map<String, AttributeValue> item = new HashMap<>();
         item.put("Attr_0", AttributeValue.builder().s("str_val_1").build());

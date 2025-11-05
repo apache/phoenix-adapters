@@ -19,16 +19,17 @@
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 
 /**
- * Utility class for comparing DynamoDB items.
+ * Utility class for comparing items.
  */
 public class ItemComparator {
 
     /**
-     * Compares two DynamoDB items for equality, including all nested elements.
+     * Compares two items for equality, including all nested elements.
      *
      * @param item1 First item to compare
      * @param item2 Second item to compare
@@ -59,7 +60,29 @@ public class ItemComparator {
     }
 
     /**
-     * Compares two AttributeValues for equality, handling all DynamoDB types.
+     * Compares two lists of items for equality.
+     *
+     * @param list1 First list of items to compare
+     * @param list2 Second list of items to compare
+     * @return true if lists are equal, false otherwise
+     */
+    public static boolean areItemsEqual(List<Map<String, AttributeValue>> list1,
+            List<Map<String, AttributeValue>> list2) {
+        if (list1 == list2) {
+            return true;
+        }
+        if (list1 == null || list2 == null) {
+            return false;
+        }
+        if (list1.size() != list2.size()) {
+            return false;
+        }
+        return IntStream.range(0, list1.size())
+                .allMatch(i -> areItemsEqual(list1.get(i), list2.get(i)));
+    }
+
+    /**
+     * Compares two AttributeValues for equality.
      */
     private static boolean areAttributeValuesEqual(AttributeValue value1, AttributeValue value2) {
         if (value1 == value2) {
