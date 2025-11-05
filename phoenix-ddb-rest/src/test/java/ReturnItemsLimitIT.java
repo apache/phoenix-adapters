@@ -905,6 +905,9 @@ public class ReturnItemsLimitIT {
                 .build();
 
         ScanResponse phoenixResponse = phoenixDBClientV2.scan(scanRequest);
+        ScanResponse localddbResponse = dynamoDbClient.scan(scanRequest);
+        compareItemLists(phoenixResponse.items(), localddbResponse.items(), "Scan with Limit",
+                false);
 
         // Verify the behavior:
         // 1. Should return fewer items than the limit due to bytes size constraint
