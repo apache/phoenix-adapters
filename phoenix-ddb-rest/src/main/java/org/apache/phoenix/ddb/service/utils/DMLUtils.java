@@ -85,15 +85,24 @@ public class DMLUtils {
             if (!StringUtils.isEmpty(condExpr)) {
                 ConditionCheckFailedException conditionalCheckFailedException =
                         new ConditionCheckFailedException();
-                if (returnValuesOnConditionCheckFailure != null
-                        && returnValuesOnConditionCheckFailure.equals("ALL_OLD") && !isDelete) {
+                if (ApiMetadata.ALL_OLD.equals(returnValuesOnConditionCheckFailure) && !isDelete) {
                     conditionalCheckFailedException.setItem(
                             BsonDocumentToMap.getFullItem(rawBsonDocument));
                 }
                 throw conditionalCheckFailedException;
             }
         } else {
-            if (returnValue.equals("ALL_NEW") || returnValue.equals("ALL_OLD")) {
+            boolean returnValuesInResponse = false;
+            if (!isDelete) {
+                // TODO : handle ALL_OLD case
+                // TODO : reject UPDATED_OLD, UPDATED_NEW cases which are not supported
+                if (ApiMetadata.ALL_NEW.equals(returnValue)) {
+                    returnValuesInResponse = true;
+                }
+            } else if (ApiMetadata.ALL_OLD.equals(returnValue)) {
+                returnValuesInResponse = true;
+            }
+            if (returnValuesInResponse) {
                 returnAttrs = BsonDocumentToMap.getFullItem(rawBsonDocument);
                 Map<String, Object> tmpReturnAttrs = returnAttrs;
                 returnAttrs = new HashMap<>();
@@ -111,8 +120,8 @@ public class DMLUtils {
      */
     private static boolean needReturnRow(String returnValue,
             String returnValuesOnConditionCheckFailure) {
-        return (returnValue != null && !returnValue.equals("NONE")) || (
-                returnValuesOnConditionCheckFailure != null
-                        && !returnValuesOnConditionCheckFailure.equals("NONE"));
+        return (returnValue != null && !returnValue.equals(ApiMetadata.NONE)) || (
+            returnValuesOnConditionCheckFailure != null
+                && !returnValuesOnConditionCheckFailure.equals(ApiMetadata.NONE));
     }
 }

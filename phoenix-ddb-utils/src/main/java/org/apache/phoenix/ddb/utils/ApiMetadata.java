@@ -73,6 +73,9 @@ public class ApiMetadata {
     public static final String RETURN_VALUES_ON_CONDITION_CHECK_FAILURE = "ReturnValuesOnConditionCheckFailure";
     public static final String UPDATE_EXPRESSION = "UpdateExpression";
     public static final String ATTRIBUTES = "Attributes";
+    public static final String ALL_OLD = "ALL_OLD";
+    public static final String ALL_NEW = "ALL_NEW";
+    public static final String NONE = "NONE";
 
     // ---------- BatchGetItem ----------
     public static final String REQUEST_ITEMS = "RequestItems";

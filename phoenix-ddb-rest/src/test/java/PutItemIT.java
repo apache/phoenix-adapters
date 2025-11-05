@@ -1,8 +1,24 @@
-import java.io.IOException;
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -17,6 +33,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
+import software.amazon.awssdk.services.dynamodb.model.ConditionalCheckFailedException;
 import software.amazon.awssdk.services.dynamodb.model.CreateTableRequest;
 import software.amazon.awssdk.services.dynamodb.model.PutItemRequest;
 import software.amazon.awssdk.services.dynamodb.model.QueryRequest;
@@ -290,5 +307,81 @@ public class PutItemIT {
         item.put("attr_0", AttributeValue.builder().s(k).build());
         item.put("idx_attr", AttributeValue.builder().n(v).build());
         return PutItemRequest.builder().tableName(tableName).item(item).build();
+    }
+
+    @Test(timeout = 120000)
+    public void putItemWithConditionCheckFailureTest1() throws Exception {
+        final String tableName = testName.getMethodName();
+        CreateTableRequest createTableRequest =
+                DDLTestUtils.getCreateTableRequest(tableName, "attr_0", ScalarAttributeType.S, null,
+                        null);
+        phoenixDBClientV2.createTable(createTableRequest);
+        dynamoDbClient.createTable(createTableRequest);
+
+        Map<String, AttributeValue> item = DocumentDdbAttributesTest.getItem1();
+
+        PutItemRequest putItemRequest = PutItemRequest.builder()
+                .tableName(tableName)
+                .item(item)
+                .conditionExpression("attribute_not_exists(attr_0)")
+                .returnValuesOnConditionCheckFailure("ALL_OLD")
+                .build();
+
+        dynamoDbClient.putItem(putItemRequest);
+        phoenixDBClientV2.putItem(putItemRequest);
+
+        Map<String, AttributeValue> conditionCheckFailedItem = null;
+        try {
+            dynamoDbClient.putItem(putItemRequest);
+            Assert.fail("Expected ConditionalCheckFailedException");
+        } catch (ConditionalCheckFailedException e) {
+            conditionCheckFailedItem = e.item();
+        }
+
+        try {
+            phoenixDBClientV2.putItem(putItemRequest);
+            Assert.fail("Expected ConditionalCheckFailedException");
+        } catch (ConditionalCheckFailedException e) {
+            Assert.assertTrue(
+                    ItemComparator.areItemsEqual(conditionCheckFailedItem, e.item()));
+        }
+
+    }
+
+    @Test(timeout = 120000)
+    public void putItemWithConditionCheckFailureTest2() throws Exception {
+        final String tableName = testName.getMethodName();
+        CreateTableRequest createTableRequest =
+                DDLTestUtils.getCreateTableRequest(tableName, "attr_0", ScalarAttributeType.S, null,
+                        null);
+        phoenixDBClientV2.createTable(createTableRequest);
+        dynamoDbClient.createTable(createTableRequest);
+
+        Map<String, AttributeValue> item = DocumentDdbAttributesTest.getItem1();
+        PutItemRequest putItemRequest = PutItemRequest.builder()
+                .tableName(tableName)
+                .item(item)
+                .conditionExpression("attribute_not_exists(attr_0)")
+                .returnValuesOnConditionCheckFailure("NONE")
+                .build();
+
+        dynamoDbClient.putItem(putItemRequest);
+        phoenixDBClientV2.putItem(putItemRequest);
+
+        Map<String, AttributeValue> conditionCheckFailedItem = null;
+        try {
+            dynamoDbClient.putItem(putItemRequest);
+            Assert.fail("Expected ConditionalCheckFailedException");
+        } catch (ConditionalCheckFailedException e) {
+            conditionCheckFailedItem = e.item();
+        }
+
+        try {
+            phoenixDBClientV2.putItem(putItemRequest);
+            Assert.fail("Expected ConditionalCheckFailedException");
+        } catch (ConditionalCheckFailedException e) {
+            Assert.assertTrue(
+                    ItemComparator.areItemsEqual(conditionCheckFailedItem, e.item()));
+        }
     }
 }

@@ -44,7 +44,8 @@ import static software.amazon.awssdk.enhanced.dynamodb.mapper.StaticAttributeTag
 import static software.amazon.awssdk.enhanced.dynamodb.mapper.StaticAttributeTags.secondarySortKey;
 
 public class MappedTableIT {
-    private static final Logger LOGGER = LoggerFactory.getLogger(BinaryEndToEndIT.class);
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(MappedTableIT.class);
 
     private static DynamoDbEnhancedClient ddbPhoenixEnhancedClient = null;
     private static DynamoDbClient phoenixDBClientV2;
