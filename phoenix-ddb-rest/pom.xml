@@ -207,8 +207,6 @@
         <dependency>
             <groupId>org.apache.phoenix</groupId>
             <artifactId>phoenix-hbase-compat-${hbase.compat.version}</artifactId>
-            <optional>false</optional>
-            <scope>test</scope>
             <version>${phoenix.version}</version>
         </dependency>
 
