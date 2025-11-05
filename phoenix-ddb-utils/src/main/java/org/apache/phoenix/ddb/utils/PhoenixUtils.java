@@ -142,8 +142,6 @@ public class PhoenixUtils {
      */
     public static String getTableOptions() {
         return " MERGE_ENABLED=false" + "," +
-                "REPLICATION_SCOPE=0" + "," +
-                "DISABLE_TABLE_SOR=true" + "," +
                 "IS_STRICT_TTL=false" + "," +
                 "UPDATE_CACHE_FREQUENCY=1800000" + "," +
                 "\"phoenix.max.lookback.age.seconds\"=97200" + "," +
