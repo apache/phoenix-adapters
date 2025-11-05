@@ -1,0 +1,1802 @@
+// ------------------------------------------------------------------
+// Transitive dependencies of this project determined from the
+// maven pom organized by organization.
+// ------------------------------------------------------------------
+
+phoenix-ddb-shim
+
+
+From: 'abego Software GmbH, Germany' (http://abego-software.de)
+
+  - abego TreeLayout Core (http://code.google.com/p/treelayout/) org.abego.treelayout:org.abego.treelayout.core:jar:1.0.1
+    License: BSD 3-Clause "New" or "Revised" License (BSD-3-Clause)  (http://treelayout.googlecode.com/files/LICENSE.TXT)
+
+
+From: 'AddThis' (http://www.addthis.com)
+
+  - stream-lib (https://github.com/addthis/stream-lib) com.clearspring.analytics:stream:jar:2.9.5
+    License: Apache License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+
+
+From: 'ALM Works' (http://almworks.com)
+
+  - sqlite4java native library (linux-amd64) (http://code.google.com/p/sqlite4java) com.almworks.sqlite4java:libsqlite4java-linux-amd64:so:1.0.392
+    License: The Apache Software License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+    License: Public Domain  (http://sqlite.org/copyright.html)
+
+  - sqlite4java native library (linux-i386) (http://code.google.com/p/sqlite4java) com.almworks.sqlite4java:libsqlite4java-linux-i386:so:1.0.392
+    License: The Apache Software License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+    License: Public Domain  (http://sqlite.org/copyright.html)
+
+  - sqlite4java native library (osx) (http://code.google.com/p/sqlite4java) com.almworks.sqlite4java:libsqlite4java-osx:dylib:1.0.392
+    License: The Apache Software License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+    License: Public Domain  (http://sqlite.org/copyright.html)
+
+  - sqlite4java (http://code.google.com/p/sqlite4java) com.almworks.sqlite4java:sqlite4java:jar:1.0.392
+    License: The Apache Software License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - sqlite4java native library (win32-x64) (http://code.google.com/p/sqlite4java) com.almworks.sqlite4java:sqlite4java-win32-x64:dll:1.0.392
+    License: The Apache Software License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+    License: Public Domain  (http://sqlite.org/copyright.html)
+
+  - sqlite4java native library (win32-x86) (http://code.google.com/p/sqlite4java) com.almworks.sqlite4java:sqlite4java-win32-x86:dll:1.0.392
+    License: The Apache Software License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+    License: Public Domain  (http://sqlite.org/copyright.html)
+
+
+From: 'an unknown organization'
+
+  - AOP alliance (http://aopalliance.sourceforge.net) aopalliance:aopalliance:jar:1.0
+    License: Public Domain 
+
+  - DynamoDBLocal (http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Tools.DynamoDBLocal.html) com.amazonaws:DynamoDBLocal:jar:1.25.0
+    License: DynamoDB Local License Agreement  (classpath:LICENSE.txt)
+
+  - AWS SDK for Java - Core (https://aws.amazon.com/sdkforjava) com.amazonaws:aws-java-sdk-core:jar:1.12.619
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK for Amazon DynamoDB (https://aws.amazon.com/sdkforjava) com.amazonaws:aws-java-sdk-dynamodb:jar:1.12.619
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK for AWS KMS (https://aws.amazon.com/sdkforjava) com.amazonaws:aws-java-sdk-kms:jar:1.12.619
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK for Amazon S3 (https://aws.amazon.com/sdkforjava) com.amazonaws:aws-java-sdk-s3:jar:1.12.619
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - JMES Path Query library (https://aws.amazon.com/sdkforjava) com.amazonaws:jmespath-java:jar:1.12.619
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - Metrics Core (http://metrics.codahale.com/metrics-core/) com.codahale.metrics:metrics-core:bundle:3.0.1
+    License: Apache License 2.0  (http://www.apache.org/licenses/LICENSE-2.0.html)
+
+  - Graphite Integration for Metrics (http://metrics.codahale.com/metrics-graphite/) com.codahale.metrics:metrics-graphite:bundle:3.0.1
+    License: Apache License 2.0  (http://www.apache.org/licenses/LICENSE-2.0.html)
+
+  - Findbugs Annotations under Apache License (http://stephenc.github.com/findbugs-annotations) com.github.stephenc.findbugs:findbugs-annotations:jar:1.3.9-1
+    License: Apache License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - JCIP Annotations under Apache License (http://stephenc.github.com/jcip-annotations) com.github.stephenc.jcip:jcip-annotations:jar:1.0-1
+    License: Apache License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - FindBugs-jsr305 (http://findbugs.sourceforge.net/) com.google.code.findbugs:jsr305:jar:2.0.1
+    License: The Apache Software License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - error-prone annotations (http://nexus.sonatype.org/oss-repository-hosting.html/error_prone_parent/error_prone_annotations) com.google.errorprone:error_prone_annotations:jar:2.7.1
+    License: Apache 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - Guava InternalFutureFailureAccess and InternalFutures (https://github.com/google/guava/failureaccess) com.google.guava:failureaccess:bundle:1.0.1
+    License: The Apache Software License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - Guava: Google Core Libraries for Java (https://github.com/google/guava) com.google.guava:guava:bundle:31.0-jre
+    License: Apache License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - Guava ListenableFuture only (https://github.com/google/guava/listenablefuture) com.google.guava:listenablefuture:jar:9999.0-empty-to-avoid-conflict-with-guava
+    License: The Apache Software License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - J2ObjC Annotations (https://github.com/google/j2objc/) com.google.j2objc:j2objc-annotations:jar:1.3
+    License: The Apache Software License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - ICU4J (https://icu.unicode.org/) com.ibm.icu:icu4j:jar:72.1
+    License: Unicode/ICU License  (https://raw.githubusercontent.com/unicode-org/icu/main/icu4c/LICENSE)
+
+  - ICU4J Locale Service Provider (https://icu.unicode.org/) com.ibm.icu:icu4j-localespi:jar:72.1
+    License: Unicode/ICU License  (https://raw.githubusercontent.com/unicode-org/icu/main/icu4c/LICENSE)
+
+  - json-path (https://github.com/jayway/JsonPath) com.jayway.jsonpath:json-path:jar:2.9.0
+    License: The Apache Software License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - Disruptor Framework (http://lmax-exchange.github.com/disruptor) com.lmax:disruptor:jar:3.3.6
+    License: The Apache Software License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - Metrics Core (http://metrics.dropwizard.io/metrics-core/) io.dropwizard.metrics:metrics-core:bundle:3.2.6
+    License: Apache License 2.0  (http://www.apache.org/licenses/LICENSE-2.0.html)
+
+  - OpenTelemetry Java (https://github.com/open-telemetry/opentelemetry-java) io.opentelemetry:opentelemetry-api:jar:1.15.0
+    License: The Apache License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - OpenTelemetry Java (https://github.com/open-telemetry/opentelemetry-java) io.opentelemetry:opentelemetry-context:jar:1.15.0
+    License: The Apache License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - OpenTelemetry Semantic Conventions Java (https://github.com/open-telemetry/semantic-conventions-java) io.opentelemetry.semconv:opentelemetry-semconv:jar:1.29.0-alpha
+    License: The Apache License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - fastutil (http://fasutil.di.unimi.it/) it.unimi.dsi:fastutil:jar:7.0.6
+    License: Apache License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.html)
+
+  - javax.inject (http://code.google.com/p/atinject/) javax.inject:javax.inject:jar:1
+    License: The Apache Software License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - ANTLR 4 Runtime (http://www.antlr.org) org.antlr:antlr4-runtime:jar:4.5
+    License: BSD 3-Clause License  (http://opensource.org/licenses/BSD-3-Clause)
+
+  - Checker Qual (https://checkerframework.org) org.checkerframework:checker-qual:jar:3.12.0
+    License: The MIT License  (http://opensource.org/licenses/MIT)
+
+  - HdrHistogram (http://hdrhistogram.github.io/HdrHistogram/) org.hdrhistogram:HdrHistogram:bundle:2.1.12
+    License: Public Domain, per Creative Commons CC0  (http://creativecommons.org/publicdomain/zero/1.0/)
+    License: BSD-2-Clause  (https://opensource.org/licenses/BSD-2-Clause)
+
+  - snappy (http://github.com/dain/snappy) org.iq80.snappy:snappy:jar:0.5
+    License: Apache License 2.0  (http://www.apache.org/licenses/LICENSE-2.0.html)
+
+  - JCodings (http://nexus.sonatype.org/oss-repository-hosting.html/jcodings) org.jruby.jcodings:jcodings:jar:1.0.55
+    License: MIT License  (http://www.opensource.org/licenses/mit-license.php)
+
+  - Joni (http://nexus.sonatype.org/oss-repository-hosting.html/joni) org.jruby.joni:joni:jar:2.1.31
+    License: MIT License  (http://www.opensource.org/licenses/mit-license.php)
+
+  - BSON (https://bsonspec.org) org.mongodb:bson:jar:5.3.1
+    License: The Apache License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - reactive-streams (http://www.reactive-streams.org/) org.reactivestreams:reactive-streams:jar:1.0.4
+    License: MIT-0  (https://spdx.org/licenses/MIT-0.html)
+
+  - SnakeYAML (https://bitbucket.org/snakeyaml/snakeyaml) org.yaml:snakeyaml:bundle:2.2
+    License: Apache License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - AWS Java SDK :: Services :: AccessAnalyzer (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:accessanalyzer:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Account (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:account:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: AWS Certificate Manager (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:acm:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: ACM PCA (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:acmpca:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Amp (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:amp:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Amplify (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:amplify:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Amplify Backend (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:amplifybackend:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Amplify UI Builder (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:amplifyuibuilder:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Annotations (https://aws.amazon.com/sdkforjava/core/annotations) software.amazon.awssdk:annotations:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: HTTP Clients :: Apache (https://aws.amazon.com/sdkforjava/http-clients/apache-client) software.amazon.awssdk:apache-client:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Amazon API Gateway (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:apigateway:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: ApiGatewayManagementApi (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:apigatewaymanagementapi:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: ApiGatewayV2 (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:apigatewayv2:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: AppConfig (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:appconfig:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: App Config Data (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:appconfigdata:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: App Fabric (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:appfabric:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Appflow (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:appflow:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: App Integrations (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:appintegrations:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: AWS Application Auto Scaling (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:applicationautoscaling:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Application Cost Profiler (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:applicationcostprofiler:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: AWS Application Discovery Service (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:applicationdiscovery:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Application Insights (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:applicationinsights:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Application Signals (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:applicationsignals:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: App Mesh (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:appmesh:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: App Runner (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:apprunner:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Amazon AppStream (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:appstream:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: AWS AppSync (https://aws.amazon.com/sdkforjava/appsync) software.amazon.awssdk:appsync:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: App Test (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:apptest:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: ARC Zonal Shift (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:arczonalshift:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Arns (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:arns:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Artifact (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:artifact:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Amazon Athena (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:athena:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Audit Manager (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:auditmanager:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Auth (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:auth:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Auto Scaling (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:autoscaling:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Auto Scaling Plans (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:autoscalingplans:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Core :: Protocols :: AWS Cbor Protocol (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:aws-cbor-protocol:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: AWS Core (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:aws-core:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Core :: Protocols :: AWS Json Protocol (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:aws-json-protocol:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Core :: Protocols :: AWS Query Protocol (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:aws-query-protocol:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS SDK for Java (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:aws-sdk-java:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Core :: Protocols :: AWS Xml Protocol (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:aws-xml-protocol:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: B2 Bi (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:b2bi:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Backup (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:backup:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Backup Gateway (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:backupgateway:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Backup Search (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:backupsearch:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: AWS Batch (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:batch:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: BCM Data Exports (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:bcmdataexports:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: BCM Pricing Calculator (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:bcmpricingcalculator:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Bedrock (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:bedrock:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Bedrock Agent (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:bedrockagent:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Bedrock Agent Runtime (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:bedrockagentruntime:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Bedrock Data Automation (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:bedrockdataautomation:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Bedrock Data Automation Runtime (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:bedrockdataautomationruntime:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Bedrock Runtime (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:bedrockruntime:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Billing (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:billing:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Billingconductor (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:billingconductor:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Braket (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:braket:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: AWS Budgets (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:budgets:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Chatbot (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:chatbot:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Checksums (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:checksums:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Checksums SPI (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:checksums-spi:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Chime (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:chime:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Chime SDK Identity (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:chimesdkidentity:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Chime SDK Media Pipelines (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:chimesdkmediapipelines:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Chime SDK Meetings (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:chimesdkmeetings:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Chime SDK Messaging (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:chimesdkmessaging:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Chime SDK Voice (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:chimesdkvoice:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Clean Rooms (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:cleanrooms:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Clean Rooms ML (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:cleanroomsml:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: AWS Cloud9 (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:cloud9:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Cloud Control (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:cloudcontrol:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Amazon CloudDirectory (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:clouddirectory:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: AWS CloudFormation (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:cloudformation:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Amazon CloudFront (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:cloudfront:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Cloud Front Key Value Store (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:cloudfrontkeyvaluestore:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: AWS CloudHSM (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:cloudhsm:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: AWS CloudHSM V2 (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:cloudhsmv2:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Amazon CloudSearch (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:cloudsearch:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Amazon CloudSearch Domain (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:cloudsearchdomain:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: AWS CloudTrail (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:cloudtrail:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Cloud Trail Data (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:cloudtraildata:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Amazon CloudWatch (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:cloudwatch:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Metric Publishers :: CloudWatch (https://aws.amazon.com/sdkforjava/metric-publishers/cloudwatch-metric-publisher) software.amazon.awssdk:cloudwatch-metric-publisher:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Amazon CloudWatch Events (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:cloudwatchevents:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Amazon CloudWatch Logs (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:cloudwatchlogs:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Codeartifact (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:codeartifact:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: AWS Code Build (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:codebuild:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Code Catalyst (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:codecatalyst:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: AWS CodeCommit (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:codecommit:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Code Connections (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:codeconnections:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: AWS CodeDeploy (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:codedeploy:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: CodeGuruProfiler (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:codeguruprofiler:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: CodeGuru Reviewer (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:codegurureviewer:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Code Guru Security (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:codegurusecurity:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: AWS CodePipeline (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:codepipeline:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: CodeStar connections (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:codestarconnections:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Codestar Notifications (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:codestarnotifications:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Amazon Cognito Identity (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:cognitoidentity:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Amazon Cognito Identity Provider Service (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:cognitoidentityprovider:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Amazon Cognito Sync (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:cognitosync:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Amazon Comprehend (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:comprehend:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: ComprehendMedical (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:comprehendmedical:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Compute Optimizer (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:computeoptimizer:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: AWS Config (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:config:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Connect (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:connect:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Connect Campaigns (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:connectcampaigns:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Connect Campaigns V2 (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:connectcampaignsv2:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Connect Cases (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:connectcases:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Connect Contact Lens (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:connectcontactlens:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: ConnectParticipant (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:connectparticipant:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Control Catalog (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:controlcatalog:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Control Tower (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:controltower:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: AWS Cost and Usage Report (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:costandusagereport:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: AWS Cost Explorer (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:costexplorer:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Cost Optimization Hub (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:costoptimizationhub:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: AWS CRT Core (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:crt-core:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Customer Profiles (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:customerprofiles:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: AWS Database Migration Service (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:databasemigration:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Data Brew (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:databrew:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: DataExchange (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:dataexchange:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: AWS Data Pipeline (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:datapipeline:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: DataSync (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:datasync:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Data Zone (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:datazone:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Amazon DynamoDB Accelerator (DAX) (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:dax:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Deadline (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:deadline:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Detective (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:detective:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: AWS Device Farm (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:devicefarm:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Dev Ops Guru (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:devopsguru:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: AWS Direct Connect (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:directconnect:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: AWS Directory Service (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:directory:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Directory Service Data (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:directoryservicedata:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: DLM (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:dlm:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: DocDB (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:docdb:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Doc DB Elastic (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:docdbelastic:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Drs (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:drs:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: DSQL (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:dsql:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Amazon DynamoDB (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:dynamodb:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: DynamoDB :: Enhanced Client (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:dynamodb-enhanced:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: EBS (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:ebs:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Amazon EC2 (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:ec2:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: EC2 Instance Connect (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:ec2instanceconnect:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Amazon EC2 Container Registry (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:ecr:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: ECR PUBLIC (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:ecrpublic:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Amazon EC2 Container Service (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:ecs:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Amazon Elastic File System (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:efs:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: EKS (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:eks:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: EKS Auth (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:eksauth:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Amazon ElastiCache (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:elasticache:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: AWS Elastic Beanstalk (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:elasticbeanstalk:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Elastic Inference (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:elasticinference:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Elastic Load Balancing (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:elasticloadbalancing:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Elastic Load Balancing V2 (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:elasticloadbalancingv2:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Amazon Elasticsearch Service (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:elasticsearch:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Amazon Elastic Transcoder (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:elastictranscoder:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Metric Publishers :: Emf (https://aws.amazon.com/sdkforjava/metric-publishers/emf-metric-logging-publisher) software.amazon.awssdk:emf-metric-logging-publisher:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Amazon EMR (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:emr:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: EMR Containers (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:emrcontainers:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: EMR Serverless (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:emrserverless:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Endpoints SPI (https://aws.amazon.com/sdkforjava/core/endpoints-spi) software.amazon.awssdk:endpoints-spi:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Entity Resolution (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:entityresolution:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: EventBridge (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:eventbridge:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Evidently (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:evidently:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Finspace (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:finspace:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Finspace Data (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:finspacedata:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Amazon Kinesis Firehose (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:firehose:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Fis (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:fis:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: FMS (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:fms:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Forecast (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:forecast:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Forecastquery (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:forecastquery:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: FraudDetector (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:frauddetector:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Free Tier (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:freetier:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: FSx (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:fsx:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: AWS GameLift (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:gamelift:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Geo Maps (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:geomaps:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Geo Places (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:geoplaces:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Geo Routes (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:georoutes:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Amazon Glacier (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:glacier:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Global Accelerator (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:globalaccelerator:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: AWS Glue (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:glue:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Grafana (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:grafana:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: AWS Greengrass (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:greengrass:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Greengrass V2 (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:greengrassv2:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: GroundStation (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:groundstation:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Amazon GuardDuty (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:guardduty:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: AWS Health APIs and Notifications (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:health:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Health Lake (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:healthlake:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: HTTP Auth (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:http-auth:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: HTTP Auth AWS (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:http-auth-aws:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: HTTP Auth Event Stream (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:http-auth-aws-eventstream:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: HTTP Auth SPI (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:http-auth-spi:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: HTTP Client Interface (https://aws.amazon.com/sdkforjava/http-client-spi) software.amazon.awssdk:http-client-spi:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: AWS IAM (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:iam:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: IAM :: Policy Builder (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:iam-policy-builder:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Identity SPI (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:identity-spi:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Identitystore (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:identitystore:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Imagebuilder (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:imagebuilder:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Core :: Imds (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:imds:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Amazon Inspector Service (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:inspector:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Inspector2 (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:inspector2:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Inspector Scan (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:inspectorscan:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Internet Monitor (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:internetmonitor:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Invoicing (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:invoicing:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: AWS IoT (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:iot:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: IoTAnalytics (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:iotanalytics:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: AWS IoT Data Plane (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:iotdataplane:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Iot Device Advisor (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:iotdeviceadvisor:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: IoT Events (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:iotevents:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: IoT Events Data (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:ioteventsdata:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Io T Fleet Hub (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:iotfleethub:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Io T Fleet Wise (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:iotfleetwise:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: IoT Jobs Data Plane (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:iotjobsdataplane:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: IoTSecureTunneling (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:iotsecuretunneling:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Io T Site Wise (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:iotsitewise:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: IoTThingsGraph (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:iotthingsgraph:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Io T Twin Maker (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:iottwinmaker:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: IoT Wireless (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:iotwireless:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Ivs (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:ivs:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Ivschat (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:ivschat:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: IVS Real Time (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:ivsrealtime:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Core :: Protocols :: Json Utils (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:json-utils:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Kafka (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:kafka:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Kafka Connect (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:kafkaconnect:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Kendra (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:kendra:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Kendra Ranking (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:kendraranking:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Keyspaces (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:keyspaces:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Amazon Kinesis (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:kinesis:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Amazon Kinesis Analytics (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:kinesisanalytics:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Kinesis Analytics V2 (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:kinesisanalyticsv2:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Amazon Kinesis Video Streams (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:kinesisvideo:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Kinesis Video Archived Media (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:kinesisvideoarchivedmedia:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Kinesis Video Media (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:kinesisvideomedia:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Kinesis Video Signaling (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:kinesisvideosignaling:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Kinesis Video Web RTC Storage (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:kinesisvideowebrtcstorage:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: AWS KMS (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:kms:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: LakeFormation (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:lakeformation:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: AWS Lambda (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:lambda:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Launch Wizard (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:launchwizard:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Amazon Lex Model Building (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:lexmodelbuilding:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Lex Models V2 (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:lexmodelsv2:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Amazon Lex Runtime (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:lexruntime:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Lex Runtime V2 (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:lexruntimev2:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: License Manager (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:licensemanager:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: License Manager Linux Subscriptions (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:licensemanagerlinuxsubscriptions:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: License Manager User Subscriptions (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:licensemanagerusersubscriptions:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Amazon Lightsail (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:lightsail:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Location (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:location:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Lookout Equipment (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:lookoutequipment:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Lookout Metrics (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:lookoutmetrics:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Lookout Vision (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:lookoutvision:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: M2 (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:m2:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Amazon Machine Learning (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:machinelearning:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Macie2 (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:macie2:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Mail Manager (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:mailmanager:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: ManagedBlockchain (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:managedblockchain:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Managed Blockchain Query (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:managedblockchainquery:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Marketplace Agreement (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:marketplaceagreement:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Marketplace Catalog (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:marketplacecatalog:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: AWS Marketplace Commerce Analytics (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:marketplacecommerceanalytics:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Marketplace Deployment (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:marketplacedeployment:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: AWS Marketplace Entitlement (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:marketplaceentitlement:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: AWS Marketplace Metering Service (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:marketplacemetering:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Marketplace Reporting (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:marketplacereporting:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: MediaConnect (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:mediaconnect:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: AWS Elemental MediaConvert (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:mediaconvert:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: AWS Elemental MediaLive (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:medialive:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: AWS Elemental MediaPackage (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:mediapackage:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Media Package V2 (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:mediapackagev2:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: MediaPackage Vod (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:mediapackagevod:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: AWS Elemental MediaStore (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:mediastore:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: AWS Elemental MediaStore Data (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:mediastoredata:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: MediaTailor (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:mediatailor:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Medical Imaging (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:medicalimaging:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Memory DB (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:memorydb:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Metrics SPI (https://aws.amazon.com/sdkforjava/core/metrics-spi) software.amazon.awssdk:metrics-spi:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Mgn (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:mgn:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: AWS Migration Hub (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:migrationhub:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: MigrationHub Config (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:migrationhubconfig:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Migration Hub Orchestrator (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:migrationhuborchestrator:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Migration Hub Refactor Spaces (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:migrationhubrefactorspaces:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Migration Hub Strategy (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:migrationhubstrategy:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: AmazonMQ (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:mq:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Amazon Mechanical Turk Requester (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:mturk:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: MWAA (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:mwaa:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Neptune (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:neptune:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Neptunedata (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:neptunedata:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Neptune Graph (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:neptunegraph:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: HTTP Clients :: Netty Non-Blocking I/O (https://aws.amazon.com/sdkforjava/http-clients/netty-nio-client) software.amazon.awssdk:netty-nio-client:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Network Firewall (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:networkfirewall:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Network Flow Monitor (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:networkflowmonitor:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: NetworkManager (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:networkmanager:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Network Monitor (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:networkmonitor:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Notifications (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:notifications:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Notifications Contacts (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:notificationscontacts:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: OAM (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:oam:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Observability Admin (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:observabilityadmin:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Omics (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:omics:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Open Search (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:opensearch:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Open Search Serverless (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:opensearchserverless:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: AWS OpsWorks (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:opsworks:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: AWS OpsWorks for Chef Automate (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:opsworkscm:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: AWS Organizations (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:organizations:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: OSIS (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:osis:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Outposts (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:outposts:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Panorama (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:panorama:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Partner Central Selling (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:partnercentralselling:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Payment Cryptography (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:paymentcryptography:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Payment Cryptography Data (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:paymentcryptographydata:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Pca Connector Ad (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:pcaconnectorad:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Pca Connector Scep (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:pcaconnectorscep:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: PCS (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:pcs:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Personalize (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:personalize:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Personalize Events (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:personalizeevents:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Personalize Runtime (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:personalizeruntime:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: PI (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:pi:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Amazon Pinpoint (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:pinpoint:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Pinpoint Email (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:pinpointemail:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Pinpoint SMS Voice (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:pinpointsmsvoice:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Pinpoint SMS Voice V2 (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:pinpointsmsvoicev2:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Pipes (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:pipes:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Amazon Polly (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:polly:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: AWS Price List (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:pricing:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Private Networks (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:privatenetworks:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Profiles (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:profiles:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Core :: Protocols :: Protocol Core (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:protocol-core:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Proton (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:proton:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Q Apps (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:qapps:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Q Business (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:qbusiness:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Q Connect (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:qconnect:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: QLDB (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:qldb:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: QLDB Session (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:qldbsession:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: QuickSight (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:quicksight:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: RAM (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:ram:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Rbin (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:rbin:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Amazon RDS (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:rds:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: RDS Data (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:rdsdata:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Amazon Redshift (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:redshift:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Redshift Data (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:redshiftdata:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Redshift Serverless (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:redshiftserverless:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Regions (https://aws.amazon.com/sdkforjava/core/regions) software.amazon.awssdk:regions:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Amazon Rekognition (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:rekognition:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Repostspace (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:repostspace:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Resiliencehub (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:resiliencehub:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Resource Explorer 2 (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:resourceexplorer2:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: AWS Resource Groups (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:resourcegroups:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: AWS Resource Groups Tagging API (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:resourcegroupstaggingapi:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Retries (https://aws.amazon.com/sdkforjava/core/retries) software.amazon.awssdk:retries:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Retries API (https://aws.amazon.com/sdkforjava/core/retries-spi) software.amazon.awssdk:retries-spi:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: RoboMaker (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:robomaker:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Roles Anywhere (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:rolesanywhere:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Amazon Route53 (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:route53:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Amazon Route53 Domains (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:route53domains:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Route53 Profiles (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:route53profiles:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Route53 Recovery Cluster (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:route53recoverycluster:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Route53 Recovery Control Config (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:route53recoverycontrolconfig:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Route53 Recovery Readiness (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:route53recoveryreadiness:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Route53Resolver (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:route53resolver:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: RUM (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:rum:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Amazon S3 (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:s3:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: S3 :: Event Notification (https://aws.amazon.com/sdkforjava/s3-event-notifications) software.amazon.awssdk:s3-event-notifications:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: S3 :: Transfer Manager (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:s3-transfer-manager:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Amazon S3 Control (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:s3control:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: S3 Outposts (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:s3outposts:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: S3 Tables (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:s3tables:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Amazon SageMaker (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:sagemaker:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: SageMaker A2I Runtime (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:sagemakera2iruntime:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Sagemaker Edge (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:sagemakeredge:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Sage Maker Feature Store Runtime (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:sagemakerfeaturestoreruntime:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Sage Maker Geospatial (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:sagemakergeospatial:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Sage Maker Metrics (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:sagemakermetrics:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: SageMaker Runtime (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:sagemakerruntime:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Savingsplans (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:savingsplans:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Scheduler (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:scheduler:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Schemas (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:schemas:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: SDK Core (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:sdk-core:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: AWS Secrets Manager (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:secretsmanager:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: SecurityHub (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:securityhub:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Security IR (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:securityir:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Security Lake (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:securitylake:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: AWSServerlessApplicationRepository (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:serverlessapplicationrepository:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: AWS Service Catalog (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:servicecatalog:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Service Catalog App Registry (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:servicecatalogappregistry:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Amazon Route 53 Auto Naming (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:servicediscovery:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Service Quotas (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:servicequotas:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Amazon SES (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:ses:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: SESv2 (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:sesv2:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: AWS Step Functions (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:sfn:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: AWS Shield (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:shield:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Signer (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:signer:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Sim Space Weaver (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:simspaceweaver:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: AWS Server Migration (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:sms:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Amazon Snowball (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:snowball:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Snow Device Management (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:snowdevicemanagement:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Amazon SNS (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:sns:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Social Messaging (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:socialmessaging:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Amazon SQS (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:sqs:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: AWS Simple Systems Management (SSM) (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:ssm:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: SSM Contacts (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:ssmcontacts:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: SSM Incidents (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:ssmincidents:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: SSM Quick Setup (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:ssmquicksetup:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Ssm Sap (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:ssmsap:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: SSO (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:sso:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: SSO Admin (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:ssoadmin:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: SSO OIDC (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:ssooidc:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: AWS Storage Gateway (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:storagegateway:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: AWS STS (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:sts:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Supply Chain (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:supplychain:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: AWS Support (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:support:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Support App (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:supportapp:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Amazon SWF (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:swf:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Synthetics (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:synthetics:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Tax Settings (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:taxsettings:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Textract (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:textract:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Third Party :: Jackson-core (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:third-party-jackson-core:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Third Party :: Jackson-dataformat-cbor (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:third-party-jackson-dataformat-cbor:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Timestream Influx DB (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:timestreaminfluxdb:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Timestream Query (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:timestreamquery:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Timestream Write (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:timestreamwrite:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Tnb (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:tnb:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Transcribe (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:transcribe:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: AWS Transcribe Streaming (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:transcribestreaming:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Transfer (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:transfer:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Amazon Translate (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:translate:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Trusted Advisor (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:trustedadvisor:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: HTTP Clients :: URL Connection (https://aws.amazon.com/sdkforjava/http-clients/url-connection-client) software.amazon.awssdk:url-connection-client:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Utilities (https://aws.amazon.com/sdkforjava/utils) software.amazon.awssdk:utils:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Verified Permissions (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:verifiedpermissions:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Voice ID (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:voiceid:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: VPC Lattice (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:vpclattice:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: AWS WAF (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:waf:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: WAFV2 (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:wafv2:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Well Architected (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:wellarchitected:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Wisdom (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:wisdom:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Amazon WorkDocs (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:workdocs:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Amazon WorkMail (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:workmail:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: WorkMailMessageFlow (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:workmailmessageflow:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Amazon WorkSpaces (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:workspaces:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Work Spaces Thin Client (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:workspacesthinclient:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: Work Spaces Web (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:workspacesweb:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Java SDK :: Services :: AWS X-Ray (https://aws.amazon.com/sdkforjava) software.amazon.awssdk:xray:jar:2.30.22
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - AWS Event Stream (https://github.com/awslabs/aws-eventstream-java) software.amazon.eventstream:eventstream:jar:1.0.1
+    License: Apache License, Version 2.0  (https://aws.amazon.com/apache2.0)
+
+  - software.amazon.ion:ion-java (https://github.com/amznlabs/ion-java/) software.amazon.ion:ion-java:bundle:1.0.2
+    License: The Apache License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+
+
+From: 'ANTLR' (http://www.antlr.org)
+
+  - ANTLR 3 Runtime (http://www.antlr.org) org.antlr:antlr-runtime:jar:3.5.2
+    License: BSD licence  (http://antlr.org/license.html)
+
+
+From: 'Apache Software Foundation' (http://www.apache.org)
+
+  - Codahale Metrics (http://omid.incubator.apache.org/omid-codahale-metrics) org.apache.omid:omid-codahale-metrics:jar:1.1.3
+    License: Apache License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - Commit Table (http://omid.incubator.apache.org/omid-commit-table) org.apache.omid:omid-commit-table:jar:1.1.3
+    License: Apache License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - Common (http://omid.incubator.apache.org/omid-common) org.apache.omid:omid-common:jar:1.1.3
+    License: Apache License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - HBase Client (http://omid.incubator.apache.org/omid-hbase-client) org.apache.omid:omid-hbase-client:jar:1.1.3
+    License: Apache License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - HBase Commit Table (http://omid.incubator.apache.org/omid-hbase-commit-table) org.apache.omid:omid-hbase-commit-table:jar:1.1.3
+    License: Apache License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - HBase Common (http://omid.incubator.apache.org/omid-hbase-common) org.apache.omid:omid-hbase-common:jar:1.1.3
+    License: Apache License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - Metrics (http://omid.incubator.apache.org/omid-metrics) org.apache.omid:omid-metrics:jar:1.1.3
+    License: Apache License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - State Machine (http://omid.incubator.apache.org/omid-statemachine) org.apache.omid:omid-statemachine:jar:1.1.3
+    License: Apache License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - Timestamp Storage (http://omid.incubator.apache.org/omid-timestamp-storage) org.apache.omid:omid-timestamp-storage:jar:1.1.3
+    License: Apache License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - Transaction Client (http://omid.incubator.apache.org/omid-transaction-client) org.apache.omid:omid-transaction-client:jar:1.1.3
+    License: Apache License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+
+
+From: 'Apache Software Foundation' (https://www.apache.org)
+
+  - Apache Hadoop Auth  org.apache.hadoop:hadoop-auth:jar:3.4.2
+    License: Apache-2.0  (https://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - Apache Hadoop shaded Guava (https://www.apache.org/hadoop-thirdparty/hadoop-shaded-guava/) org.apache.hadoop.thirdparty:hadoop-shaded-guava:jar:1.1.1
+    License: Apache License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - Phoenix Core Client (https://www.apache.org/phoenix/phoenix-core-client/) org.apache.phoenix:phoenix-core-client:jar:5.3.0-SNAPSHOT
+    License: The Apache Software License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - Apache Phoenix Patched and Relocated (Shaded) Commons-CLI (http://phoenix.apache.org/phoenix-shaded-commons-cli) org.apache.phoenix.thirdparty:phoenix-shaded-commons-cli:jar:2.1.0
+    License: The Apache Software License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - Apache Phoenix Relocated (Shaded) Guava (http://phoenix.apache.org/phoenix-shaded-guava) org.apache.phoenix.thirdparty:phoenix-shaded-guava:jar:2.1.0
+    License: The Apache Software License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0.txt)
+
+
+From: 'Chemouni Uriel' (https://urielch.github.io/)
+
+  - ASM based accessors helper used by json-smart (https://urielch.github.io/) net.minidev:accessors-smart:bundle:2.5.0
+    License: The Apache Software License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - JSON Small and Fast Parser (https://urielch.github.io/) net.minidev:json-smart:bundle:2.5.0
+    License: The Apache Software License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+
+
+From: 'Connect2id Ltd.' (https://connect2id.com)
+
+  - Nimbus JOSE+JWT (https://bitbucket.org/connect2id/nimbus-jose-jwt) com.nimbusds:nimbus-jose-jwt:jar:9.37.2
+    License: The Apache Software License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0.txt)
+
+
+From: 'FasterXML' (http://fasterxml.com/)
+
+  - Jackson-annotations (https://github.com/FasterXML/jackson) com.fasterxml.jackson.core:jackson-annotations:jar:2.18.4
+    License: The Apache Software License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - Jackson-core (https://github.com/FasterXML/jackson-core) com.fasterxml.jackson.core:jackson-core:jar:2.18.4.1
+    License: The Apache Software License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - jackson-databind (https://github.com/FasterXML/jackson) com.fasterxml.jackson.core:jackson-databind:jar:2.18.4
+    License: The Apache Software License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - Jackson dataformat: CBOR (http://github.com/FasterXML/jackson-dataformats-binary) com.fasterxml.jackson.dataformat:jackson-dataformat-cbor:bundle:2.12.6
+    License: The Apache Software License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - Jackson datatype: JSR310 (https://github.com/FasterXML/jackson-modules-java8/jackson-datatype-jsr310) com.fasterxml.jackson.datatype:jackson-datatype-jsr310:bundle:2.12.3
+    License: The Apache Software License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+
+
+From: 'GlassFish Community' (https://glassfish.java.net)
+
+  - javax.annotation API (http://jcp.org/en/jsr/detail?id=250) javax.annotation:javax.annotation-api:jar:1.2
+    License: CDDL + GPLv2 with classpath exception  (https://glassfish.dev.java.net/nonav/public/CDDL+GPL.html)
+
+
+From: 'Google' (http://www.google.com/)
+
+  - Protocol Buffer Java API (http://code.google.com/p/protobuf) com.google.protobuf:protobuf-java:bundle:2.5.0
+    License: New BSD license  (http://www.opensource.org/licenses/bsd-license.php)
+
+
+From: 'Google, Inc.' (http://www.google.com)
+
+  - Google Guice - Core Library (https://github.com/google/guice/guice) com.google.inject:guice:jar:5.1.0
+    License: The Apache Software License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+
+
+From: 'Joda.org' (https://www.joda.org)
+
+  - Joda-Time (https://www.joda.org/joda-time/) joda-time:joda-time:jar:2.10.5
+    License: Apache License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0.txt)
+
+
+From: 'Oracle' (http://www.oracle.com)
+
+  - JavaBeans Activation Framework API jar (http://java.net/all/javax.activation-api/) javax.activation:javax.activation-api:jar:1.2.0
+    License: CDDL/GPLv2+CE  (https://github.com/javaee/activation/blob/master/LICENSE.txt)
+
+
+From: 'OW2' (http://www.ow2.org/)
+
+  - asm (http://asm.ow2.io/) org.ow2.asm:asm:jar:9.3
+    License: BSD-3-Clause  (https://asm.ow2.io/license.html)
+
+
+From: 'QOS.ch' (http://www.qos.ch)
+
+  - SLF4J API Module (http://www.slf4j.org) org.slf4j:slf4j-api:jar:1.7.36
+    License: MIT License  (http://www.opensource.org/licenses/mit-license.php)
+
+
+From: 'The Apache Software Foundation' (http://www.apache.org/)
+
+  - Commons CLI (http://commons.apache.org/cli/) commons-cli:commons-cli:jar:1.2
+    License: The Apache Software License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - Apache Commons Collections (http://commons.apache.org/collections/) commons-collections:commons-collections:jar:3.2.2
+    License: Apache License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - Commons Logging (http://commons.apache.org/proper/commons-logging/) commons-logging:commons-logging:jar:1.1.3
+    License: The Apache Software License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - Apache Commons CSV (http://commons.apache.org/proper/commons-csv/) org.apache.commons:commons-csv:jar:1.0
+    License: The Apache Software License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - Curator Client (http://curator.apache.org/curator-client) org.apache.curator:curator-client:bundle:4.2.0
+    License: The Apache Software License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - Curator Framework (http://curator.apache.org/curator-framework) org.apache.curator:curator-framework:bundle:4.2.0
+    License: The Apache Software License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - Curator Recipes (http://curator.apache.org/curator-recipes) org.apache.curator:curator-recipes:bundle:4.2.0
+    License: The Apache Software License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - htrace-core (http://incubator.apache.org/projects/htrace.html) org.apache.htrace:htrace-core:jar:3.1.0-incubating
+    License: The Apache Software License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - Apache HttpClient (http://hc.apache.org/httpcomponents-client) org.apache.httpcomponents:httpclient:jar:4.5.13
+    License: Apache License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - Apache HttpCore (http://hc.apache.org/httpcomponents-core-ga) org.apache.httpcomponents:httpcore:jar:4.4.13
+    License: Apache License, Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0.txt)
+
+
+From: 'The Apache Software Foundation' (https://www.apache.org/)
+
+  - Apache Commons BeanUtils (https://commons.apache.org/proper/commons-beanutils/) commons-beanutils:commons-beanutils:jar:1.9.4
+    License: Apache License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - Apache Commons Codec (https://commons.apache.org/proper/commons-codec/) commons-codec:commons-codec:jar:1.16.0
+    License: Apache-2.0  (https://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - Apache Commons IO (https://commons.apache.org/proper/commons-io/) commons-io:commons-io:jar:2.18.0
+    License: Apache-2.0  (https://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - Apache Commons Crypto (https://commons.apache.org/proper/commons-crypto/) org.apache.commons:commons-crypto:jar:1.1.0
+    License: Apache License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - Apache Commons Lang (https://commons.apache.org/proper/commons-lang/) org.apache.commons:commons-lang3:jar:3.18.0
+    License: Apache-2.0  (https://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - Apache HBase - Client (https://hbase.apache.org/hbase-build-configuration/hbase-client) org.apache.hbase:hbase-client:jar:2.5.12-hadoop3
+    License: Apache License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - Apache HBase - Common (https://hbase.apache.org/hbase-build-configuration/hbase-common) org.apache.hbase:hbase-common:jar:2.5.12-hadoop3
+    License: Apache License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - Apache HBase - Hadoop Compatibility (https://hbase.apache.org/hbase-build-configuration/hbase-hadoop-compat) org.apache.hbase:hbase-hadoop-compat:jar:2.5.12-hadoop3
+    License: Apache License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - Apache HBase - Hadoop Two Compatibility (https://hbase.apache.org/hbase-build-configuration/hbase-hadoop2-compat) org.apache.hbase:hbase-hadoop2-compat:jar:2.5.12-hadoop3
+    License: Apache License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - Apache HBase - Logging (https://hbase.apache.org/hbase-build-configuration/hbase-logging) org.apache.hbase:hbase-logging:jar:2.5.12-hadoop3
+    License: Apache License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - Apache HBase - Metrics Implementation (https://hbase.apache.org/hbase-build-configuration/hbase-metrics) org.apache.hbase:hbase-metrics:jar:2.5.11-hadoop3
+    License: Apache License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - Apache HBase - Metrics API (https://hbase.apache.org/hbase-build-configuration/hbase-metrics-api) org.apache.hbase:hbase-metrics-api:jar:2.5.12-hadoop3
+    License: Apache License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - Apache HBase - Protocol (https://hbase.apache.org/hbase-build-configuration/hbase-protocol) org.apache.hbase:hbase-protocol:jar:2.5.12-hadoop3
+    License: Apache License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - Apache HBase - Shaded Protocol (https://hbase.apache.org/hbase-build-configuration/hbase-protocol-shaded) org.apache.hbase:hbase-protocol-shaded:jar:2.5.12-hadoop3
+    License: Apache License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - Apache HBase - Zookeeper (https://hbase.apache.org/hbase-build-configuration/hbase-zookeeper) org.apache.hbase:hbase-zookeeper:jar:2.5.12-hadoop3
+    License: Apache License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - Apache HBase Relocated (Shaded) GSON Libs (https://hbase.apache.org/hbase-shaded-gson) org.apache.hbase.thirdparty:hbase-shaded-gson:jar:4.1.11
+    License: Apache License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - Apache HBase Relocated (Shaded) Third-party Miscellaneous Libs (https://hbase.apache.org/hbase-shaded-miscellaneous) org.apache.hbase.thirdparty:hbase-shaded-miscellaneous:jar:4.1.5
+    License: Apache License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - Apache HBase Relocated (Shaded) Netty Libs (https://hbase.apache.org/hbase-shaded-netty) org.apache.hbase.thirdparty:hbase-shaded-netty:jar:4.1.5
+    License: Apache License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - Apache HBase Patched and Relocated (Shaded) Protobuf (https://hbase.apache.org/hbase-shaded-protobuf) org.apache.hbase.thirdparty:hbase-shaded-protobuf:jar:4.1.5
+    License: Apache License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - Apache HBase Unsafe Wrapper (https://hbase.apache.org/hbase-unsafe) org.apache.hbase.thirdparty:hbase-unsafe:jar:4.1.11
+    License: Apache License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - Kerby-kerb core (http://directory.apache.org/kerby/kerby-kerb/kerb-core) org.apache.kerby:kerb-core:jar:1.0.1
+    License: Apache License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - Kerby-kerb Crypto (https://directory.apache.org/kerby/kerby-kerb/kerb-crypto) org.apache.kerby:kerb-crypto:jar:2.0.3
+    License: Apache-2.0  (https://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - Kerby-kerb Util (https://directory.apache.org/kerby/kerby-kerb/kerb-util) org.apache.kerby:kerb-util:jar:2.0.3
+    License: Apache-2.0  (https://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - Kerby ASN1 Project (http://directory.apache.org/kerby/kerby-common/kerby-asn1) org.apache.kerby:kerby-asn1:jar:1.0.1
+    License: Apache License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - Kerby Config (https://directory.apache.org/kerby/kerby-common/kerby-config) org.apache.kerby:kerby-config:jar:2.0.3
+    License: Apache-2.0  (https://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - Kerby PKIX Project (http://directory.apache.org/kerby/kerby-pkix) org.apache.kerby:kerby-pkix:jar:1.0.1
+    License: Apache License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - Kerby Util (http://directory.apache.org/kerby/kerby-common/kerby-util) org.apache.kerby:kerby-util:jar:1.0.1
+    License: Apache License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - phoenix-ddb-utils (https://www.apache.org/phoenix-shim/phoenix-ddb-utils/) org.apache.phoenixshim:phoenix-ddb-utils:jar:1.0.0-SNAPSHOT
+    License: Apache-2.0  (https://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - Apache Yetus - Audience Annotations (https://yetus.apache.org/audience-annotations) org.apache.yetus:audience-annotations:jar:0.13.0
+    License: Apache License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0.txt)
+
+  - Apache ZooKeeper - Server (http://zookeeper.apache.org/zookeeper) org.apache.zookeeper:zookeeper:jar:3.8.4
+    License: Apache License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0.txt)
+
+
+From: 'The Netty Project' (https://netty.io/)
+
+  - Netty/Buffer (https://netty.io/netty-buffer/) io.netty:netty-buffer:jar:4.1.89.Final
+    License: Apache License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0)
+
+  - Netty/Codec (https://netty.io/netty-codec/) io.netty:netty-codec:jar:4.1.119.Final
+    License: Apache License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0)
+
+  - Netty/Codec/HTTP (https://netty.io/netty-codec-http/) io.netty:netty-codec-http:jar:4.1.89.Final
+    License: Apache License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0)
+
+  - Netty/Codec/HTTP2 (https://netty.io/netty-codec-http2/) io.netty:netty-codec-http2:jar:4.1.89.Final
+    License: Apache License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0)
+
+  - Netty/Common (https://netty.io/netty-common/) io.netty:netty-common:jar:4.1.119.Final
+    License: Apache License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0)
+
+  - Netty/Handler (https://netty.io/netty-handler/) io.netty:netty-handler:jar:4.1.105.Final
+    License: Apache License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0)
+
+  - Netty/Resolver (https://netty.io/netty-resolver/) io.netty:netty-resolver:jar:4.1.89.Final
+    License: Apache License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0)
+
+  - Netty/Transport (https://netty.io/netty-transport/) io.netty:netty-transport:jar:4.1.119.Final
+    License: Apache License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0)
+
+  - Netty/Transport/Classes/Epoll (https://netty.io/netty-transport-classes-epoll/) io.netty:netty-transport-classes-epoll:jar:4.1.89.Final
+    License: Apache License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0)
+
+  - Netty/Transport/Native/Epoll (https://netty.io/netty-transport-native-epoll/) io.netty:netty-transport-native-epoll:jar:4.1.105.Final
+    License: Apache License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0)
+
+  - Netty/Transport/Native/Unix/Common (https://netty.io/netty-transport-native-unix-common/) io.netty:netty-transport-native-unix-common:jar:4.1.89.Final
+    License: Apache License, Version 2.0  (https://www.apache.org/licenses/LICENSE-2.0)
+
+
+From: 'Webtide' (https://webtide.com)
+
+  - Jetty :: Asynchronous HTTP Client (https://eclipse.org/jetty/jetty-client) org.eclipse.jetty:jetty-client:jar:9.4.48.v20220622
+    License: Apache Software License - Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0)
+    License: Eclipse Public License - Version 1.0  (https://www.eclipse.org/org/documents/epl-v10.php)
+
+  - Jetty :: Http Utility (https://eclipse.org/jetty/jetty-http) org.eclipse.jetty:jetty-http:jar:9.4.53.v20231009
+    License: Apache Software License - Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0)
+    License: Eclipse Public License - Version 1.0  (https://www.eclipse.org/org/documents/epl-v10.php)
+
+  - Jetty :: IO Utility (https://eclipse.org/jetty/jetty-io) org.eclipse.jetty:jetty-io:jar:9.4.53.v20231009
+    License: Apache Software License - Version 2.0  (http://www.apache.org/licenses/LICENSE-2.0)
+    License: Eclipse Public License - Version 1.0  (https://www.eclipse.org/org/documents/epl-v10.php)
+
+
+From: 'xerial.org' (https://github.com/xerial/snappy-java)
+
+  - snappy-java (https://github.com/xerial/snappy-java) org.xerial.snappy:snappy-java:bundle:1.1.8.2
+    License: Apache-2.0  (https://www.apache.org/licenses/LICENSE-2.0.html)
+
+
+
+
+

@@ -110,11 +110,9 @@ Salesforce Phoenix, the combined solution of Apache HBase and Apache Phoenix, su
 ## 🧩 Supported Frontends
 
 ### DynamoDB
-There are 2 ways someone can use Phoenix-Shim to port their DynamoDB based service to Salesforce Phoenix:
-1. **Java thick client** which translates API calls into Phoenix SQL
-    - [PhoenixDBClientV2](https://git.soma.salesforce.com/bigdata-packaging/phoenix-shim/blob/master/phoenix-ddb-shim/src/main/java/org/apache/phoenix/ddb/PhoenixDBClientV2.java) and [PhoenixDBStreamsClientV2](https://git.soma.salesforce.com/bigdata-packaging/phoenix-shim/blob/master/phoenix-ddb-shim/src/main/java/org/apache/phoenix/ddb/PhoenixDBStreamsClientV2.java) implement DynamoDB's Client SDK V2.
+How to use Phoenix-Shim to port their DynamoDB based service to Apache Phoenix?
 
-2. A **RESTful API Server** that accepts JSON payloads similar to DynamoDB.
+- A **RESTful API Server** that accepts JSON payloads similar to DynamoDB.
 
 By using REST Service, client applications already using any AWS SDKs to connect with DynamoDB
 does not need to perform any code change. The client application only needs to update the REST
