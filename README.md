@@ -121,10 +121,29 @@ endpoint.
 ![Alt text](src/images/phoenix_dynamodb_rest.jpeg)
 
 #### Supported APIs
-- **DDL**: CreateTable, DeleteTable, DescribeTable, ListTables, UpdateTable, UpdateTimeToLive, DescribeTimeToLive
-- **DQL**: Query, Scan, BatchGetItem
-- **DML**: PutItem, UpdateItem, BatchWriteItem, DeleteItem
-- **Change Stream**: ListStreams, DescribeStreams, GetShardIterator, GetRecords
+- **DDL**:
+  - CreateTable
+  - DeleteTable
+  - DescribeTable
+  - ListTables
+  - UpdateTable
+  - UpdateTimeToLive
+  - DescribeTimeToLive
+- **DQL**:
+  - Query
+  - Scan
+  - BatchGetItem
+  - GetItem
+- **DML**:
+  - PutItem
+  - UpdateItem
+  - BatchWriteItem
+  - DeleteItem
+- **Change Stream**:
+  - ListStreams
+  - DescribeStreams
+  - GetShardIterator
+  - GetRecords
 
 ### How to bring up REST Server in dev env?
 
