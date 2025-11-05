@@ -124,10 +124,7 @@ endpoint.
 - **DDL**: CreateTable, DeleteTable, DescribeTable, ListTables, UpdateTable, UpdateTimeToLive, DescribeTimeToLive
 - **DQL**: Query, Scan, BatchGetItem
 - **DML**: PutItem, UpdateItem, BatchWriteItem, DeleteItem
-- **Change Data Capture**: ListStreams, DescribeStreams, GetShardIterator, GetRecords
-
-### MongoDB
-TBD
+- **Change Stream**: ListStreams, DescribeStreams, GetShardIterator, GetRecords
 
 ### How to bring up REST Server in dev env?
 
