@@ -100,9 +100,9 @@ public class RootResource {
             String accessKeyId = (String) httpRequest.getAttribute("accessKeyId");
 
             if (userName == null || accessKeyId == null) {
-                LOG.info("Content Type: {}, api: {}, Request: {}", contentType, api, request);
+                LOG.trace("Content Type: {}, api: {}, Request: {}", contentType, api, request);
             } else {
-                LOG.info("Content Type: {}, api: {}, Request: {}, User: {}, AccessKey: {}",
+                LOG.trace("Content Type: {}, api: {}, Request: {}, User: {}, AccessKey: {}",
                         contentType, api, request, userName, accessKeyId);
             }
             servlet.getMetrics().incrementRequests(1);
@@ -225,7 +225,7 @@ public class RootResource {
                 LOG.error("Error... Content Type: {}, api: {}, Request: {} ", contentType, api,
                         request, e);
             } else {
-                LOG.info("Table not found... Content Type: {}, api: {}, Request: {}, Error: {} ",
+                LOG.trace("Table not found... Content Type: {}, api: {}, Request: {}, Error: {} ",
                         contentType, api, request, e.getCause().getMessage());
             }
             // TODO : metrics for error response
