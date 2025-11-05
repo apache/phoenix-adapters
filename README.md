@@ -58,13 +58,13 @@ Logging can be configured in `conf/log4j.properties`. The default configuration 
 To start the REST server as a daemon:
 
 ```bash
-bin/phoenix-shim.sh start rest
+bin/phoenix-shim start rest
 ```
 
 To start in foreground mode (for debugging):
 
 ```bash
-bin/phoenix-shim.sh rest
+bin/phoenix-shim rest
 ```
 
 ### Checking Server Status
@@ -72,7 +72,7 @@ bin/phoenix-shim.sh rest
 To check if the server is running:
 
 ```bash
-bin/phoenix-shim.sh status rest
+bin/phoenix-shim status rest
 ```
 
 ### Stopping the Server
@@ -80,7 +80,7 @@ bin/phoenix-shim.sh status rest
 To stop the server:
 
 ```bash
-bin/phoenix-shim.sh stop rest
+bin/phoenix-shim stop rest
 ```
 
 ### Restarting the Server
@@ -88,7 +88,7 @@ bin/phoenix-shim.sh stop rest
 To restart the server:
 
 ```bash
-bin/phoenix-shim.sh restart rest
+bin/phoenix-shim restart rest
 ```
 
 ## Logs
