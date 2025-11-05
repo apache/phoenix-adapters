@@ -121,16 +121,22 @@ public class GetRecordsShardIteratorTypeIT extends GetRecordsBaseTest {
 
         createTableRequest = DDLTestUtils.addStreamSpecToRequest(createTableRequest, "KEYS_ONLY");
         phoenixDBClientV2.createTable(createTableRequest);
+        dynamoDbClient.createTable(createTableRequest);
         ListStreamsRequest lsr = ListStreamsRequest.builder().tableName(tableName).build();
         ListStreamsResponse phoenixStreams = phoenixDBStreamsClientV2.listStreams(lsr);
+        ListStreamsResponse ddbStreams = dynamoDbStreamsClient.listStreams(lsr);
         String phoenixStreamArn = phoenixStreams.streams().get(0).streamArn();
+        String ddbStreamArn = ddbStreams.streams().get(0).streamArn();
         TestUtils.waitForStream(phoenixDBStreamsClientV2, phoenixStreamArn);
+        TestUtils.waitForStream(dynamoDbStreamsClient, ddbStreamArn);
 
         //put 2 items
         PutItemRequest putItemRequest1 = PutItemRequest.builder().tableName(tableName).item(getItem1()).build();
         PutItemRequest putItemRequest2 = PutItemRequest.builder().tableName(tableName).item(getItem2()).build();
         phoenixDBClientV2.putItem(putItemRequest1);
         phoenixDBClientV2.putItem(putItemRequest2);
+        dynamoDbClient.putItem(putItemRequest1);
+        dynamoDbClient.putItem(putItemRequest2);
 
         //update item2
         Map<String, AttributeValue> key = getKey2();
@@ -143,49 +149,127 @@ public class GetRecordsShardIteratorTypeIT extends GetRecordsBaseTest {
         exprAttrVal.put(":v2", AttributeValue.builder().n("32").build());
         uir.expressionAttributeValues(exprAttrVal);
         phoenixDBClientV2.updateItem(uir.build());
+        dynamoDbClient.updateItem(uir.build());
 
         //delete item1
         key = getKey1();
         DeleteItemRequest dir = DeleteItemRequest.builder().tableName(tableName).key(key).build();
         phoenixDBClientV2.deleteItem(dir);
+        dynamoDbClient.deleteItem(dir);
 
         //get shard id
-        DescribeStreamRequest dsr = DescribeStreamRequest.builder().streamArn(phoenixStreamArn).build();
-        StreamDescription phoenixStreamDesc = phoenixDBStreamsClientV2.describeStream(dsr).streamDescription();
+        StreamDescription phoenixStreamDesc = phoenixDBStreamsClientV2.describeStream(
+                        DescribeStreamRequest.builder().streamArn(phoenixStreamArn).build())
+                .streamDescription();
         String shardId = phoenixStreamDesc.shards().get(0).shardId();
+        StreamDescription ddbStreamDesc = dynamoDbStreamsClient.describeStream(
+                        DescribeStreamRequest.builder().streamArn(ddbStreamArn).build())
+                .streamDescription();
+        String ddbShardId = ddbStreamDesc.shards().get(0).shardId();
 
         // TRIM_HORIZON, all records returned
         List<Record> phoenixRecords = TestUtils.getRecordsFromShardWithLimit(phoenixDBStreamsClientV2,
                 phoenixStreamDesc.streamArn(), shardId, TRIM_HORIZON, null, null);
         Assert.assertEquals(4, phoenixRecords.size());
+        List<Record> ddbRecords = TestUtils.getRecordsFromShardWithLimit(dynamoDbStreamsClient,
+                ddbStreamDesc.streamArn(), ddbShardId, TRIM_HORIZON, null, null);
+        Assert.assertEquals(4, ddbRecords.size());
+        TestUtils.validateRecords(phoenixRecords, ddbRecords);
 
         // AT_SEQUENCE_NUMBER, use second sequence number, 3 records returned
         String testSeqNum = phoenixRecords.get(1).dynamodb().sequenceNumber();
         phoenixRecords = TestUtils.getRecordsFromShardWithLimit(phoenixDBStreamsClientV2,
                 phoenixStreamDesc.streamArn(), shardId, AT_SEQUENCE_NUMBER, testSeqNum, null);
         Assert.assertEquals(3, phoenixRecords.size());
+        String ddbTestSeqNum = ddbRecords.get(1).dynamodb().sequenceNumber();
+        ddbRecords = TestUtils.getRecordsFromShardWithLimit(dynamoDbStreamsClient,
+                ddbStreamDesc.streamArn(), ddbShardId, AT_SEQUENCE_NUMBER, ddbTestSeqNum, null);
+        Assert.assertEquals(3, ddbRecords.size());
+        TestUtils.validateRecords(phoenixRecords, ddbRecords);
 
         // AFTER_SEQUENCE_NUMBER, use second sequence number, 2 records returned
         phoenixRecords = TestUtils.getRecordsFromShardWithLimit(phoenixDBStreamsClientV2,
                 phoenixStreamDesc.streamArn(), shardId, AFTER_SEQUENCE_NUMBER, testSeqNum, null);
         Assert.assertEquals(2, phoenixRecords.size());
+        ddbRecords = TestUtils.getRecordsFromShardWithLimit(dynamoDbStreamsClient,
+                ddbStreamDesc.streamArn(), ddbShardId, AFTER_SEQUENCE_NUMBER, ddbTestSeqNum, null);
+        Assert.assertEquals(2, ddbRecords.size());
+        TestUtils.validateRecords(phoenixRecords, ddbRecords);
+        testSeqNum = phoenixRecords.get(phoenixRecords.size() - 1).dynamodb().sequenceNumber();
+        ddbTestSeqNum = ddbRecords.get(ddbRecords.size() - 1).dynamodb().sequenceNumber();
 
         // LATEST, no records returned
         phoenixRecords = TestUtils.getRecordsFromShardWithLimit(phoenixDBStreamsClientV2,
                 phoenixStreamDesc.streamArn(), shardId, LATEST, null, null);
         Assert.assertEquals(0, phoenixRecords.size());
+        ddbRecords = TestUtils.getRecordsFromShardWithLimit(dynamoDbStreamsClient,
+                ddbStreamDesc.streamArn(), ddbShardId, LATEST, null, null);
+        Assert.assertEquals(0, ddbRecords.size());
+        TestUtils.validateRecords(phoenixRecords, ddbRecords);
+
         // do another change and then retrieve using latest shard iterator
         GetShardIteratorRequest gsir
                 = GetShardIteratorRequest.builder()
                 .streamArn(phoenixStreamDesc.streamArn())
                 .shardId(shardId)
                 .shardIteratorType(LATEST)
-                .sequenceNumber(null).build();
+                .build();
+        GetShardIteratorRequest ddbGsir
+                = GetShardIteratorRequest.builder()
+                .streamArn(ddbStreamDesc.streamArn())
+                .shardId(ddbShardId)
+                .shardIteratorType(LATEST)
+                .build();
+
         String shardIter = phoenixDBStreamsClientV2.getShardIterator(gsir).shardIterator();
-        PutItemRequest putItemRequest = PutItemRequest.builder().tableName(tableName).item(getItem3()).build();
+        PutItemRequest putItemRequest =
+                PutItemRequest.builder().tableName(tableName).item(getItem3()).build();
         phoenixDBClientV2.putItem(putItemRequest);
         GetRecordsRequest grr = GetRecordsRequest.builder().shardIterator(shardIter).build();
         phoenixRecords = phoenixDBStreamsClientV2.getRecords(grr).records();
         Assert.assertEquals(1, phoenixRecords.size());
+
+        String ddbShardIter = dynamoDbStreamsClient.getShardIterator(ddbGsir).shardIterator();
+        dynamoDbClient.putItem(putItemRequest);
+        grr = GetRecordsRequest.builder().shardIterator(ddbShardIter).build();
+        ddbRecords = dynamoDbStreamsClient.getRecords(grr).records();
+        Assert.assertEquals(1, ddbRecords.size());
+        TestUtils.validateRecords(phoenixRecords, ddbRecords);
+
+        // do another change and then retrieve using after_sequence_number shard iterator
+        gsir = GetShardIteratorRequest.builder()
+                .streamArn(phoenixStreamDesc.streamArn())
+                .shardId(shardId)
+                .sequenceNumber(testSeqNum)
+                .shardIteratorType(AFTER_SEQUENCE_NUMBER).build();
+        ddbGsir = GetShardIteratorRequest.builder()
+                .streamArn(ddbStreamDesc.streamArn())
+                .shardId(ddbShardId)
+                .sequenceNumber(ddbTestSeqNum)
+                .shardIteratorType(AFTER_SEQUENCE_NUMBER).build();
+
+        shardIter = phoenixDBStreamsClientV2.getShardIterator(gsir).shardIterator();
+        ddbShardIter = dynamoDbStreamsClient.getShardIterator(ddbGsir).shardIterator();
+
+        key = getKey2();
+        uir = UpdateItemRequest.builder().tableName(tableName).key(key);
+        uir.updateExpression("SET #2 = #2 + :v2");
+        exprAttrNames = new HashMap<>();
+        exprAttrNames.put("#2", "Id2");
+        uir.expressionAttributeNames(exprAttrNames);
+        exprAttrVal = new HashMap<>();
+        exprAttrVal.put(":v2", AttributeValue.builder().n("32").build());
+        uir.expressionAttributeValues(exprAttrVal);
+        phoenixDBClientV2.updateItem(uir.build());
+        dynamoDbClient.updateItem(uir.build());
+
+        phoenixRecords = phoenixDBStreamsClientV2.getRecords(
+                GetRecordsRequest.builder().shardIterator(shardIter).build()).records();
+        Assert.assertEquals(2, phoenixRecords.size());
+
+        ddbRecords = dynamoDbStreamsClient.getRecords(
+                GetRecordsRequest.builder().shardIterator(ddbShardIter).build()).records();
+        Assert.assertEquals(2, ddbRecords.size());
+        TestUtils.validateRecords(phoenixRecords, ddbRecords);
     }
 }
