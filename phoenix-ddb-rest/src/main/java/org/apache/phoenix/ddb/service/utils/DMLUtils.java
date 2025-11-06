@@ -62,57 +62,66 @@ public class DMLUtils {
      * TODO: UPDATED_OLD | UPDATED_NEW
      */
     public static Map<String, Object> executeUpdate(PreparedStatement stmt, String returnValue,
-            String returnValuesOnConditionCheckFailure,
-            boolean hasCondExp, List<PColumn> pkCols, boolean isDelete)
-            throws SQLException, ConditionCheckFailedException {
-        Map<String, Object> returnAttrs = Collections.emptyMap();
-        if (!needReturnRow(returnValue, returnValuesOnConditionCheckFailure)) {
-            int returnStatus = stmt.executeUpdate();
-            if (returnStatus == 0 && hasCondExp) {
-                throw new ConditionCheckFailedException();
-            }
-            return null;
-        }
-        Pair<Integer, ResultSet> resultPair;
-        if (ApiMetadata.ALL_OLD.equals(returnValue) && !isDelete) {
-            resultPair =
-                    stmt.unwrap(PhoenixPreparedStatement.class).executeAtomicUpdateReturnOldRow();
-        } else {
-            resultPair = stmt.unwrap(PhoenixPreparedStatement.class).executeAtomicUpdateReturnRow();
-        }
-        int returnStatus = resultPair.getFirst();
-        ResultSet rs = resultPair.getSecond();
-        RawBsonDocument rawBsonDocument = rs == null ? null :
-                (RawBsonDocument) rs.getObject(pkCols.size()+1);
-        if ((returnStatus == 0  && !isDelete) || (isDelete && rawBsonDocument == null) ) {
-            if (hasCondExp) {
-                ConditionCheckFailedException conditionalCheckFailedException =
-                        new ConditionCheckFailedException();
-                if (ApiMetadata.ALL_OLD.equals(returnValuesOnConditionCheckFailure) && !isDelete) {
-                    conditionalCheckFailedException.setItem(
-                            BsonDocumentToMap.getFullItem(rawBsonDocument));
+            String returnValuesOnConditionCheckFailure, boolean hasCondExp, List<PColumn> pkCols,
+            boolean isDelete) throws SQLException, ConditionCheckFailedException {
+        try {
+            Map<String, Object> returnAttrs = Collections.emptyMap();
+            if (!needReturnRow(returnValue, returnValuesOnConditionCheckFailure)) {
+                int returnStatus = stmt.executeUpdate();
+                if (returnStatus == 0 && hasCondExp) {
+                    throw new ConditionCheckFailedException();
                 }
-                throw conditionalCheckFailedException;
+                return null;
             }
-        } else {
-            boolean returnValuesInResponse = false;
-            if (!isDelete) {
-                // TODO : reject UPDATED_OLD, UPDATED_NEW cases which are not supported
-                if (ApiMetadata.ALL_NEW.equals(returnValue) || ApiMetadata.ALL_OLD.equals(
-                        returnValue)) {
+            Pair<Integer, ResultSet> resultPair;
+            if (ApiMetadata.ALL_OLD.equals(returnValue) && !isDelete) {
+                resultPair = stmt.unwrap(PhoenixPreparedStatement.class)
+                        .executeAtomicUpdateReturnOldRow();
+            } else {
+                resultPair =
+                        stmt.unwrap(PhoenixPreparedStatement.class).executeAtomicUpdateReturnRow();
+            }
+            int returnStatus = resultPair.getFirst();
+            ResultSet rs = resultPair.getSecond();
+            RawBsonDocument rawBsonDocument =
+                    rs == null ? null : (RawBsonDocument) rs.getObject(pkCols.size() + 1);
+            if ((returnStatus == 0 && !isDelete) || (isDelete && rawBsonDocument == null)) {
+                if (hasCondExp) {
+                    ConditionCheckFailedException conditionalCheckFailedException =
+                            new ConditionCheckFailedException();
+                    if (ApiMetadata.ALL_OLD.equals(returnValuesOnConditionCheckFailure)
+                            && !isDelete) {
+                        conditionalCheckFailedException.setItem(
+                                BsonDocumentToMap.getFullItem(rawBsonDocument));
+                    }
+                    throw conditionalCheckFailedException;
+                }
+            } else {
+                boolean returnValuesInResponse = false;
+                if (!isDelete) {
+                    // TODO : reject UPDATED_OLD, UPDATED_NEW cases which are not supported
+                    if (ApiMetadata.ALL_NEW.equals(returnValue) || ApiMetadata.ALL_OLD.equals(
+                            returnValue)) {
+                        returnValuesInResponse = true;
+                    }
+                } else if (ApiMetadata.ALL_OLD.equals(returnValue)) {
                     returnValuesInResponse = true;
                 }
-            } else if (ApiMetadata.ALL_OLD.equals(returnValue)) {
-                returnValuesInResponse = true;
+                if (returnValuesInResponse) {
+                    returnAttrs = BsonDocumentToMap.getFullItem(rawBsonDocument);
+                    Map<String, Object> tmpReturnAttrs = returnAttrs;
+                    returnAttrs = new HashMap<>();
+                    returnAttrs.put(ApiMetadata.ATTRIBUTES, tmpReturnAttrs);
+                }
             }
-            if (returnValuesInResponse) {
-                returnAttrs = BsonDocumentToMap.getFullItem(rawBsonDocument);
-                Map<String, Object> tmpReturnAttrs = returnAttrs;
-                returnAttrs = new HashMap<>();
-                returnAttrs.put(ApiMetadata.ATTRIBUTES, tmpReturnAttrs);
+            return returnAttrs;
+        } catch (SQLException e) {
+            if (e.getMessage() != null && e.getMessage()
+                    .contains("BsonUpdateInvalidArgumentException")) {
+                throw new ValidationException("Invalid document path used for update");
             }
+            throw e;
         }
-        return returnAttrs;
     }
 
     /**
