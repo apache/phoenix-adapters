@@ -41,6 +41,7 @@ public class PhoenixUtils {
     public static final String SCHEMA_NAME = "DDB";
     public static final String SCHEMA_DELIMITER = ".";
     public static final String SCHEMA_NAME_AND_DELIM = SCHEMA_NAME + SCHEMA_DELIMITER;
+    public static final String ESCAPE_CHARACTER = "\"";
 
     /**
      * To support same index names for different tables under DDB schema,
@@ -77,6 +78,10 @@ public class PhoenixUtils {
            tableName = tableName.substring(1, tableName.length()-1);
        }
        return tableName;
+    }
+
+    public static String getEscapedArgument(String arg) {
+        return ESCAPE_CHARACTER + arg + ESCAPE_CHARACTER;
     }
 
     /**

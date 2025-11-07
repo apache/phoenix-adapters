@@ -22,6 +22,7 @@ import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.phoenix.ddb.rest.RESTServer;
 import org.apache.phoenix.ddb.utils.IndexBuildingActivator;
+import org.apache.phoenix.ddb.utils.PhoenixUtils;
 import org.apache.phoenix.end2end.ServerMetadataCacheTestImpl;
 import org.apache.phoenix.jdbc.PhoenixDriver;
 import org.apache.phoenix.jdbc.PhoenixTestDriver;
@@ -120,8 +121,8 @@ public class UpdateTable2IT {
 
     @Test(timeout = 120000)
     public void testAsyncIndexCreationAndQuery() throws Exception {
-        final String tableName = "TEST_TABLE";
-        final String indexName = "G_IDX" + tableName;
+        final String tableName = "testTable-123.xyz";
+        final String indexName = "gIdx" + tableName;
 
         CreateTableRequest baseTableRequest = 
                 DDLTestUtils.getCreateTableRequest(tableName, "ForumName", ScalarAttributeType.S,
@@ -181,7 +182,10 @@ public class UpdateTable2IT {
             IndexBuildingActivator.activateIndexesForBuilding(connection, 0);
             // run MR tool to build index and set state to ACTIVE
             Configuration conf = new Configuration(utility.getConfiguration());
-            TestUtils.runIndexTool(conf, false, "DDB", tableName, tableName + "_" + indexName, null, 0, IndexTool.IndexVerifyType.NONE, IndexTool.IndexDisableLoggingType.NONE);
+            TestUtils.runIndexTool(conf, false, "DDB",
+                    PhoenixUtils.getEscapedArgument(tableName),
+                    PhoenixUtils.getEscapedArgument(tableName + "_" + indexName),
+                    null, 0, IndexTool.IndexVerifyType.NONE, IndexTool.IndexDisableLoggingType.NONE);
         }
 
         // make sure Index is active
