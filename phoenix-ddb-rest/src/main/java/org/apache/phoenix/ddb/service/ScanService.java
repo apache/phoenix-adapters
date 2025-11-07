@@ -309,7 +309,6 @@ public class ScanService {
                     config.getSortKeyCol(), config.useIndex());
             queryBuilder.append(", ").append(sortKeyName);
         }
-        queryBuilder.append(" ");
     }
 
     /**
