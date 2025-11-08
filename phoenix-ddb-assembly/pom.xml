@@ -4,19 +4,19 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <groupId>org.apache.phoenixshim</groupId>
-        <artifactId>phoenix-shim</artifactId>
+        <groupId>org.apache.phoenixadapters</groupId>
+        <artifactId>phoenix-adapters</artifactId>
         <version>1.0.0-SNAPSHOT</version>
     </parent>
 
     <artifactId>phoenix-ddb-assembly</artifactId>
     <packaging>pom</packaging>
-    <name>Phoenix Shim - Assembly</name>
+    <name>Phoenix Adapters - Assembly</name>
     <description>Module that handles project assembly and distribution packaging.</description>
 
     <dependencies>
         <dependency>
-            <groupId>org.apache.phoenixshim</groupId>
+            <groupId>org.apache.phoenixadapters</groupId>
             <artifactId>phoenix-ddb-rest</artifactId>
             <version>${project.version}</version>
             <exclusions>
@@ -39,7 +39,7 @@
             </exclusions>
         </dependency>
         <dependency>
-            <groupId>org.apache.phoenixshim</groupId>
+            <groupId>org.apache.phoenixadapters</groupId>
             <artifactId>phoenix-ddb-utils</artifactId>
             <version>${project.version}</version>
         </dependency>
@@ -52,7 +52,7 @@
                 <artifactId>maven-assembly-plugin</artifactId>
                 <version>3.6.0</version>
                 <configuration>
-                    <finalName>phoenix-shim-${project.version}</finalName>
+                    <finalName>phoenix-adapters-${project.version}</finalName>
                     <appendAssemblyId>true</appendAssemblyId>
                     <tarLongFileMode>posix</tarLongFileMode>
                     <descriptors>

@@ -11,23 +11,18 @@ import org.apache.phoenix.util.CDCUtil;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.TimeZone;
 
 import static org.apache.phoenix.jdbc.PhoenixDatabaseMetaData.SYSTEM_CDC_STREAM_NAME;
 import static org.apache.phoenix.jdbc.PhoenixDatabaseMetaData.SYSTEM_CDC_STREAM_STATUS_NAME;
 
 /**
  * Utility methods to implement DynamoDB Streams abstractions.
- * See <a href="https://salesforce.quip.com/vunDA0Fwedt5">DynamoDB Streams using Phoenix CDC</a>
  */
-public class DDBShimCDCUtils {
+public class DdbAdapterCdcUtils {
 
     /**
      * Support these many different change records at the same timestamp with unique sequence number.

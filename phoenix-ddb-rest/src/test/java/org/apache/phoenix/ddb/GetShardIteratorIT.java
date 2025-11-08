@@ -54,8 +54,8 @@ import software.amazon.awssdk.services.dynamodb.streams.DynamoDbStreamsClient;
 import java.sql.DriverManager;
 import java.util.Map;
 
-import static org.apache.phoenix.ddb.utils.DDBShimCDCUtils.MAX_NUM_CHANGES_AT_TIMESTAMP;
-import static org.apache.phoenix.ddb.utils.DDBShimCDCUtils.SHARD_ITERATOR_DELIM;
+import static org.apache.phoenix.ddb.utils.DdbAdapterCdcUtils.MAX_NUM_CHANGES_AT_TIMESTAMP;
+import static org.apache.phoenix.ddb.utils.DdbAdapterCdcUtils.SHARD_ITERATOR_DELIM;
 import static org.apache.phoenix.query.BaseTest.setUpConfigForMiniCluster;
 import static software.amazon.awssdk.services.dynamodb.model.ShardIteratorType.AFTER_SEQUENCE_NUMBER;
 import static software.amazon.awssdk.services.dynamodb.model.ShardIteratorType.AT_SEQUENCE_NUMBER;

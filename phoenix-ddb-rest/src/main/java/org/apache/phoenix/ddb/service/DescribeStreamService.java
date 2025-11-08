@@ -4,7 +4,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.phoenix.ddb.ConnectionUtil;
 import org.apache.phoenix.ddb.service.exceptions.PhoenixServiceException;
 import org.apache.phoenix.ddb.utils.ApiMetadata;
-import org.apache.phoenix.ddb.utils.DDBShimCDCUtils;
+import org.apache.phoenix.ddb.utils.DdbAdapterCdcUtils;
 import org.apache.phoenix.ddb.utils.PhoenixUtils;
 import org.apache.phoenix.jdbc.PhoenixConnection;
 import org.apache.phoenix.schema.PTable;
@@ -21,7 +21,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.apache.phoenix.ddb.utils.DDBShimCDCUtils.MAX_NUM_CHANGES_AT_TIMESTAMP;
+import static org.apache.phoenix.ddb.utils.DdbAdapterCdcUtils.MAX_NUM_CHANGES_AT_TIMESTAMP;
 import static org.apache.phoenix.jdbc.PhoenixDatabaseMetaData.SYSTEM_CDC_STREAM_NAME;
 
 public class DescribeStreamService {
@@ -37,11 +37,11 @@ public class DescribeStreamService {
         String streamName = (String) request.get(ApiMetadata.STREAM_ARN);
         String exclusiveStartShardId = (String) request.get(ApiMetadata.EXCLUSIVE_START_SHARD_ID);
         Integer limit = (Integer) request.getOrDefault(ApiMetadata.LIMIT, MAX_LIMIT);
-        String tableName = DDBShimCDCUtils.getTableNameFromStreamName(streamName);
+        String tableName = DdbAdapterCdcUtils.getTableNameFromStreamName(streamName);
         Map<String, Object> streamDesc;
         try (Connection conn = ConnectionUtil.getConnection(connectionUrl)) {
             streamDesc = getStreamDescriptionObject(conn, tableName, streamName);
-            String streamStatus = DDBShimCDCUtils.getStreamStatus(conn, tableName, streamName);
+            String streamStatus = DdbAdapterCdcUtils.getStreamStatus(conn, tableName, streamName);
             streamDesc.put(ApiMetadata.STREAM_STATUS, streamStatus);
             // query partitions only if stream is ENABLED
             if (CDCUtil.CdcStreamStatus.ENABLED.getSerializedValue().equals(streamStatus)) {
@@ -86,12 +86,12 @@ public class DescribeStreamService {
         Map<String, Object> streamDesc = new HashMap<>();
         streamDesc.put(ApiMetadata.STREAM_ARN, streamName);
         streamDesc.put(ApiMetadata.TABLE_NAME, PhoenixUtils.getTableNameFromFullName(tableName, false));
-        long creationTS = DDBShimCDCUtils.getCDCIndexTimestampFromStreamName(streamName);
-        streamDesc.put(ApiMetadata.STREAM_LABEL, DDBShimCDCUtils.getStreamLabel(streamName));
+        long creationTS = DdbAdapterCdcUtils.getCDCIndexTimestampFromStreamName(streamName);
+        streamDesc.put(ApiMetadata.STREAM_LABEL, DdbAdapterCdcUtils.getStreamLabel(streamName));
         streamDesc.put(ApiMetadata.STREAM_VIEW_TYPE, table.getSchemaVersion());
         streamDesc.put(ApiMetadata.CREATION_REQUEST_DATE_TIME,
                 BigDecimal.valueOf(creationTS).movePointLeft(3));
-        streamDesc.put(ApiMetadata.KEY_SCHEMA, DDBShimCDCUtils.getKeySchemaForRest(table));
+        streamDesc.put(ApiMetadata.KEY_SCHEMA, DdbAdapterCdcUtils.getKeySchemaForRest(table));
         return streamDesc;
     }
 

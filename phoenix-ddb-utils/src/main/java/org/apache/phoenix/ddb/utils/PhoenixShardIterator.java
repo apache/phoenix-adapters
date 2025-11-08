@@ -1,10 +1,10 @@
 package org.apache.phoenix.ddb.utils;
 
 
-import static org.apache.phoenix.ddb.utils.DDBShimCDCUtils.OFFSET_LENGTH;
-import static org.apache.phoenix.ddb.utils.DDBShimCDCUtils.SHARD_ITERATOR_DELIM;
-import static org.apache.phoenix.ddb.utils.DDBShimCDCUtils.SHARD_ITERATOR_FORMAT;
-import static org.apache.phoenix.ddb.utils.DDBShimCDCUtils.SHARD_ITERATOR_NUM_PARTS;
+import static org.apache.phoenix.ddb.utils.DdbAdapterCdcUtils.OFFSET_LENGTH;
+import static org.apache.phoenix.ddb.utils.DdbAdapterCdcUtils.SHARD_ITERATOR_DELIM;
+import static org.apache.phoenix.ddb.utils.DdbAdapterCdcUtils.SHARD_ITERATOR_FORMAT;
+import static org.apache.phoenix.ddb.utils.DdbAdapterCdcUtils.SHARD_ITERATOR_NUM_PARTS;
 
 /**
  * Class to represent a shard iterator for Phoenix CDC queries.
@@ -66,7 +66,7 @@ public class PhoenixShardIterator {
     public void setNewSeqNum(long timestamp, int offset) {
         this.timestamp = timestamp;
         this.offset = offset;
-        this.seqNum = DDBShimCDCUtils.getSequenceNumber(timestamp, offset);
+        this.seqNum = DdbAdapterCdcUtils.getSequenceNumber(timestamp, offset);
     }
 
     @Override

@@ -5,7 +5,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import org.apache.phoenix.ddb.ConnectionUtil;
 import org.apache.phoenix.ddb.service.exceptions.PhoenixServiceException;
 import org.apache.phoenix.ddb.utils.ApiMetadata;
-import org.apache.phoenix.ddb.utils.DDBShimCDCUtils;
+import org.apache.phoenix.ddb.utils.DdbAdapterCdcUtils;
 import org.apache.phoenix.ddb.utils.PhoenixShardIterator;
 import org.apache.phoenix.ddb.utils.PhoenixStreamRecord;
 import org.apache.phoenix.ddb.utils.PhoenixUtils;
@@ -88,7 +88,7 @@ public class GetRecordsService {
                     lastOffset=0;
                 }
                 record = getStreamRecord(rs, pIter.getStreamType(), pkCols,
-                        DDBShimCDCUtils.getSequenceNumber(lastTs, lastOffset));
+                        DdbAdapterCdcUtils.getSequenceNumber(lastTs, lastOffset));
                 records.add(record);
                 count++;
                 bytesSize +=
@@ -97,7 +97,7 @@ public class GetRecordsService {
                     break;
                 }
             }
-            partitionEndTime = DDBShimCDCUtils.getPartitionEndTime(conn, pIter);
+            partitionEndTime = DdbAdapterCdcUtils.getPartitionEndTime(conn, pIter);
             hasMore = rs.next();
             rs.close();
         } catch (Exception e) {

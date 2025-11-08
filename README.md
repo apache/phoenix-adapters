@@ -1,7 +1,6 @@
-# 🔄 Phoenix-Shim: A Unified NoSQL Frontend for Apache Phoenix
+# 🔄 Phoenix-Adapters: NoSQL Database Adapters using Apache Phoenix
 
-
-A frontend layer that mimics NoSQL APIs for different databases while always using **Salesforce Phoenix** (on HBase) as the persistent store.
+Phoenix-Adapters provides adapters for various NoSQL databases (e.g., DynamoDB) backed by **Apache Phoenix** (on HBase) as the persistent store.
 
 ### Building Distribution Tarball
 
@@ -11,20 +10,20 @@ To build a distribution tarball that includes all components:
 mvn clean package
 ```
 
-This will generate a tarball in `phoenix-ddb-assembly/target/phoenix-shim-*-bin.tar.gz`
+This will generate a tarball in `phoenix-ddb-assembly/target/phoenix-adapters-*-bin.tar.gz`
 
 ## Installation
 
 1. Extract the distribution tarball:
 ```bash
-tar xzf phoenix-shim-<version>-bin.tar.gz
-cd phoenix-shim-<version>
+tar xzf phoenix-adapters-<version>-bin.tar.gz
+cd phoenix-adapters-<version>
 ```
 
-2. Configure the environment variables in `conf/phoenix-shim-env.sh`:
+2. Configure the environment variables in `conf/phoenix-adapters-env.sh`:
 ```bash
 export JAVA_HOME=/path/to/java
-export PHOENIX_SHIM_HOME=/path/to/extracted/phoenix-shim
+export PHOENIX_ADAPTERS_HOME=/path/to/extracted/phoenix-adapters
 ```
 
 ## Configuration
@@ -34,10 +33,10 @@ export PHOENIX_SHIM_HOME=/path/to/extracted/phoenix-shim
 The following environment variables can be configured:
 
 - `JAVA_HOME`: Path to Java installation
-- `PHOENIX_SHIM_HOME`: Path to Phoenix Shim installation
-- `PHOENIX_SHIM_CONF_DIR`: Configuration directory (default: $PHOENIX_SHIM_HOME/conf)
-- `PHOENIX_SHIM_LOG_DIR`: Log directory (default: $PHOENIX_SHIM_HOME/logs)
-- `PHOENIX_SHIM_PID_DIR`: PID directory (default: /var/run/phoenix-shim)
+- `PHOENIX_ADAPTERS_HOME`: Path to Phoenix Adapters installation
+- `PHOENIX_ADAPTERS_CONF_DIR`: Configuration directory (default: $PHOENIX_ADAPTERS_HOME/conf)
+- `PHOENIX_ADAPTERS_LOG_DIR`: Log directory (default: $PHOENIX_ADAPTERS_HOME/logs)
+- `PHOENIX_ADAPTERS_PID_DIR`: PID directory (default: /var/run/phoenix-adapters)
 - `PHOENIX_REST_HEAPSIZE`: Maximum heap size (e.g., "2g")
 - `PHOENIX_REST_OFFHEAPSIZE`: Maximum off-heap memory size (e.g., "1g")
 - `PHOENIX_REST_OPTS`: Additional JVM options
@@ -58,13 +57,13 @@ Logging can be configured in `conf/log4j.properties`. The default configuration 
 To start the REST server as a daemon:
 
 ```bash
-bin/phoenix-shim start rest
+bin/phoenix-adapters start rest
 ```
 
 To start in foreground mode (for debugging):
 
 ```bash
-bin/phoenix-shim rest
+bin/phoenix-adapters rest
 ```
 
 ### Checking Server Status
@@ -72,7 +71,7 @@ bin/phoenix-shim rest
 To check if the server is running:
 
 ```bash
-bin/phoenix-shim status rest
+bin/phoenix-adapters status rest
 ```
 
 ### Stopping the Server
@@ -80,7 +79,7 @@ bin/phoenix-shim status rest
 To stop the server:
 
 ```bash
-bin/phoenix-shim stop rest
+bin/phoenix-adapters stop rest
 ```
 
 ### Restarting the Server
@@ -88,29 +87,28 @@ bin/phoenix-shim stop rest
 To restart the server:
 
 ```bash
-bin/phoenix-shim restart rest
+bin/phoenix-adapters restart rest
 ```
 
 ## Logs
 
 Logs are stored in the following locations:
-- Main log: `$PHOENIX_SHIM_LOG_DIR/rest.log`
-- GC log: `$PHOENIX_SHIM_LOG_DIR/gc.log`
-- Heap dumps: `$PHOENIX_SHIM_LOG_DIR/` (on OutOfMemoryError)
-
+- Main log: `$PHOENIX_ADAPTERS_LOG_DIR/rest.log`
+- GC log: `$PHOENIX_ADAPTERS_LOG_DIR/gc.log`
+- Heap dumps: `$PHOENIX_ADAPTERS_LOG_DIR/` (on OutOfMemoryError)
 
 
 ## 📖 Overview
-It can be challenging for Salesforce applications/services to maintain different codebases for different substrates if they use the substrate-native NoSQL database. These databases also do not have built-in SOR or Org Migration support.
+It can be challenging for applications/services to maintain different codebases for different substrates/cloud providers if they use the substrate-native NoSQL databases.
 
-This is where Phoenix-Shim comes in. It allows developers to write new services (or port their existing services with minimal code changes) using familiar NoSQL semantics while leveraging the scalability and SOR-ness of *Salesforce Phoenix*. 
+This is where Phoenix-Adapters comes in. It allows developers to write new services (or port their existing services with minimal code changes) using familiar NoSQL semantics while leveraging the scalability, fault-tolerance and predictable performance of *Apache Phoenix/HBase*.
 
 Salesforce Phoenix, the combined solution of Apache HBase and Apache Phoenix, supported with significant additional tooling for meeting **Salesforce System of Record** requirements, is a horizontally scalable relational but non-transactional datastore, operating in both 1P and Hyperforce.
 
-## 🧩 Supported Frontends
+## 🧩 Supported Database Adapters
 
 ### DynamoDB
-How to use Phoenix-Shim to port their DynamoDB based service to Apache Phoenix?
+How to use Phoenix-Adapters to port their DynamoDB based service to Apache Phoenix?
 
 - A **RESTful API Server** that accepts JSON payloads similar to DynamoDB.
 
@@ -120,7 +118,7 @@ endpoint.
 
 ![Alt text](src/images/phoenix_dynamodb_rest.jpeg)
 
-#### Supported APIs
+#### Supported DynamoDB APIs
 - **DDL**:
   - CreateTable
   - DeleteTable
@@ -155,12 +153,10 @@ The Phoenix DynamoDB REST service is fully compatible with AWS SDKs. You can con
 
 1. Bring up HBase cluster locally. Refer to https://hbase.apache.org/book.html#quickstart
 2. Bring up Phoenix system tables using sqlline (bin/sqlline.py). Refer to https://phoenix.apache.org/installation.html.
-2. Clone phoenix-shim repo.
-2. Build the project with: `mvn clean install -DskipTests`
-3. Start the REST Server with: `bin/phoenix-shim rest start -p <port> -z <zk-quorum>`
-   e.g. `bin/phoenix-shim rest start -p 8842 -z localhost:2181` to start the server at
+3. Clone phoenix-adapters repo.
+4. Build the project with: `mvn clean install -DskipTests`
+5. Start the REST Server with: `bin/phoenix-adapters rest start -p <port> -z <zk-quorum>`
+   e.g. `bin/phoenix-adapters rest start -p 8842 -z localhost:2181` to start the server at
    port 8842 with zk-quorum localhost:2181.
    Alternative to `-z <zk-quorum>` is env variable `ZOO_KEEPER_QUORUM`.
-4. Optional step: To confirm the server is started and functional,
-   run class `org.apache.phoenix.ddb.TestWithLocalRestService` by adjusting the endpoint.
 

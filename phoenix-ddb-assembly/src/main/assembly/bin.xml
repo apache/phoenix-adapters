@@ -6,7 +6,7 @@
         <format>tar.gz</format>
     </formats>
     <includeBaseDirectory>true</includeBaseDirectory>
-    <baseDirectory>phoenix-shim-${project.version}</baseDirectory>
+    <baseDirectory>phoenix-adapters-${project.version}</baseDirectory>
 
     <fileSets>
         <!-- Include bin directory -->

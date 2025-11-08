@@ -100,7 +100,7 @@ public class TestWithLocalRestService {
 
     public static void main(String[] args) throws Exception {
         // Before starting this test, run command:
-        // "bin/phoenix-shim rest start -p 8842 -z localhost:2181" to start rest service
+        // "bin/phoenix-adapters rest start -p 8842 -z localhost:2181" to start rest service
         TestWithLocalRestService testWithLocalRestService =
                 new TestWithLocalRestService("http://localhost:8842");
         try {

@@ -4,7 +4,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.phoenix.ddb.ConnectionUtil;
 import org.apache.phoenix.ddb.service.exceptions.PhoenixServiceException;
 import org.apache.phoenix.ddb.utils.ApiMetadata;
-import org.apache.phoenix.ddb.utils.DDBShimCDCUtils;
+import org.apache.phoenix.ddb.utils.DdbAdapterCdcUtils;
 import org.apache.phoenix.ddb.utils.PhoenixUtils;
 import org.apache.phoenix.util.CDCUtil;
 
@@ -57,7 +57,7 @@ public class ListStreamsService {
                 Map<String, Object> stream = new HashMap<>();
                 stream.put(ApiMetadata.TABLE_NAME, PhoenixUtils.getTableNameFromFullName(tableName, false));
                 stream.put(ApiMetadata.STREAM_ARN, streamName);
-                stream.put(ApiMetadata.STREAM_LABEL, DDBShimCDCUtils.getStreamLabel(streamName));
+                stream.put(ApiMetadata.STREAM_LABEL, DdbAdapterCdcUtils.getStreamLabel(streamName));
                 streams.add(stream);
                 lastStreamArn = streamName;
             }

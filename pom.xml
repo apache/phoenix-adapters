@@ -27,7 +27,7 @@
   </parent>
   <packaging>pom</packaging>
 
-  <name>Phoenix Shim Layers</name>
+  <name>Phoenix Adapters Layers</name>
   <modules>
     <module>phoenix-ddb-rest</module>
     <module>phoenix-ddb-utils</module>
@@ -35,8 +35,8 @@
     <module>coverage-report</module>
   </modules>
 
-  <groupId>org.apache.phoenixshim</groupId>
-  <artifactId>phoenix-shim</artifactId>
+  <groupId>org.apache.phoenixadapters</groupId>
+  <artifactId>phoenix-adapters</artifactId>
   <version>1.0.0-SNAPSHOT</version>
 
   <properties>
@@ -145,12 +145,12 @@
   <dependencyManagement>
     <dependencies>
       <dependency>
-        <groupId>org.apache.phoenixshim</groupId>
+        <groupId>org.apache.phoenixadapters</groupId>
         <artifactId>phoenix-ddb-utils</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
-        <groupId>org.apache.phoenixshim</groupId>
+        <groupId>org.apache.phoenixadapters</groupId>
         <artifactId>phoenix-ddb-rest</artifactId>
         <version>${project.version}</version>
       </dependency>

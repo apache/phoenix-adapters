@@ -5,25 +5,25 @@
     <modelVersion>4.0.0</modelVersion>
     
     <parent>
-        <groupId>org.apache.phoenixshim</groupId>
-        <artifactId>phoenix-shim</artifactId>
+        <groupId>org.apache.phoenixadapters</groupId>
+        <artifactId>phoenix-adapters</artifactId>
         <version>1.0.20-SNAPSHOT</version>
     </parent>
 
     <artifactId>coverage-report</artifactId>
     <packaging>pom</packaging>
-    <name>Phoenix Shim - Coverage Report</name>
+    <name>Phoenix Adapters - Coverage Report</name>
     <description>Module dedicated to generating aggregated code coverage reports</description>
 
     <dependencies>
         <!-- Dependencies on modules we want to include in coverage -->
         <dependency>
-            <groupId>org.apache.phoenixshim</groupId>
+            <groupId>org.apache.phoenixadapters</groupId>
             <artifactId>phoenix-ddb-utils</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>org.apache.phoenixshim</groupId>
+            <groupId>org.apache.phoenixadapters</groupId>
             <artifactId>phoenix-ddb-rest</artifactId>
             <version>${project.version}</version>
         </dependency>

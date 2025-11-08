@@ -20,15 +20,15 @@
 #
 # Environment Variables:
 #
-#   JAVA_HOME                The java implementation to use.  Overrides JAVA_HOME.
-#   PHOENIX_SHIM_HOME        The phoenix-shim installation directory.
-#   PHOENIX_SHIM_CONF_DIR    The phoenix-shim configuration directory.
-#   PHOENIX_SHIM_LOG_DIR     The phoenix-shim log directory.
-#   PHOENIX_SHIM_PID_DIR     The phoenix-shim pid directory.
-#   PHOENIX_REST_HEAPSIZE    The maximum amount of heap to use.
-#   PHOENIX_REST_OFFHEAPSIZE The maximum amount of off-heap memory to use.
-#   PHOENIX_REST_OPTS        Extra Java runtime options.
-#   PHOENIX_DDB_REST_OPTS    Extra Java runtime options for REST server.
+#   JAVA_HOME                     The java implementation to use.  Overrides JAVA_HOME.
+#   PHOENIX_ADAPTERS_HOME        The phoenix-adapters installation directory.
+#   PHOENIX_ADAPTERS_CONF_DIR    The phoenix-adapters configuration directory.
+#   PHOENIX_ADAPTERS_LOG_DIR     The phoenix-adapters log directory.
+#   PHOENIX_ADAPTERS_PID_DIR     The phoenix-adapters pid directory.
+#   PHOENIX_REST_HEAPSIZE         The maximum amount of heap to use.
+#   PHOENIX_REST_OFFHEAPSIZE      The maximum amount of off-heap memory to use.
+#   PHOENIX_REST_OPTS             Extra Java runtime options.
+#   PHOENIX_DDB_REST_OPTS         Extra Java runtime options for REST server.
 
 bin=`dirname "$0"`
 bin=`cd "$bin">/dev/null; pwd`
@@ -57,17 +57,17 @@ function add_size_suffix() {
 
 function sighup_handler() {
     # pass through SIGHUP if we can
-    if [ -f "$PHOENIX_SHIM_PID_DIR/$COMMAND.pid" ]; then
-        kill -s HUP "$(cat "$PHOENIX_SHIM_PID_DIR/$COMMAND.pid")"
+    if [ -f "$PHOENIX_ADAPTERS_PID_DIR/$COMMAND.pid" ]; then
+        kill -s HUP "$(cat "$PHOENIX_ADAPTERS_PID_DIR/$COMMAND.pid")"
     fi
 }
 
 function sigterm_handler() {
-    if [ -f "$PHOENIX_SHIM_PID_DIR/$COMMAND.pid" ]; then
+    if [ -f "$PHOENIX_ADAPTERS_PID_DIR/$COMMAND.pid" ]; then
         echo "Received termination signal, stopping $COMMAND..."
-        kill -s TERM "$(cat "$PHOENIX_SHIM_PID_DIR/$COMMAND.pid")"
+        kill -s TERM "$(cat "$PHOENIX_ADAPTERS_PID_DIR/$COMMAND.pid")"
         # Wait for process to end gracefully
-        local pid="$(cat "$PHOENIX_SHIM_PID_DIR/$COMMAND.pid")"
+        local pid="$(cat "$PHOENIX_ADAPTERS_PID_DIR/$COMMAND.pid")"
         local count=0
         while kill -0 "$pid" 2>/dev/null && [ $count -lt 30 ]; do
             sleep 1
@@ -83,7 +83,7 @@ function sigterm_handler() {
 }
 
 function cleanAfterRun() {
-    rm -f "$PHOENIX_SHIM_PID_DIR/$COMMAND.pid" > /dev/null 2>&1
+    rm -f "$PHOENIX_ADAPTERS_PID_DIR/$COMMAND.pid" > /dev/null 2>&1
 }
 
 function validate_config() {
@@ -92,39 +92,39 @@ function validate_config() {
         exit 1
     fi
 
-    if [ -z "$PHOENIX_SHIM_HOME" ]; then
-        echo "Error: PHOENIX_SHIM_HOME is not set"
+    if [ -z "$PHOENIX_ADAPTERS_HOME" ]; then
+        echo "Error: PHOENIX_ADAPTERS_HOME is not set"
         exit 1
     fi
 
-    if [ ! -d "$PHOENIX_SHIM_HOME" ]; then
-        echo "Error: PHOENIX_SHIM_HOME directory does not exist: $PHOENIX_SHIM_HOME"
+    if [ ! -d "$PHOENIX_ADAPTERS_HOME" ]; then
+        echo "Error: PHOENIX_ADAPTERS_HOME directory does not exist: $PHOENIX_ADAPTERS_HOME"
         exit 1
     fi
 
-    mkdir -p "$PHOENIX_SHIM_LOG_DIR"
-    mkdir -p "$PHOENIX_SHIM_PID_DIR"
+    mkdir -p "$PHOENIX_ADAPTERS_LOG_DIR"
+    mkdir -p "$PHOENIX_ADAPTERS_PID_DIR"
 
-    if [ ! -w "$PHOENIX_SHIM_LOG_DIR" ]; then
-        echo "Error: Cannot write to log directory: $PHOENIX_SHIM_LOG_DIR"
+    if [ ! -w "$PHOENIX_ADAPTERS_LOG_DIR" ]; then
+        echo "Error: Cannot write to log directory: $PHOENIX_ADAPTERS_LOG_DIR"
         exit 1
     fi
 
-    if [ ! -w "$PHOENIX_SHIM_PID_DIR" ]; then
-        echo "Error: Cannot write to pid directory: $PHOENIX_SHIM_PID_DIR"
+    if [ ! -w "$PHOENIX_ADAPTERS_PID_DIR" ]; then
+        echo "Error: Cannot write to pid directory: $PHOENIX_ADAPTERS_PID_DIR"
         exit 1
     fi
 }
 
 function check_before_start() {
-    if [ -f "$PHOENIX_SHIM_PID_DIR/$COMMAND.pid" ]; then
-        pid=$(cat "$PHOENIX_SHIM_PID_DIR/$COMMAND.pid")
+    if [ -f "$PHOENIX_ADAPTERS_PID_DIR/$COMMAND.pid" ]; then
+        pid=$(cat "$PHOENIX_ADAPTERS_PID_DIR/$COMMAND.pid")
         if kill -0 $pid 2>/dev/null; then
             echo "$COMMAND is already running (pid: $pid)"
             exit 1
         else
             echo "Removing stale pid file"
-            rm -f "$PHOENIX_SHIM_PID_DIR/$COMMAND.pid"
+            rm -f "$PHOENIX_ADAPTERS_PID_DIR/$COMMAND.pid"
         fi
     fi
 }
@@ -139,8 +139,8 @@ function start_daemon() {
     echo "Using PHOENIX_REST_OPTS: $PHOENIX_REST_OPTS"
     echo "Using arguments: ${args[@]}"
     
-    "$JAVA" -Dproc_$COMMAND -XX:OnOutOfMemoryError="kill -9 %p" $HEAP_SETTINGS $PHOENIX_REST_OPTS $CLASS "${args[@]}" > "$PHOENIX_SHIM_LOG_DIR/phoenix-shim.log" 2>&1 &
-    echo $! > "$PHOENIX_SHIM_PID_DIR/$COMMAND.pid"
+    "$JAVA" -Dproc_$COMMAND -XX:OnOutOfMemoryError="kill -9 %p" $HEAP_SETTINGS $PHOENIX_REST_OPTS $CLASS "${args[@]}" > "$PHOENIX_ADAPTERS_LOG_DIR/phoenix-adapters.log" 2>&1 &
+    echo $! > "$PHOENIX_ADAPTERS_PID_DIR/$COMMAND.pid"
     echo "Started $COMMAND daemon (pid: $!)"
 }
 
@@ -165,8 +165,8 @@ function foreground_start() {
     start_daemon "${java_args[@]}"
     
     # Wait for the process to complete
-    if [ -f "$PHOENIX_SHIM_PID_DIR/$COMMAND.pid" ]; then
-        local java_pid=$(cat "$PHOENIX_SHIM_PID_DIR/$COMMAND.pid")
+    if [ -f "$PHOENIX_ADAPTERS_PID_DIR/$COMMAND.pid" ]; then
+        local java_pid=$(cat "$PHOENIX_ADAPTERS_PID_DIR/$COMMAND.pid")
         echo "Running in foreground mode (PID: $java_pid). Press Ctrl+C to stop."
         wait $java_pid
     else
@@ -176,19 +176,19 @@ function foreground_start() {
 }
 
 function stop_daemon() {
-    if [ -f "$PHOENIX_SHIM_PID_DIR/$COMMAND.pid" ]; then
-        pid=$(cat "$PHOENIX_SHIM_PID_DIR/$COMMAND.pid")
+    if [ -f "$PHOENIX_ADAPTERS_PID_DIR/$COMMAND.pid" ]; then
+        pid=$(cat "$PHOENIX_ADAPTERS_PID_DIR/$COMMAND.pid")
         echo "Stopping $COMMAND daemon (pid: $pid)"
         kill $pid
-        rm -f "$PHOENIX_SHIM_PID_DIR/$COMMAND.pid"
+        rm -f "$PHOENIX_ADAPTERS_PID_DIR/$COMMAND.pid"
     else
         echo "No $COMMAND daemon running"
     fi
 }
 
 function status_daemon() {
-    if [ -f "$PHOENIX_SHIM_PID_DIR/$COMMAND.pid" ]; then
-        pid=$(cat "$PHOENIX_SHIM_PID_DIR/$COMMAND.pid")
+    if [ -f "$PHOENIX_ADAPTERS_PID_DIR/$COMMAND.pid" ]; then
+        pid=$(cat "$PHOENIX_ADAPTERS_PID_DIR/$COMMAND.pid")
         if kill -0 $pid 2>/dev/null; then
             echo "$COMMAND daemon is running (pid: $pid)"
             return 0
@@ -203,7 +203,7 @@ function status_daemon() {
 }
 
 function show_usage() {
-  echo "Usage: phoenix-shim [<options>] <command> [<args>]"
+  echo "Usage: phoenix-adapters [<options>] <command> [<args>]"
   echo "$options_string"
   echo ""
   echo "Commands:"
@@ -217,22 +217,22 @@ function show_usage() {
   echo "  CLASSNAME          Run the class named CLASSNAME"
   echo ""
   echo "Examples:"
-  echo "  phoenix-shim rest start           # Start the REST server"
-  echo "  phoenix-shim rest stop            # Stop the REST server"
-  echo "  phoenix-shim rest status          # Check REST server status"
-  echo "  phoenix-shim rest restart         # Restart the REST server"
-  echo "  phoenix-shim rest foreground_start # Start the REST server in foreground"
+  echo "  phoenix-adapters rest start            # Start the DynamoDB Adapter REST server"
+  echo "  phoenix-adapters rest stop             # Stop the DynamoDB Adapter REST server"
+  echo "  phoenix-adapters rest status           # Check DynamoDB Adapter REST server status"
+  echo "  phoenix-adapters rest restart          # Restart the DynamoDB Adapter REST server"
+  echo "  phoenix-adapters rest foreground_start # Start the DynamoDB Adapter REST server in foreground"
   echo ""
   echo "Environment Variables:"
-  echo "  JAVA_HOME                The java implementation to use"
-  echo "  PHOENIX_SHIM_HOME        The phoenix-shim installation directory"
-  echo "  PHOENIX_SHIM_CONF_DIR    The phoenix-shim configuration directory"
-  echo "  PHOENIX_SHIM_LOG_DIR     The phoenix-shim log directory"
-  echo "  PHOENIX_SHIM_PID_DIR     The phoenix-shim pid directory"
-  echo "  PHOENIX_REST_HEAPSIZE    The maximum amount of heap to use"
-  echo "  PHOENIX_REST_OFFHEAPSIZE The maximum amount of off-heap memory to use"
-  echo "  PHOENIX_REST_OPTS        Extra Java runtime options"
-  echo "  PHOENIX_DDB_REST_OPTS    Extra Java runtime options for REST server"
+  echo "  JAVA_HOME                    The java implementation to use"
+  echo "  PHOENIX_ADAPTERS_HOME       The phoenix-adapters installation directory"
+  echo "  PHOENIX_ADAPTERS_CONF_DIR   The phoenix-adapters configuration directory"
+  echo "  PHOENIX_ADAPTERS_LOG_DIR    The phoenix-adapters log directory"
+  echo "  PHOENIX_ADAPTERS_PID_DIR    The phoenix-adapters pid directory"
+  echo "  PHOENIX_REST_HEAPSIZE        The maximum amount of heap to use"
+  echo "  PHOENIX_REST_OFFHEAPSIZE     The maximum amount of off-heap memory to use"
+  echo "  PHOENIX_REST_OPTS            Extra Java runtime options"
+  echo "  PHOENIX_DDB_REST_OPTS        Extra Java runtime options for REST server"
 }
 
 # Define options string
@@ -248,7 +248,7 @@ if [ "--help" = "$1" ] || [ "-h" = "$1" ]; then
 fi
 
 # Load configuration
-. "$bin"/shim-config.sh
+. "$bin"/adapters-config.sh
 
 # Validate configuration
 validate_config
@@ -268,26 +268,26 @@ fi
 HEAP_SETTINGS="$JAVA_HEAP_MAX $JAVA_OFFHEAP_MAX"
 
 # Initialize CLASSPATH
-CLASSPATH="${PHOENIX_SHIM_CONF_DIR}:$JAVA_HOME/lib/tools.jar"
+CLASSPATH="${PHOENIX_ADAPTERS_CONF_DIR}:$JAVA_HOME/lib/tools.jar"
 
 # Set up logging options
-if [ -z "${PHOENIX_SHIM_LOGGING_OPTS}" ]; then
-    PHOENIX_SHIM_LOGGING_OPTS="-Dlog4j2.configurationFile=file:$PHOENIX_SHIM_CONF_DIR/log4j2.properties"
-    export PHOENIX_SHIM_LOGGING_OPTS
+if [ -z "${PHOENIX_ADAPTERS_LOGGING_OPTS}" ]; then
+    PHOENIX_ADAPTERS_LOGGING_OPTS="-Dlog4j2.configurationFile=file:$PHOENIX_ADAPTERS_CONF_DIR/log4j2.properties"
+    export PHOENIX_ADAPTERS_LOGGING_OPTS
 fi
 
 # Set up REST options
 if [ -z "${PHOENIX_REST_OPTS}" ] ; then
     PHOENIX_REST_OPTS="-XX:+UseG1GC"
     PHOENIX_REST_OPTS="$PHOENIX_REST_OPTS -XX:+HeapDumpOnOutOfMemoryError"
-    PHOENIX_REST_OPTS="$PHOENIX_REST_OPTS -XX:HeapDumpPath=$PHOENIX_SHIM_LOG_DIR"
+    PHOENIX_REST_OPTS="$PHOENIX_REST_OPTS -XX:HeapDumpPath=$PHOENIX_ADAPTERS_LOG_DIR"
     PHOENIX_REST_OPTS="$PHOENIX_REST_OPTS -XX:+UseGCLogFileRotation"
     PHOENIX_REST_OPTS="$PHOENIX_REST_OPTS -XX:NumberOfGCLogFiles=5"
     PHOENIX_REST_OPTS="$PHOENIX_REST_OPTS -XX:GCLogFileSize=20M"
     PHOENIX_REST_OPTS="$PHOENIX_REST_OPTS -XX:+PrintGCDetails"
     PHOENIX_REST_OPTS="$PHOENIX_REST_OPTS -XX:+PrintGCDateStamps"
-    PHOENIX_REST_OPTS="$PHOENIX_REST_OPTS -Xloggc:$PHOENIX_SHIM_LOG_DIR/gc.log"
-    PHOENIX_REST_OPTS="$PHOENIX_REST_OPTS -Dphoenix.shim.log.dir=$PHOENIX_SHIM_LOG_DIR"
+    PHOENIX_REST_OPTS="$PHOENIX_REST_OPTS -Xloggc:$PHOENIX_ADAPTERS_LOG_DIR/gc.log"
+    PHOENIX_REST_OPTS="$PHOENIX_REST_OPTS -Dphoenix.adapters.log.dir=$PHOENIX_ADAPTERS_LOG_DIR"
     export PHOENIX_REST_OPTS
 fi
 
@@ -319,7 +319,7 @@ if [ "$COMMAND" = "rest" ]; then
     
     # Set up REST server specific variables
     CLASS="org.apache.phoenix.ddb.rest.RESTServer"
-    REST_CLASSPATH="${PHOENIX_SHIM_HOME}/lib/*"
+    REST_CLASSPATH="${PHOENIX_ADAPTERS_HOME}/lib/*"
     CLASSPATH="${CLASSPATH}:${REST_CLASSPATH}"
 
     export CLASSPATH

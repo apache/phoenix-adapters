@@ -32,7 +32,7 @@ import org.apache.phoenix.ddb.service.exceptions.PhoenixServiceException;
 import org.apache.phoenix.ddb.utils.ApiMetadata;
 import org.apache.phoenix.ddb.utils.PhoenixUtils;
 import org.apache.phoenix.ddb.utils.CommonServiceUtils;
-import org.apache.phoenix.ddb.utils.DDBShimCDCUtils;
+import org.apache.phoenix.ddb.utils.DdbAdapterCdcUtils;
 import org.apache.phoenix.schema.PIndexState;
 
 import org.apache.phoenix.jdbc.PhoenixConnection;
@@ -211,11 +211,12 @@ public class TableDescriptorUtils {
     private static void updateStreamSpecification(PTable table,
                                                   Map<String, Object> tableDescription,
                                                   PhoenixConnection pconn) throws SQLException {
-        String streamName = DDBShimCDCUtils.getEnabledStreamName(pconn,
+        String streamName = DdbAdapterCdcUtils.getEnabledStreamName(pconn,
                 table.getName().getString());
         if (streamName != null && table.getSchemaVersion() != null) {
             tableDescription.put(ApiMetadata.LATEST_STREAM_ARN, streamName);
-            tableDescription.put(ApiMetadata.LATEST_STREAM_LABEL, DDBShimCDCUtils.getStreamLabel(streamName));
+            tableDescription.put(ApiMetadata.LATEST_STREAM_LABEL,
+                    DdbAdapterCdcUtils.getStreamLabel(streamName));
 
             Map<String, Object> streamSpecification = new HashMap<>();
             streamSpecification.put(ApiMetadata.STREAM_ENABLED, true);

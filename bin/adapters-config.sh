@@ -36,23 +36,23 @@ script=`basename "$this"`
 bin=`cd "$bin">/dev/null; pwd`
 this="$bin/$script"
 
-if [ -z "$PHOENIX_SHIM_HOME" ]; then
+if [ -z "$PHOENIX_ADAPTERS_HOME" ]; then
   bin_dir=$(cd "$bin" && pwd)
-  export PHOENIX_SHIM_HOME=$(dirname "$bin_dir")
+  export PHOENIX_ADAPTERS_HOME=$(dirname "$bin_dir")
 fi
 
-echo "PHOENIX_SHIM_HOME is set to: $PHOENIX_SHIM_HOME"
+echo "PHOENIX_ADAPTERS_HOME is set to: $PHOENIX_ADAPTERS_HOME"
 
-if [ -z "$PHOENIX_SHIM_CONF_DIR" ]; then
-  export PHOENIX_SHIM_CONF_DIR="$PHOENIX_SHIM_HOME/conf"
+if [ -z "$PHOENIX_ADAPTERS_CONF_DIR" ]; then
+  export PHOENIX_ADAPTERS_CONF_DIR="$PHOENIX_ADAPTERS_HOME/conf"
 fi
 
-if [ -z "$PHOENIX_SHIM_LOG_DIR" ]; then
-  export PHOENIX_SHIM_LOG_DIR="$PHOENIX_SHIM_HOME/logs"
+if [ -z "$PHOENIX_ADAPTERS_LOG_DIR" ]; then
+  export PHOENIX_ADAPTERS_LOG_DIR="$PHOENIX_ADAPTERS_HOME/logs"
 fi
 
-if [ -z "$PHOENIX_SHIM_PID_DIR" ]; then
-  export PHOENIX_SHIM_PID_DIR="$PHOENIX_SHIM_HOME/pid"
+if [ -z "$PHOENIX_ADAPTERS_PID_DIR" ]; then
+  export PHOENIX_ADAPTERS_PID_DIR="$PHOENIX_ADAPTERS_HOME/pid"
 fi
 
 export GREP="${GREP-grep}"
@@ -71,7 +71,7 @@ if [ -z "$JAVA_HOME" ]; then
 | Please download the latest Sun JDK from the Sun Java web site        |
 |     > http://www.oracle.com/technetwork/java/javase/downloads        |
 |                                                                      |
-| Phoenix shim requires Java 8 or later.                               |
+| Phoenix adapters requires Java 8 or later.                               |
 +======================================================================+
 EOF
   exit 1
