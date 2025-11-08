@@ -373,12 +373,3 @@ const command = new ListTablesCommand({});
 const response = await client.send(command);
 console.log("Available tables:", response.TableNames);
 ```
-
-## Performance Considerations
-
-- **Batch operations**: Use batch operations when possible for better performance
-- **Connection reuse**: Reuse client instances across requests
-- **Async operations**: Use async/await patterns for better concurrency
-- **Retry policies**: Implement exponential backoff for retries
-
-<sub>_**For additional support, please reach out to #phoenix-support**_</sub>
