@@ -264,10 +264,6 @@ public class ConditionalPutItemIT {
             Assert.assertTrue(rs.next());
             Assert.assertEquals(rs.getLong(1), Long.parseLong(item1.get("attr_1").n()));
             Assert.assertEquals(rs.getString(2), item1.get("attr_0").s());
-            Map<String, AttributeValue> indexRowItem =
-                    BsonDocumentToDdbAttributes.getFullItem((BsonDocument) rs.getObject(3));
-            Assert.assertEquals(indexRowItem, item1);
-            Assert.assertEquals(indexRowItem, dynamoItem);
         }
     }
 
@@ -634,9 +630,6 @@ public class ConditionalPutItemIT {
             Assert.assertTrue(rs.next());
             Assert.assertEquals(rs.getDouble(1), Double.parseDouble(item2.get("Id2").n()), 0.0);
             Assert.assertEquals(rs.getString(2), item2.get("attr_0").s());
-            Map<String, AttributeValue> indexRowItem =
-                    BsonDocumentToDdbAttributes.getFullItem((BsonDocument) rs.getObject(3));
-            Assert.assertEquals(indexRowItem, item2);
 
             //TODO: uncomment when we have utility to compare sets
             //Assert.assertEquals(dynamoItem, phoenixItem);

@@ -158,9 +158,9 @@ public class CreateTableService {
         }
 
         final String finalIndexName = PhoenixUtils.getInternalIndexName(tableName, indexName);
-        indexDDLs.add("CREATE INDEX IF NOT EXISTS \"" + finalIndexName + "\" ON "
+        indexDDLs.add("CREATE UNCOVERED INDEX IF NOT EXISTS \"" + finalIndexName + "\" ON "
                 + PhoenixUtils.getFullTableName(tableName, true) + " (" + indexOn
-                + ") INCLUDE (COL) WHERE " + indexHashKey + " IS NOT " + "NULL " + ((indexSortKey
+                + ") WHERE " + indexHashKey + " IS NOT " + "NULL " + ((indexSortKey
                 != null) ? " AND " + indexSortKey + " IS NOT " + "NULL " : "") + (isAsync ?
                 " ASYNC " :
                 "") + TableOptionsConfig.getIndexOptions());

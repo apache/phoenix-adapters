@@ -256,10 +256,6 @@ public class PutItemIT {
             Assert.assertEquals(rs.getString(1), item.get("Title").s());
             Assert.assertEquals(rs.getString(2), item.get("attr_0").s());
             Assert.assertEquals(rs.getDouble(3), Double.parseDouble(item.get("attr_1").n()), 0.0);
-            bsonDoc = (BsonDocument) rs.getObject(4);
-            Map<String, AttributeValue> indexItem =
-                    BsonDocumentToDdbAttributes.getFullItem(bsonDoc);
-            Assert.assertEquals(item, indexItem);
 
             //TODO: uncomment when we have utility to compare sets
             //Assert.assertEquals(dynamoItem, indexItem);

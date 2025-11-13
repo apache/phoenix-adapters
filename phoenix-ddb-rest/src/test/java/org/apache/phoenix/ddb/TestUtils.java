@@ -387,7 +387,7 @@ public class TestUtils {
             qr.exclusiveStartKey(ddbResponse.lastEvaluatedKey());
         } while (ddbResponse.hasLastEvaluatedKey());
         Assert.assertEquals(ddbResult.size(), phoenixResult.size());
-        Assert.assertEquals(ddbResult, phoenixResult);
+        Assert.assertTrue(ItemComparator.areItemsEqual(ddbResult, phoenixResult));
     }
 
     public static void compareScanOutputs(ScanRequest.Builder sr,
