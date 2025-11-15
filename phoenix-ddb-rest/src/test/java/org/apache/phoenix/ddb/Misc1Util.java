@@ -860,6 +860,14 @@ public class Misc1Util {
         batchWriteItems(dynamoDbClient, phoenixDBClientV2, table1Name, table1Items);
         batchWriteItems(dynamoDbClient, phoenixDBClientV2, table2Name, table2Items);
 
+        List<Map<String, AttributeValue>> table1ItemsToDelete =
+                selectItemsToDelete(table1Items, numPartitions, 0.22);
+        List<Map<String, AttributeValue>> table2ItemsToDelete =
+                selectItemsToDelete(table2Items, numPartitions, 0.27);
+
+        batchDeleteItems(dynamoDbClient, phoenixDBClientV2, table1Name, table1ItemsToDelete);
+        batchDeleteItems(dynamoDbClient, phoenixDBClientV2, table2Name, table2ItemsToDelete);
+
         for (int partitionId = 0; partitionId < numPartitions; partitionId++) {
             String pkValueTable1 = "pk_" + partitionId + "_t1";
             String pkValueTable2 = "pk_" + partitionId + "_t2";
@@ -1102,6 +1110,62 @@ public class Misc1Util {
             dynamoDbClient.batchWriteItem(batchWriteRequest);
             phoenixDBClientV2.batchWriteItem(batchWriteRequest);
         }
+    }
+
+    private static void batchDeleteItems(DynamoDbClient dynamoDbClient,
+            DynamoDbClient phoenixDBClientV2, String tableName,
+            List<Map<String, AttributeValue>> itemKeys) {
+        int batchSize = 25;
+        int totalBatches = (int) Math.ceil((double) itemKeys.size() / batchSize);
+
+        for (int batchNum = 0; batchNum < totalBatches; batchNum++) {
+            int startIdx = batchNum * batchSize;
+            int endIdx = Math.min(startIdx + batchSize, itemKeys.size());
+            List<Map<String, AttributeValue>> batchKeys = itemKeys.subList(startIdx, endIdx);
+
+            List<WriteRequest> deleteRequests = batchKeys.stream().map(key -> WriteRequest.builder()
+                    .deleteRequest(DeleteRequest.builder()
+                            .key(key).build()).build()).collect(Collectors.toList());
+
+            Map<String, List<WriteRequest>> requestItems =
+                    Collections.singletonMap(tableName, deleteRequests);
+
+            BatchWriteItemRequest batchDeleteRequest =
+                    BatchWriteItemRequest.builder().requestItems(requestItems).build();
+
+            dynamoDbClient.batchWriteItem(batchDeleteRequest);
+            phoenixDBClientV2.batchWriteItem(batchDeleteRequest);
+        }
+    }
+
+    private static List<Map<String, AttributeValue>> selectItemsToDelete(
+            List<Map<String, AttributeValue>> items, int numPartitions, double deletePercentage) {
+        List<Map<String, AttributeValue>> itemsToDelete = new ArrayList<>();
+        int itemsPerPartition = (int) Math.ceil((double) items.size() / numPartitions);
+
+        for (int partitionId = 0; partitionId < numPartitions; partitionId++) {
+            int startIdx = partitionId * itemsPerPartition;
+            int endIdx = Math.min(startIdx + itemsPerPartition, items.size());
+            int itemsInThisPartition = endIdx - startIdx;
+            int itemsToDeleteFromPartition =
+                    (int) Math.ceil(itemsInThisPartition * deletePercentage);
+
+            for (int i = 0; i < itemsToDeleteFromPartition && (startIdx + i) < endIdx; i++) {
+                int itemIdx = startIdx + (i * itemsInThisPartition / itemsToDeleteFromPartition);
+                if (itemIdx < endIdx) {
+                    Map<String, AttributeValue> item = items.get(itemIdx);
+                    Map<String, AttributeValue> key = new HashMap<>();
+                    key.put("pk", item.get("pk"));
+                    key.put("sk", item.get("sk"));
+                    itemsToDelete.add(key);
+                }
+            }
+        }
+
+        itemsToDelete.sort(
+                Comparator.comparing((Map<String, AttributeValue> item) -> item.get("pk").s())
+                        .thenComparing(item -> Long.parseLong(item.get("sk").n())));
+        return itemsToDelete;
     }
 
     private static void queryGSIsWithoutConditions(DynamoDbClient dynamoDbClient,

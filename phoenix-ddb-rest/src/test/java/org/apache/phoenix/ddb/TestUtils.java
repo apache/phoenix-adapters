@@ -341,7 +341,6 @@ public class TestUtils {
             phoenixRecordsResponse = phoenixDBStreamsClientV2.getRecords(phoenixRecordsRequest);
             allPhoenixRecords.addAll(phoenixRecordsResponse.records());
             phoenixShardIterator = phoenixRecordsResponse.nextShardIterator();
-            LOGGER.info("Phoenix shard iterator: {}", phoenixShardIterator);
         } while (phoenixShardIterator != null && !phoenixRecordsResponse.records().isEmpty());
 
         do {
@@ -350,7 +349,6 @@ public class TestUtils {
             dynamoRecordsResponse = dynamoDbStreamsClient.getRecords(dynamoRecordsRequest);
             allDynamoRecords.addAll(dynamoRecordsResponse.records());
             dynamoShardIterator = dynamoRecordsResponse.nextShardIterator();
-            LOGGER.info("Dynamo shard iterator: {}", dynamoShardIterator);
         } while (dynamoShardIterator != null && !dynamoRecordsResponse.records().isEmpty());
 
         LOGGER.info("Phoenix stream records count: {}", allPhoenixRecords.size());

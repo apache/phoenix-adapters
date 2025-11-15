@@ -41,6 +41,7 @@ import org.junit.rules.TestName;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import software.amazon.awssdk.services.dynamodb.model.CreateTableRequest;
+import software.amazon.awssdk.services.dynamodb.model.DeleteItemRequest;
 import software.amazon.awssdk.services.dynamodb.model.PutItemRequest;
 import software.amazon.awssdk.services.dynamodb.model.ScanRequest;
 import software.amazon.awssdk.services.dynamodb.model.ScanResponse;
@@ -128,6 +129,18 @@ public class ScanIndex3IT {
             PutItemRequest putRequest = PutItemRequest.builder().tableName(TABLE_NAME).item(item).build();
             phoenixDBClientV2.putItem(putRequest);
             dynamoDbClient.putItem(putRequest);
+        }
+
+        for (int i = 0; i < NUM_RECORDS; i++) {
+            if (i % 4 == 0 || i % 11 == 0) {
+                Map<String, AttributeValue> key = new HashMap<>();
+                key.put("pk", AttributeValue.builder().s("pk_" + (i % 100)).build());
+                key.put("sk", AttributeValue.builder().n(String.valueOf(i)).build());
+                DeleteItemRequest deleteRequest =
+                        DeleteItemRequest.builder().tableName(TABLE_NAME).key(key).build();
+                phoenixDBClientV2.deleteItem(deleteRequest);
+                dynamoDbClient.deleteItem(deleteRequest);
+            }
         }
     }
 
