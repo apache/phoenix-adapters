@@ -46,6 +46,7 @@ import software.amazon.awssdk.services.dynamodb.model.PutItemRequest;
 import software.amazon.awssdk.services.dynamodb.model.ScanRequest;
 import software.amazon.awssdk.services.dynamodb.model.ScanResponse;
 import software.amazon.awssdk.services.dynamodb.model.ScalarAttributeType;
+import software.amazon.awssdk.services.dynamodb.model.UpdateItemRequest;
 
 import static org.apache.phoenix.query.BaseTest.setUpConfigForMiniCluster;
 
@@ -132,7 +133,7 @@ public class ScanIndex3IT {
         }
 
         for (int i = 0; i < NUM_RECORDS; i++) {
-            if (i % 4 == 0 || i % 11 == 0) {
+            if (i % 4 == 0) {
                 Map<String, AttributeValue> key = new HashMap<>();
                 key.put("pk", AttributeValue.builder().s("pk_" + (i % 100)).build());
                 key.put("sk", AttributeValue.builder().n(String.valueOf(i)).build());
@@ -140,6 +141,31 @@ public class ScanIndex3IT {
                         DeleteItemRequest.builder().tableName(TABLE_NAME).key(key).build();
                 phoenixDBClientV2.deleteItem(deleteRequest);
                 dynamoDbClient.deleteItem(deleteRequest);
+            } else if (i % 11 == 0) {
+                Map<String, AttributeValue> key = new HashMap<>();
+                key.put("pk", AttributeValue.builder().s("pk_" + (i % 100)).build());
+                key.put("sk", AttributeValue.builder().n(String.valueOf(i)).build());
+                final String updateExpression;
+                if (i % 33 == 0) {
+                    updateExpression = "REMOVE #st, #ts";
+                } else if (i % 22 == 0) {
+                    updateExpression = "REMOVE #ts";
+                } else {
+                    updateExpression = "REMOVE #st";
+                }
+                Map<String, String> exprAttrNames = new HashMap<>();
+                if (updateExpression.contains("#st")) {
+                    exprAttrNames.put("#st", "status");
+                }
+                if (updateExpression.contains("#ts")) {
+                    exprAttrNames.put("#ts", "timestamp");
+                }
+                UpdateItemRequest updateRequest =
+                        UpdateItemRequest.builder().tableName(TABLE_NAME).key(key)
+                                .updateExpression(updateExpression)
+                                .expressionAttributeNames(exprAttrNames).build();
+                phoenixDBClientV2.updateItem(updateRequest);
+                dynamoDbClient.updateItem(updateRequest);
             }
         }
     }
