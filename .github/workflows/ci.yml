@@ -76,8 +76,10 @@ jobs:
         retention-days: 5
 
     - name: Publish Test Report
-      if: always()
+      if: failure()
       uses: mikepenz/action-junit-report@v4
+      env:
+        NODE_OPTIONS: '--max-old-space-size=12288'
       with:
         report_paths: '**/target/*-reports/TEST-*.xml'
         check_name: Test Results
