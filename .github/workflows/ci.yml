@@ -37,20 +37,20 @@ jobs:
       run: |
         # Create Maven options file to set memory limits for builds
         mkdir -p .mvn
-        echo "-Xmx4g -XX:MaxPermSize=512m -XX:+UseG1GC" > .mvn/jvm.config
+        echo "-Xms4g -Xmx4g -XX:MaxMetaspaceSize=512m -XX:+UseG1GC" > .mvn/jvm.config
         
         # Set MAVEN_OPTS as backup
-        echo "MAVEN_OPTS=-Xmx4g -XX:MaxPermSize=512m -XX:+UseG1GC" >> $GITHUB_ENV
+        echo "MAVEN_OPTS=-Xms4g -Xmx4g -XX:MaxMetaspaceSize=512m -XX:+UseG1GC" >> $GITHUB_ENV
 
     - name: Build with Maven (skip tests)
       run: mvn clean install -DskipTests -B -V
       env:
-        MAVEN_OPTS: "-Xmx4g -XX:MaxPermSize=512m -XX:+UseG1GC"
+        MAVEN_OPTS: "-Xms4g -Xmx4g -XX:MaxMetaspaceSize=512m -XX:+UseG1GC"
 
     - name: Run tests with Maven
       run: mvn clean verify -B -V
       env:
-        MAVEN_OPTS: "-Xmx4g -XX:MaxPermSize=512m -XX:+UseG1GC"
+        MAVEN_OPTS: "-Xms4g -Xmx4g -XX:MaxMetaspaceSize=512m -XX:+UseG1GC"
 
     - name: Upload Test Results
       if: always()
