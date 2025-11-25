@@ -92,6 +92,5 @@ jobs:
       with:
         name: build-artifacts
         path: |
-          **/target/*.jar
-          **/target/*.tar.gz
+          phoenix-ddb-assembly/target/*.tar.gz
         retention-days: 5
