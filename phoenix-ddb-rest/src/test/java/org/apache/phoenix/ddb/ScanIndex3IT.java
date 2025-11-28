@@ -40,13 +40,15 @@ import org.junit.Test;
 import org.junit.rules.TestName;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
+import software.amazon.awssdk.services.dynamodb.model.BatchWriteItemRequest;
 import software.amazon.awssdk.services.dynamodb.model.CreateTableRequest;
 import software.amazon.awssdk.services.dynamodb.model.DeleteItemRequest;
-import software.amazon.awssdk.services.dynamodb.model.PutItemRequest;
+import software.amazon.awssdk.services.dynamodb.model.PutRequest;
 import software.amazon.awssdk.services.dynamodb.model.ScanRequest;
 import software.amazon.awssdk.services.dynamodb.model.ScanResponse;
 import software.amazon.awssdk.services.dynamodb.model.ScalarAttributeType;
 import software.amazon.awssdk.services.dynamodb.model.UpdateItemRequest;
+import software.amazon.awssdk.services.dynamodb.model.WriteRequest;
 
 import static org.apache.phoenix.query.BaseTest.setUpConfigForMiniCluster;
 
@@ -87,6 +89,18 @@ public class ScanIndex3IT {
         createTableAndInsertData();
     }
 
+    private static void executeBatchWrite(String tableName, List<WriteRequest> batch) {
+        if (batch.isEmpty()) {
+            return;
+        }
+        Map<String, List<WriteRequest>> requestItems = new HashMap<>();
+        requestItems.put(tableName, new ArrayList<>(batch));
+        BatchWriteItemRequest batchRequest =
+                BatchWriteItemRequest.builder().requestItems(requestItems).build();
+        phoenixDBClientV2.batchWriteItem(batchRequest);
+        dynamoDbClient.batchWriteItem(batchRequest);
+    }
+
     private static void createTableAndInsertData() {
         CreateTableRequest createTableRequest = DDLTestUtils.getCreateTableRequest(
                 TABLE_NAME, "pk", ScalarAttributeType.S, "sk", ScalarAttributeType.N);
@@ -96,6 +110,7 @@ public class ScanIndex3IT {
         phoenixDBClientV2.createTable(createTableRequest);
         dynamoDbClient.createTable(createTableRequest);
 
+        List<WriteRequest> batch = new ArrayList<>();
         for (int i = 0; i < NUM_RECORDS; i++) {
             Map<String, AttributeValue> item = new HashMap<>();
             item.put("pk", AttributeValue.builder().s("pk_" + (i % 100)).build());
@@ -126,10 +141,15 @@ public class ScanIndex3IT {
             nestedList.add(AttributeValue.builder().n(String.valueOf(i % 40)).build());
             nestedList.add(AttributeValue.builder().ss("set_in_list_" + (i % 3), "list_common").build());
             item.put("itms", AttributeValue.builder().l(nestedList).build());
-            
-            PutItemRequest putRequest = PutItemRequest.builder().tableName(TABLE_NAME).item(item).build();
-            phoenixDBClientV2.putItem(putRequest);
-            dynamoDbClient.putItem(putRequest);
+
+            WriteRequest writeRequest =
+                    WriteRequest.builder().putRequest(PutRequest.builder().item(item).build())
+                            .build();
+            batch.add(writeRequest);
+            if (batch.size() >= 25 || i == NUM_RECORDS - 1) {
+                executeBatchWrite(TABLE_NAME, batch);
+                batch.clear();
+            }
         }
 
         for (int i = 0; i < NUM_RECORDS; i++) {
