@@ -70,8 +70,10 @@ public class ConcurrentSegmentScanIT extends BaseSegmentScanIT {
                                 TOTAL_ITEMS, SPLIT_FREQUENCY, 50);
 
         // Perform full scan for comparison
-        List<Map<String, AttributeValue>> fullScanItemsPhoenix = performFullScanWithPagination(phoenixDBClientV2, tableName, false);
-        List<Map<String, AttributeValue>> fullScanItemsDDB = performFullScanWithPagination(dynamoDbClient, tableName, false);
+        List<Map<String, AttributeValue>> fullScanItemsPhoenix =
+                performFullScanWithPagination(phoenixDBClientV2, tableName, false, 0);
+        List<Map<String, AttributeValue>> fullScanItemsDDB =
+                performFullScanWithPagination(dynamoDbClient, tableName, false, 0);
 
         // Execute concurrent segment scans with concurrent splits
         List<Map<String, AttributeValue>> concurrentSegmentItems = 
@@ -138,8 +140,9 @@ public class ConcurrentSegmentScanIT extends BaseSegmentScanIT {
     }
 
     private List<Map<String, AttributeValue>> scanSegmentWithPagination(String tableName, int segment) {
-        List<Map<String, AttributeValue>> segmentItems = 
-            scanSingleSegmentWithPagination(tableName, segment, TOTAL_SEGMENTS, SCAN_LIMIT, true, false);
+        List<Map<String, AttributeValue>> segmentItems =
+                scanSingleSegmentWithPagination(tableName, segment, TOTAL_SEGMENTS, SCAN_LIMIT,
+                        true, false, 0);
         LOGGER.info("Segment {} scan completed with {} items", segment, segmentItems.size());
         return segmentItems;
     }
