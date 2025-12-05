@@ -1,12 +1,15 @@
 package org.apache.phoenix.ddb.utils;
 
+import org.apache.hadoop.conf.Configuration;
 import org.apache.phoenix.jdbc.PhoenixConnection;
 import org.apache.phoenix.jdbc.PhoenixDriver;
+import org.apache.phoenix.mapreduce.index.IndexTool;
 import org.apache.phoenix.monitoring.MetricType;
 import org.apache.phoenix.schema.PColumn;
 import org.apache.phoenix.schema.PTable;
 import org.apache.phoenix.schema.PTableKey;
 import org.apache.phoenix.thirdparty.com.google.common.base.Preconditions;
+import org.apache.phoenix.thirdparty.com.google.common.collect.Lists;
 import org.apache.phoenix.util.PhoenixRuntime;
 
 import org.slf4j.Logger;
@@ -17,8 +20,10 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * Helper methods for Phoenix based functionality.
@@ -166,5 +171,71 @@ public class PhoenixUtils {
                         ttlExpression.split("IS NOT NULL")[0]) // pass bson_value part
                 .replaceAll("'", "") // remove single quotes
                 .trim();
+    }
+
+    /**
+     * Run IndexTool to build indexes.
+     */
+    public static IndexTool runIndexTool(Configuration conf, boolean useSnapshot, String schemaName,
+                                         String dataTableName, String indexTableName, String tenantId,
+                                         IndexTool.IndexVerifyType verifyType) throws Exception {
+        IndexTool indexingTool = new IndexTool();
+        indexingTool.setConf(conf);
+        final String[] cmdArgs = getArgValues(useSnapshot, schemaName, dataTableName, indexTableName,
+                tenantId, verifyType);
+        List<String> cmdArgList = new ArrayList<>(Arrays.asList(cmdArgs));
+        LOGGER.info("Running IndexTool with {}", Arrays.toString(cmdArgList.toArray()));
+        int status = indexingTool.run(cmdArgList.toArray(new String[cmdArgList.size()]));
+        LOGGER.info("IndexTool status = {}", status);
+        return indexingTool;
+    }
+
+    private static String[] getArgValues(boolean useSnapshot, String schemaName, String dataTable, String indexTable, String tenantId, IndexTool.IndexVerifyType verifyType) {
+        List<String> args = getArgList(useSnapshot, schemaName, dataTable, indexTable, tenantId, verifyType, (Long)null, (Long)null, (Long)null, false);
+        return (String[])args.toArray(new String[0]);
+    }
+
+    private static List<String> getArgList(boolean useSnapshot, String schemaName, String dataTable, String indxTable, String tenantId, IndexTool.IndexVerifyType verifyType, Long startTime, Long endTime, Long incrementalVerify, boolean useIndexTableAsSource) {
+        List<String> args = Lists.newArrayList();
+        if (schemaName != null) {
+            args.add("--schema=" + schemaName);
+        }
+
+        args.add("--data-table=" + dataTable);
+        args.add("--index-table=" + indxTable);
+        args.add("-v");
+        args.add(verifyType.getValue());
+        args.add("-runfg");
+        if (useSnapshot) {
+            args.add("-snap");
+        }
+
+        if (tenantId != null) {
+            args.add("-tenant");
+            args.add(tenantId);
+        }
+
+        if (startTime != null) {
+            args.add("-st");
+            args.add(String.valueOf(startTime));
+        }
+
+        if (endTime != null) {
+            args.add("-et");
+            args.add(String.valueOf(endTime));
+        }
+
+        if (incrementalVerify != null) {
+            args.add("-rv");
+            args.add(String.valueOf(incrementalVerify));
+        }
+
+        if (useIndexTableAsSource) {
+            args.add("-fi");
+        }
+
+        args.add("-op");
+        args.add("/tmp/" + UUID.randomUUID().toString());
+        return args;
     }
 }

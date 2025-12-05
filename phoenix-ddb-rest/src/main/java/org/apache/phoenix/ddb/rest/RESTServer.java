@@ -298,11 +298,12 @@ public class RESTServer {
         ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
         scheduler.scheduleAtFixedRate(() -> {
             try (Connection connection = ConnectionUtil.getConnection(jdbcUrl)) {
-                IndexBuildingActivator.activateIndexesForBuilding(connection, 1800000);
+                IndexBuildingActivator.activateIndexesForBuilding(connection, 1800010);
+                IndexBuildingActivator.runIndexTool(connection, 1860000);
             } catch (SQLException e) {
                 LOG.info("Error while running IndexBuildingActivator. ", e);
             }
-        }, 0, 15, TimeUnit.MINUTES);
+        }, 0, 5, TimeUnit.MINUTES);
         LOG.info("Scheduled IndexBuildingActivator.");
         return scheduler;
     }

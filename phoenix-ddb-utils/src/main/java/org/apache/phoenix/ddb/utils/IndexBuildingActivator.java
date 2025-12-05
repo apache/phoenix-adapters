@@ -1,7 +1,10 @@
 package org.apache.phoenix.ddb.utils;
 
+import org.apache.hadoop.conf.Configuration;
 import org.apache.phoenix.jdbc.PhoenixConnection;
+import org.apache.phoenix.mapreduce.index.IndexTool;
 import org.apache.phoenix.schema.PIndexState;
+import org.apache.phoenix.schema.PTable;
 import org.apache.phoenix.util.EnvironmentEdgeManager;
 import org.apache.phoenix.util.IndexUtil;
 import org.apache.phoenix.util.SchemaUtil;
@@ -18,12 +21,23 @@ public class IndexBuildingActivator {
 
     private static final String SELECT_CREATE_DISABLE_INDEX = "SELECT DISTINCT TABLE_SCHEM, TABLE_NAME "
             + "FROM SYSTEM.CATALOG "
-            + "WHERE COLUMN_NAME IS NULL "
+            + "WHERE TABLE_SCHEM='DDB'"
+            + "AND COLUMN_NAME IS NULL "
             + "AND COLUMN_FAMILY IS NULL "
             + "AND TABLE_TYPE = 'i'"
             + "AND INDEX_STATE = 'c' "
             + "AND TENANT_ID IS NULL "
-            + "AND TO_NUMBER(CURRENT_TIME()) - LAST_DDL_TIMESTAMP > %d";
+            + "AND (TO_NUMBER(CURRENT_TIME()) - LAST_DDL_TIMESTAMP) > %d";
+
+    private static final String SELECT_BUILDING_INDEX = "SELECT DISTINCT TABLE_SCHEM, TABLE_NAME "
+            + "FROM SYSTEM.CATALOG "
+            + "WHERE TABLE_SCHEM='DDB'"
+            + "AND COLUMN_NAME IS NULL "
+            + "AND COLUMN_FAMILY IS NULL "
+            + "AND TABLE_TYPE = 'i'"
+            + "AND INDEX_STATE = 'b' "
+            + "AND TENANT_ID IS NULL "
+            + "AND (TO_NUMBER(CURRENT_TIME()) - LAST_DDL_TIMESTAMP) > %d";
 
     public static void activateIndexesForBuilding(Connection conn, int minAgeMs) throws SQLException {
         ResultSet rs = conn.createStatement().executeQuery(String.format(SELECT_CREATE_DISABLE_INDEX, minAgeMs));
@@ -37,4 +51,27 @@ public class IndexBuildingActivator {
                     PIndexState.BUILDING, EnvironmentEdgeManager.currentTimeMillis());
         }
     }
+
+    public static void runIndexTool(Connection conn, int minAgeMs) throws SQLException {
+        try {
+            ResultSet rs = conn.createStatement().executeQuery(String.format(SELECT_BUILDING_INDEX, minAgeMs));
+            while (rs.next()) {
+                String schemaName = rs.getString(1);
+                String indexName = rs.getString(2);
+                String fullIndexName = SchemaUtil.getTableName(schemaName, indexName);
+                PTable ptable = conn.unwrap(PhoenixConnection.class).getTable(fullIndexName);
+                String tableName = PhoenixUtils.getTableNameFromFullName(ptable.getParentName().getString(), false);
+                LOGGER.info("Found index " + fullIndexName + " to build");
+                Configuration conf = conn.unwrap(PhoenixConnection.class).getQueryServices().getConfiguration();
+                PhoenixUtils.runIndexTool(conf, false, "DDB",
+                        PhoenixUtils.getEscapedArgument(tableName),
+                        PhoenixUtils.getEscapedArgument(indexName),
+                        null, IndexTool.IndexVerifyType.NONE);
+            }
+        } catch (Exception e) {
+            LOGGER.error("Error in building indexes", e);
+            throw new SQLException(e);
+        }
+    }
+
 }

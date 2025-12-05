@@ -22,7 +22,6 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -74,14 +73,11 @@ import org.apache.phoenix.ddb.utils.ApiMetadata;
 import org.apache.phoenix.ddb.utils.PhoenixUtils;
 import org.apache.phoenix.jdbc.PhoenixConnection;
 import org.apache.phoenix.jdbc.PhoenixPreparedStatement;
-import org.apache.phoenix.mapreduce.index.IndexTool;
 import org.apache.phoenix.query.ConnectionQueryServices;
 import org.apache.phoenix.schema.PColumn;
 import org.apache.phoenix.schema.PTable;
 import org.apache.phoenix.schema.PTableKey;
 
-import static org.apache.phoenix.end2end.IndexToolIT.getArgValues;
-import static org.junit.Assert.assertEquals;
 import static software.amazon.awssdk.services.dynamodb.model.ShardIteratorType.TRIM_HORIZON;
 
 public class TestUtils {
@@ -530,22 +526,5 @@ public class TestUtils {
         }
         while (++nTries < maxTries);
         Assert.fail("Timed out waiting for index state to become: " + expectedState);
-    }
-
-    public static IndexTool runIndexTool(Configuration conf, boolean useSnapshot, String schemaName,
-            String dataTableName, String indexTableName, String tenantId, int expectedStatus,
-            IndexTool.IndexVerifyType verifyType, IndexTool.IndexDisableLoggingType disableLoggingType,
-            String... additionalArgs) throws Exception {
-        IndexTool indexingTool = new IndexTool();
-        indexingTool.setConf(conf);
-        final String[] cmdArgs = getArgValues(useSnapshot, schemaName, dataTableName, indexTableName,
-                tenantId, verifyType, disableLoggingType);
-        List<String> cmdArgList = new ArrayList<>(Arrays.asList(cmdArgs));
-        cmdArgList.addAll(Arrays.asList(additionalArgs));
-        LOGGER.info("Running IndexTool with {}", Arrays.toString(cmdArgList.toArray()),
-                new Exception("Stack Trace"));
-        int status = indexingTool.run(cmdArgList.toArray(new String[cmdArgList.size()]));
-        assertEquals(expectedStatus, status);
-        return indexingTool;
     }
 }

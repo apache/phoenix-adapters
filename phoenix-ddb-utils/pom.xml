@@ -46,6 +46,11 @@
             <artifactId>aws-sdk-java</artifactId>
             <version>${aws.sdk.version}</version>
         </dependency>
+      <dependency>
+        <groupId>org.apache.phoenix</groupId>
+        <artifactId>phoenix-core-server</artifactId>
+        <version>${phoenix.version}</version>
+      </dependency>
     </dependencies>
 
 </project>

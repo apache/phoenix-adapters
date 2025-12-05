@@ -22,11 +22,9 @@ import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.phoenix.ddb.rest.RESTServer;
 import org.apache.phoenix.ddb.utils.IndexBuildingActivator;
-import org.apache.phoenix.ddb.utils.PhoenixUtils;
 import org.apache.phoenix.end2end.ServerMetadataCacheTestImpl;
 import org.apache.phoenix.jdbc.PhoenixDriver;
 import org.apache.phoenix.jdbc.PhoenixTestDriver;
-import org.apache.phoenix.mapreduce.index.IndexTool;
 import org.apache.phoenix.util.PhoenixRuntime;
 import org.apache.phoenix.util.ServerUtil;
 
@@ -181,11 +179,7 @@ public class UpdateTable2IT {
             // background thread activates index to BUILDING state
             IndexBuildingActivator.activateIndexesForBuilding(connection, 0);
             // run MR tool to build index and set state to ACTIVE
-            Configuration conf = new Configuration(utility.getConfiguration());
-            TestUtils.runIndexTool(conf, false, "DDB",
-                    PhoenixUtils.getEscapedArgument(tableName),
-                    PhoenixUtils.getEscapedArgument(tableName + "_" + indexName),
-                    null, 0, IndexTool.IndexVerifyType.NONE, IndexTool.IndexDisableLoggingType.NONE);
+            IndexBuildingActivator.runIndexTool(connection, 0);
         }
 
         // make sure Index is active
