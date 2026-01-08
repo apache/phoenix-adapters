@@ -55,6 +55,8 @@ public class DeleteItemService {
         } catch (SQLException e) {
             throw new PhoenixServiceException(e);
         }
+        result.put(ApiMetadata.CONSUMED_CAPACITY,
+                CommonServiceUtils.getConsumedCapacity((String)request.get(ApiMetadata.TABLE_NAME)));
         return result;
     }
 

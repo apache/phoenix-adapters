@@ -119,6 +119,8 @@ public class GetItemService {
                             getProjectionAttributes(request));
             finalResult.put("Item", item);
         }
+        finalResult.put(ApiMetadata.CONSUMED_CAPACITY,
+                CommonServiceUtils.getConsumedCapacity((String)request.get(ApiMetadata.TABLE_NAME)));
         return finalResult;
     }
 

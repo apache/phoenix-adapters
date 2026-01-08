@@ -86,10 +86,13 @@ public class UpdateItemService {
             boolean hasCondExp = (request.get(ApiMetadata.CONDITION_EXPRESSION) != null) || (
                     request.get(ApiMetadata.EXPECTED) != null);
 
-            return DMLUtils.executeUpdate(statementInfo.stmt,
+            Map<String, Object> res = DMLUtils.executeUpdate(statementInfo.stmt,
                     (String) request.get(ApiMetadata.RETURN_VALUES),
                     (String) request.get(ApiMetadata.RETURN_VALUES_ON_CONDITION_CHECK_FAILURE),
                     hasCondExp, pkCols, ApiOperation.UPDATE_ITEM);
+            res.put(ApiMetadata.CONSUMED_CAPACITY,
+                    CommonServiceUtils.getConsumedCapacity((String)request.get(ApiMetadata.TABLE_NAME)));
+            return res;
         } catch (SQLException e) {
             throw new PhoenixServiceException(e);
         }

@@ -57,13 +57,15 @@ public class PutItemService {
     private static final RawBsonDocument EMPTY_RAW_BSON_DOC = RawBsonDocument.parse("{}");
 
     public static Map<String, Object> putItem(Map<String, Object> request, String connectionUrl) {
-        Map<String, Object> result;
+        Map<String, Object> result = new HashMap<>();
         try (Connection connection = ConnectionUtil.getConnection(connectionUrl)) {
             connection.setAutoCommit(true);
             result = putItemWithConn(connection, request);
         } catch (SQLException e) {
             throw new PhoenixServiceException(e);
         }
+        result.put(ApiMetadata.CONSUMED_CAPACITY,
+                CommonServiceUtils.getConsumedCapacity((String)request.get(ApiMetadata.TABLE_NAME)));
         return result;
     }
 

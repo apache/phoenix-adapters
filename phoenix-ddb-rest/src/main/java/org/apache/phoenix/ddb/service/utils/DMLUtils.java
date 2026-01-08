@@ -4,7 +4,6 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Base64;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -67,13 +66,13 @@ public class DMLUtils {
         String returnValuesOnConditionCheckFailure, boolean hasCondExp, List<PColumn> pkCols,
         ApiOperation apiOperation) throws SQLException, ConditionCheckFailedException {
         try {
-            Map<String, Object> returnAttrs = Collections.emptyMap();
+            Map<String, Object> returnAttrs = new HashMap<>();
             if (!needReturnRow(returnValue, returnValuesOnConditionCheckFailure)) {
                 int returnStatus = stmt.executeUpdate();
                 if (returnStatus == 0 && hasCondExp) {
                     throw new ConditionCheckFailedException();
                 }
-                return Collections.emptyMap();
+                return new HashMap<>();
             }
             Pair<Integer, ResultSet> resultPair;
             if (ApiMetadata.ALL_OLD.equals(returnValue)
