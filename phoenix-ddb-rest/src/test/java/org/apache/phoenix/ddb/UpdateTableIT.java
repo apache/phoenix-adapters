@@ -21,7 +21,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.phoenix.ddb.rest.RESTServer;
-import org.apache.phoenix.ddb.utils.IndexBuildingActivator;
+import org.apache.phoenix.ddb.utils.AsyncIndexManager;
 import org.apache.phoenix.ddb.utils.PhoenixUtils;
 import org.apache.phoenix.end2end.ServerMetadataCacheTestImpl;
 import org.apache.phoenix.jdbc.PhoenixConnection;
@@ -162,6 +162,15 @@ public class UpdateTableIT {
         utre = dynamoDbClient.updateTable(utr.build());
         Assert.assertEquals("DELETING",
                 utre.tableDescription().globalSecondaryIndexes().get(0).indexStatus().toString());
+
+        // AsyncIndexManager should drop the index
+        try (Connection connection = DriverManager.getConnection(url)) {
+            AsyncIndexManager.dropDisabledIndexes(connection, 0);
+        }
+
+        //describe table shows no index
+        describeTableResponse = phoenixDBClientV2.describeTable(describeTableRequest);
+        Assert.assertTrue(describeTableResponse.table().globalSecondaryIndexes().isEmpty());
     }
 
     @Test(timeout = 120000)
@@ -221,7 +230,7 @@ public class UpdateTableIT {
 
         //change index state
         try (Connection connection = DriverManager.getConnection(url)) {
-            IndexBuildingActivator.activateIndexesForBuilding(connection, 0);
+            AsyncIndexManager.activateIndexesForBuilding(connection, 0);
             PTable pTable =
                     connection.unwrap(PhoenixConnection.class).getTableNoCache(PhoenixUtils.getFullTableName(tableName, false));
             Assert.assertEquals(PIndexState.BUILDING, pTable.getIndexes().get(0).getIndexState());

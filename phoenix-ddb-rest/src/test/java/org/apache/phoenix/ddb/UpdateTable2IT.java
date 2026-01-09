@@ -21,7 +21,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.phoenix.ddb.rest.RESTServer;
-import org.apache.phoenix.ddb.utils.IndexBuildingActivator;
+import org.apache.phoenix.ddb.utils.AsyncIndexManager;
 import org.apache.phoenix.end2end.ServerMetadataCacheTestImpl;
 import org.apache.phoenix.jdbc.PhoenixDriver;
 import org.apache.phoenix.jdbc.PhoenixTestDriver;
@@ -177,9 +177,9 @@ public class UpdateTable2IT {
 
         try (Connection connection = DriverManager.getConnection(url)) {
             // background thread activates index to BUILDING state
-            IndexBuildingActivator.activateIndexesForBuilding(connection, 0);
+            AsyncIndexManager.activateIndexesForBuilding(connection, 0);
             // run MR tool to build index and set state to ACTIVE
-            IndexBuildingActivator.runIndexTool(connection, 0);
+            AsyncIndexManager.runIndexTool(connection, 0);
         }
 
         // make sure Index is active

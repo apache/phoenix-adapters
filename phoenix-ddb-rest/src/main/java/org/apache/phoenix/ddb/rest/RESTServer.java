@@ -70,7 +70,7 @@ import org.apache.phoenix.ddb.rest.auth.CredentialStore;
 import org.apache.phoenix.ddb.rest.util.Constants;
 import org.apache.phoenix.ddb.TableOptionsConfig;
 import org.apache.phoenix.ddb.service.utils.SegmentScanUtil;
-import org.apache.phoenix.ddb.utils.IndexBuildingActivator;
+import org.apache.phoenix.ddb.utils.AsyncIndexManager;
 import org.apache.phoenix.ddb.utils.PhoenixUtils;
 
 /**
@@ -168,7 +168,7 @@ public class RESTServer {
         try {
             String url = PhoenixUtils.URL_ZK_PREFIX + conf.get(Constants.PHOENIX_DDB_ZK_QUORUM);
             validateConnection(url);
-            indexBuildingActivator = startIndexBuildingActivator(url);
+            indexBuildingActivator = startAsyncIndexManager(url);
             TableOptionsConfig.initialize();
             SegmentScanUtil.createSegmentScanMetadataTable(url);
         } catch (Exception e) {
@@ -294,12 +294,11 @@ public class RESTServer {
         }
     }
 
-    private ExecutorService startIndexBuildingActivator(String jdbcUrl) {
+    private ExecutorService startAsyncIndexManager(String jdbcUrl) {
         ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
         scheduler.scheduleAtFixedRate(() -> {
             try (Connection connection = ConnectionUtil.getConnection(jdbcUrl)) {
-                IndexBuildingActivator.activateIndexesForBuilding(connection, 1800010);
-                IndexBuildingActivator.runIndexTool(connection, 1860000);
+                AsyncIndexManager.run(connection);
             } catch (SQLException e) {
                 LOG.info("Error while running IndexBuildingActivator. ", e);
             }
