@@ -75,9 +75,11 @@ public class QueryService {
             PreparedStatement stmt = pairVal.getFirst();
             boolean isSingleRowExpected = pairVal.getSecond();
             boolean countOnly = ApiMetadata.SELECT_COUNT.equals(request.get(ApiMetadata.SELECT));
+            Integer limit = (Integer) request.get(ApiMetadata.LIMIT);
+            int effectiveLimit = limit == null ? MAX_QUERY_LIMIT : Math.min(limit, MAX_QUERY_LIMIT);
             return DQLUtils.executeStatementReturnResult(stmt,
                     getProjectionAttributes(request), useIndex, tablePKCols, indexPKCols, tableName,
-                    isSingleRowExpected, false, countOnly);
+                    isSingleRowExpected, false, countOnly, effectiveLimit);
         } catch (SQLException e) {
             throw new PhoenixServiceException(e);
         }

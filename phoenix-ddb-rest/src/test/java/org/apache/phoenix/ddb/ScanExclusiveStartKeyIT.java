@@ -262,9 +262,7 @@ public class ScanExclusiveStartKeyIT {
         Assert.assertEquals("DynamoDB should return all 56 items", 56, dynamoItems.size());
         
         // Verify that both clients returned the same number of pagination rounds
-        // Note: The exact pagination behavior might differ slightly, but both should complete
-        Assert.assertTrue("Phoenix pagination should complete", phoenixPaginationCount > 0);
-        Assert.assertTrue("DynamoDB pagination should complete", dynamoPaginationCount > 0);
+        Assert.assertEquals("Pagination count with same limit should be the same", dynamoPaginationCount, phoenixPaginationCount);
         
         // For limits smaller than 8, we should see multiple pagination rounds
         if (scanLimit < 8) {

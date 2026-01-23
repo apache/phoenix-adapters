@@ -453,20 +453,8 @@ public class QueryIT {
         Assert.assertTrue(phoenixResult.count() == 1);
 
         // check last key
-        lastKey = phoenixResult.lastEvaluatedKey();
-        Assert.assertEquals("B", lastKey.get("attr_0").s());
-        Assert.assertEquals(4, Integer.parseInt(lastKey.get("attr_1").n()));
-
-        // note that dynamo's last evaluated key will be null here
-        // sdkv2 returns empty item
+        Assert.assertTrue(phoenixResult.lastEvaluatedKey().isEmpty());
         Assert.assertTrue(dynamoResult.lastEvaluatedKey().isEmpty());
-
-        // provide lastEvaluatedKey as exclusiveStartKey, no items should be returned
-        qr.exclusiveStartKey(lastKey);
-        phoenixResult = phoenixDBClientV2.query(qr.build());
-        dynamoResult = dynamoDbClient.query(qr.build());
-        Assert.assertEquals(dynamoResult.count(), phoenixResult.count());
-        Assert.assertTrue(phoenixResult.count() == 0);
     }
 
     @Test(timeout = 120000)
@@ -825,6 +813,55 @@ public class QueryIT {
 
             lastEvaluatedKey = phoenixResult.lastEvaluatedKey();
         } while (!lastEvaluatedKey.isEmpty());
+    }
+
+    @Test(timeout = 120000)
+    public void queryLastEvaluatedKeyNotSetWhenItemsLessThanLimit() {
+        final String tableName = testName.getMethodName();
+        CreateTableRequest createTableRequest =
+                DDLTestUtils.getCreateTableRequest(tableName, "attr_0",
+                        ScalarAttributeType.S, "attr_1", ScalarAttributeType.N);
+        phoenixDBClientV2.createTable(createTableRequest);
+        dynamoDbClient.createTable(createTableRequest);
+
+        PutItemRequest putItemRequest1 = PutItemRequest.builder().tableName(tableName).item(getItem1()).build();
+        PutItemRequest putItemRequest2 = PutItemRequest.builder().tableName(tableName).item(getItem2()).build();
+        PutItemRequest putItemRequest3 = PutItemRequest.builder().tableName(tableName).item(getItem3()).build();
+        phoenixDBClientV2.putItem(putItemRequest1);
+        phoenixDBClientV2.putItem(putItemRequest2);
+        phoenixDBClientV2.putItem(putItemRequest3);
+        dynamoDbClient.putItem(putItemRequest1);
+        dynamoDbClient.putItem(putItemRequest2);
+        dynamoDbClient.putItem(putItemRequest3);
+
+        QueryRequest.Builder qr = QueryRequest.builder().tableName(tableName);
+        qr.keyConditionExpression("#0 = :v0");
+        Map<String, String> exprAttrNames = new HashMap<>();
+        exprAttrNames.put("#0", "attr_0");
+        qr.expressionAttributeNames(exprAttrNames);
+        Map<String, AttributeValue> exprAttrVal = new HashMap<>();
+        exprAttrVal.put(":v0", AttributeValue.builder().s("B").build());
+        qr.expressionAttributeValues(exprAttrVal);
+        qr.limit(10);
+
+        QueryResponse phoenixResult = phoenixDBClientV2.query(qr.build());
+        QueryResponse dynamoResult = dynamoDbClient.query(qr.build());
+
+        Assert.assertEquals(dynamoResult.count(), phoenixResult.count());
+        Assert.assertEquals(2, phoenixResult.count().intValue());
+        Assert.assertTrue(phoenixResult.lastEvaluatedKey().isEmpty());
+        Assert.assertTrue(dynamoResult.lastEvaluatedKey().isEmpty());
+        Assert.assertEquals(dynamoResult.items(), phoenixResult.items());
+
+        qr.limit(1);
+        phoenixResult = phoenixDBClientV2.query(qr.build());
+        dynamoResult = dynamoDbClient.query(qr.build());
+
+        Assert.assertEquals(dynamoResult.count(), phoenixResult.count());
+        Assert.assertEquals(1, phoenixResult.count().intValue());
+        Assert.assertFalse(phoenixResult.lastEvaluatedKey().isEmpty());
+        Assert.assertFalse(dynamoResult.lastEvaluatedKey().isEmpty());
+        Assert.assertEquals(dynamoResult.lastEvaluatedKey(), phoenixResult.lastEvaluatedKey());
     }
 
     public static Map<String, AttributeValue> getItem1() {

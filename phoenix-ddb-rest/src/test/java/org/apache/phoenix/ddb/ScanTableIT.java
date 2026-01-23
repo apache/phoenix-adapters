@@ -1771,4 +1771,52 @@ public class ScanTableIT {
             Assert.assertEquals("Expected 400 status code for DynamoDB", 400, e.statusCode());
         }
     }
+
+    @Test(timeout = 120000)
+    public void testScanLastEvaluatedKeyNotSetWhenItemsLessThanLimit() {
+        final String tableName = testName.getMethodName();
+        CreateTableRequest createTableRequest =
+                DDLTestUtils.getCreateTableRequest(tableName, "attr_0",
+                        ScalarAttributeType.S, "attr_1", ScalarAttributeType.N);
+        phoenixDBClientV2.createTable(createTableRequest);
+        dynamoDbClient.createTable(createTableRequest);
+
+        PutItemRequest putItemRequest1 = PutItemRequest.builder().tableName(tableName).item(getItem1()).build();
+        PutItemRequest putItemRequest2 = PutItemRequest.builder().tableName(tableName).item(getItem2()).build();
+        PutItemRequest putItemRequest3 = PutItemRequest.builder().tableName(tableName).item(getItem3()).build();
+        phoenixDBClientV2.putItem(putItemRequest1);
+        phoenixDBClientV2.putItem(putItemRequest2);
+        phoenixDBClientV2.putItem(putItemRequest3);
+        dynamoDbClient.putItem(putItemRequest1);
+        dynamoDbClient.putItem(putItemRequest2);
+        dynamoDbClient.putItem(putItemRequest3);
+
+        ScanRequest.Builder sr = ScanRequest.builder().tableName(tableName);
+        sr.filterExpression("#0 = :v0");
+        Map<String, String> exprAttrNames = new HashMap<>();
+        exprAttrNames.put("#0", "title");
+        sr.expressionAttributeNames(exprAttrNames);
+        Map<String, AttributeValue> exprAttrVal = new HashMap<>();
+        exprAttrVal.put(":v0", AttributeValue.builder().s("Title3").build());
+        sr.expressionAttributeValues(exprAttrVal);
+        sr.limit(10);
+
+        ScanResponse phoenixResult = phoenixDBClientV2.scan(sr.build());
+        ScanResponse dynamoResult = dynamoDbClient.scan(sr.build());
+
+        Assert.assertEquals(dynamoResult.count(), phoenixResult.count());
+        Assert.assertEquals(1, phoenixResult.count().intValue());
+        Assert.assertTrue(phoenixResult.lastEvaluatedKey().isEmpty());
+        Assert.assertTrue(dynamoResult.lastEvaluatedKey().isEmpty());
+
+        ScanRequest.Builder sr2 = ScanRequest.builder().tableName(tableName);
+        sr2.limit(1);
+        phoenixResult = phoenixDBClientV2.scan(sr2.build());
+        dynamoResult = dynamoDbClient.scan(sr2.build());
+
+        Assert.assertEquals(dynamoResult.count(), phoenixResult.count());
+        Assert.assertEquals(1, phoenixResult.count().intValue());
+        Assert.assertFalse(phoenixResult.lastEvaluatedKey().isEmpty());
+        Assert.assertFalse(dynamoResult.lastEvaluatedKey().isEmpty());
+    }
 }

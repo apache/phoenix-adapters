@@ -150,7 +150,7 @@ public class ScanService {
         PreparedStatement stmt = buildQuery(connection, request, config);
         return DQLUtils.executeStatementReturnResult(stmt, getProjectionAttributes(request),
                 config.useIndex(), config.getTablePKCols(), config.getIndexPKCols(), config.getTableName(),
-                false, false, config.isCountOnly());
+                false, false, config.isCountOnly(), config.getLimit());
     }
 
     /**
@@ -164,7 +164,7 @@ public class ScanService {
         PreparedStatement firstStmt = buildQuery(connection, request, config);
         Map<String, Object> firstResult = DQLUtils.executeStatementReturnResult(firstStmt,
                 getProjectionAttributes(request), config.useIndex(), config.getTablePKCols(), config.getIndexPKCols(),
-                config.getTableName(), false, true, config.isCountOnly());
+                config.getTableName(), false, true, config.isCountOnly(), config.getLimit());
         
         List<Map<String, Object>> allItems = config.isCountOnly()
                 ? new ArrayList<>()
@@ -180,7 +180,7 @@ public class ScanService {
             PreparedStatement secondStmt = buildQuery(connection, request, secondConfig);
             Map<String, Object> secondResult = DQLUtils.executeStatementReturnResult(secondStmt,
                     getProjectionAttributes(request), config.useIndex(), config.getTablePKCols(), config.getIndexPKCols(),
-                    config.getTableName(), false, false, config.isCountOnly());
+                    config.getTableName(), false, false, config.isCountOnly(), secondConfig.getLimit());
 
             if (!config.isCountOnly()) {
                 List<Map<String, Object>> secondItems = (List<Map<String, Object>>) secondResult.get(ApiMetadata.ITEMS);
