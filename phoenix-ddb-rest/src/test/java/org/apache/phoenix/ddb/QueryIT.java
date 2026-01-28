@@ -916,6 +916,44 @@ public class QueryIT {
         return item;
     }
 
+    @Test(timeout = 120000)
+    public void testInvalidNotEqualOperatorInKeyCondition() throws Exception {
+        // Create table
+        final String tableName = testName.getMethodName();
+        CreateTableRequest createTableRequest =
+                DDLTestUtils.getCreateTableRequest(tableName, "attr_0",
+                        ScalarAttributeType.S, "attr_1", ScalarAttributeType.N);
+        phoenixDBClientV2.createTable(createTableRequest);
+        dynamoDbClient.createTable(createTableRequest);
+
+        // Query request with <> operator in key condition
+        QueryRequest.Builder qr = QueryRequest.builder().tableName(tableName);
+        qr.keyConditionExpression("#0 <> :v0");
+        Map<String, String> exprAttrNames = new HashMap<>();
+        exprAttrNames.put("#0", "attr_0");
+        qr.expressionAttributeNames(exprAttrNames);
+        Map<String, AttributeValue> exprAttrVal = new HashMap<>();
+        exprAttrVal.put(":v0", AttributeValue.builder().s("B").build());
+        qr.expressionAttributeValues(exprAttrVal);
+
+        // Verify that both DynamoDB and Phoenix return 400
+        try {
+            dynamoDbClient.query(qr.build());
+            Assert.fail("Expected DynamoDbException for DynamoDB");
+        } catch (DynamoDbException e) {
+            Assert.assertEquals(400, e.statusCode());
+            Assert.assertTrue(e.getMessage().contains("Invalid operator used in KeyConditionExpression: <>"));
+        }
+
+        try {
+            phoenixDBClientV2.query(qr.build());
+            Assert.fail("Expected DynamoDbException for Phoenix");
+        } catch (DynamoDbException e) {
+            Assert.assertEquals(400, e.statusCode());
+            Assert.assertTrue(e.getMessage().contains("Invalid operator used in KeyConditionExpression:"));
+        }
+    }
+
     public static Map<String, AttributeValue> getItem4() {
         Map<String, AttributeValue> item = new HashMap<>();
         item.put("attr_0", AttributeValue.builder().s("B").build());

@@ -566,4 +566,104 @@ public class QueryIndex1IT {
         item.put("Id3", AttributeValue.builder().s("bar").build());
         return item;
     }
+
+    @Test(timeout = 120000)
+    public void testGlobalIndexSortKeyBeforePartitionKey() throws SQLException {
+        // create table with keys [attr_0]
+        final String tableName = testName.getMethodName();
+        final String indexName = "G_IDX_" + tableName;
+        CreateTableRequest createTableRequest =
+                DDLTestUtils.getCreateTableRequest(tableName, "attr_0",
+                        ScalarAttributeType.S, null, null);
+        // create index on IdS, Id2
+        createTableRequest = DDLTestUtils.addIndexToRequest(true, createTableRequest, indexName, "IdS",
+                ScalarAttributeType.S, "Id2", ScalarAttributeType.N);
+        phoenixDBClientV2.createTable(createTableRequest);
+        dynamoDbClient.createTable(createTableRequest);
+
+        //put items
+        PutItemRequest putItemRequest1 = PutItemRequest.builder().tableName(tableName).item(getItem1()).build();
+        PutItemRequest putItemRequest2 = PutItemRequest.builder().tableName(tableName).item(getItem2()).build();
+        phoenixDBClientV2.putItem(putItemRequest1);
+        phoenixDBClientV2.putItem(putItemRequest2);
+        dynamoDbClient.putItem(putItemRequest1);
+        dynamoDbClient.putItem(putItemRequest2);
+
+        //query request using index with sort key condition before partition key
+        QueryRequest.Builder qr = QueryRequest.builder().tableName(tableName);
+        qr.indexName(indexName);
+        qr.keyConditionExpression("#1 < :v1 AND #0 = :v0");
+        Map<String, String> exprAttrNames = new HashMap<>();
+        exprAttrNames.put("#0", "IdS");
+        exprAttrNames.put("#1", "Id2");
+        qr.expressionAttributeNames(exprAttrNames);
+        Map<String, AttributeValue> exprAttrVal = new HashMap<>();
+        exprAttrVal.put(":v0", AttributeValue.builder().s("101.01").build());
+        exprAttrVal.put(":v1", AttributeValue.builder().n("2.1").build());
+        qr.expressionAttributeValues(exprAttrVal);
+
+        // query result
+        QueryResponse phoenixResult = phoenixDBClientV2.query(qr.build());
+        QueryResponse dynamoResult = dynamoDbClient.query(qr.build());
+        Assert.assertEquals(dynamoResult.count(), phoenixResult.count());
+        Assert.assertEquals(dynamoResult.items(), phoenixResult.items());
+        Assert.assertEquals(dynamoResult.scannedCount(), phoenixResult.scannedCount());
+
+        // check last evaluated key
+        Assert.assertTrue(dynamoResult.lastEvaluatedKey().isEmpty());
+        Assert.assertTrue(phoenixResult.lastEvaluatedKey().isEmpty());
+
+        // explain plan
+        TestUtils.validateIndexUsed(qr.build(), url);
+    }
+
+    @Test(timeout = 120000)
+    public void testGlobalIndexBeginsWithBeforePartitionKey() throws SQLException {
+        // create table with keys [attr_0]
+        final String tableName = testName.getMethodName();
+        final String indexName = "G_IDX_" + tableName;
+        CreateTableRequest createTableRequest =
+                DDLTestUtils.getCreateTableRequest(tableName, "attr_0",
+                        ScalarAttributeType.S, null, null);
+        // create index on IdS, Id3
+        createTableRequest = DDLTestUtils.addIndexToRequest(true, createTableRequest, indexName, "IdS",
+                ScalarAttributeType.S, "Id3", ScalarAttributeType.S);
+        phoenixDBClientV2.createTable(createTableRequest);
+        dynamoDbClient.createTable(createTableRequest);
+
+        //put items
+        PutItemRequest putItemRequest1 = PutItemRequest.builder().tableName(tableName).item(getItem1()).build();
+        PutItemRequest putItemRequest2 = PutItemRequest.builder().tableName(tableName).item(getItem2()).build();
+        phoenixDBClientV2.putItem(putItemRequest1);
+        phoenixDBClientV2.putItem(putItemRequest2);
+        dynamoDbClient.putItem(putItemRequest1);
+        dynamoDbClient.putItem(putItemRequest2);
+
+        //query request using index with begins_with before partition key
+        QueryRequest.Builder qr = QueryRequest.builder().tableName(tableName);
+        qr.indexName(indexName);
+        qr.keyConditionExpression("begins_with(#1, :v1) AND #0 = :v0");
+        Map<String, String> exprAttrNames = new HashMap<>();
+        exprAttrNames.put("#0", "IdS");
+        exprAttrNames.put("#1", "Id3");
+        qr.expressionAttributeNames(exprAttrNames);
+        Map<String, AttributeValue> exprAttrVal = new HashMap<>();
+        exprAttrVal.put(":v0", AttributeValue.builder().s("101.01").build());
+        exprAttrVal.put(":v1", AttributeValue.builder().s("fo").build());
+        qr.expressionAttributeValues(exprAttrVal);
+
+        // query result
+        QueryResponse phoenixResult = phoenixDBClientV2.query(qr.build());
+        QueryResponse dynamoResult = dynamoDbClient.query(qr.build());
+        Assert.assertEquals(dynamoResult.count(), phoenixResult.count());
+        Assert.assertEquals(dynamoResult.items(), phoenixResult.items());
+        Assert.assertEquals(dynamoResult.scannedCount(), phoenixResult.scannedCount());
+
+        // check last evaluated key
+        Assert.assertTrue(dynamoResult.lastEvaluatedKey().isEmpty());
+        Assert.assertTrue(phoenixResult.lastEvaluatedKey().isEmpty());
+
+        // explain plan
+        TestUtils.validateIndexUsed(qr.build(), url);
+    }
 }

@@ -120,8 +120,13 @@ public class QueryService {
                                 PhoenixUtils.getFullTableName(tableName, true)));
 
         // parse Key Conditions
-        KeyConditionsHolder keyConditions = new KeyConditionsHolder(keyCondExpr, exprAttrNames,
-                useIndex ? indexPKCols : tablePKCols, useIndex);
+        KeyConditionsHolder keyConditions;
+        try {
+            keyConditions = new KeyConditionsHolder(keyCondExpr, exprAttrNames,
+                    useIndex ? indexPKCols : tablePKCols, useIndex);
+        } catch (RuntimeException e) {
+            throw new ValidationException(e.getMessage());
+        }
         PColumn sortKeyPKCol = keyConditions.getSortKeyPKCol();
 
         // append all conditions for WHERE clause
