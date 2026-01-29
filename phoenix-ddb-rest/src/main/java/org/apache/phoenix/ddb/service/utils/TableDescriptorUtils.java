@@ -153,6 +153,9 @@ public class TableDescriptorUtils {
 
             updateTableDescriptorForIndexes(table, tableDescription, attributeDefinitionSet);
             updateStreamSpecification(table, tableDescription, phoenixConnection);
+            Map<String, Object> billingModeSummary = new HashMap<>();
+            billingModeSummary.put(ApiMetadata.BILLING_MODE, ApiMetadata.PROVISIONED);
+            tableDescription.put(ApiMetadata.BILLING_MODE_SUMMARY, billingModeSummary);
 
             return tableDescriptionResponse;
         } catch (SQLException e) {

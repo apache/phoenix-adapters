@@ -153,6 +153,7 @@ public class DescribeTableIT {
 
         DDLTestUtils.assertTableDescriptions(describeTableResult1.table(),
                 describeTableResult2.table());
+        Assert.assertNotNull(describeTableResult2.table().billingModeSummary());
     }
 
     @Test(timeout = 120000)
@@ -173,6 +174,7 @@ public class DescribeTableIT {
         DescribeTableResponse describeTableResult2 = phoenixDBClientV2.describeTable(dtr);
         DDLTestUtils.assertTableDescriptions(describeTableResult1.table(),
                 describeTableResult2.table());
+        Assert.assertNotNull(describeTableResult2.table().billingModeSummary());
 
         StreamSpecification streamSpec1 = describeTableResult1.table().streamSpecification();
         StreamSpecification streamSpec2 = describeTableResult2.table().streamSpecification();

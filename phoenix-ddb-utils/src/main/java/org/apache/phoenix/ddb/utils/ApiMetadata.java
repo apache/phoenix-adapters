@@ -36,6 +36,10 @@ public class ApiMetadata {
     public static final String READ_CAPACITY_UNITS = "ReadCapacityUnits";
     public static final String WRITE_CAPACITY_UNITS = "WriteCapacityUnits";
     public static final String CAPACITY_UNITS = "CapacityUnits";
+    public static final String BILLING_MODE_SUMMARY = "BillingModeSummary";
+    public static final String BILLING_MODE = "BillingMode";
+    public static final String PROVISIONED = "PROVISIONED";
+
 
     // ---------- Attribute Definitions and Schema ----------
     public static final String ATTRIBUTE_DEFINITIONS = "AttributeDefinitions";
