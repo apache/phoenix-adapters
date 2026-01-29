@@ -163,14 +163,18 @@ public class DescribeStreamIT {
 
         List<Shard> phoenixShards = new ArrayList<>();
         String lastEvaluatedShardId = null;
+        int limit = 7;
+        int pageCount = 0;
         do {
             StreamDescription phoenixStreamDesc = phoenixDBStreamsClientV2.describeStream(
                     DescribeStreamRequest.builder().streamArn(phoenixStreamArn)
-                            .exclusiveStartShardId(lastEvaluatedShardId).limit(3).build()).streamDescription();
+                            .exclusiveStartShardId(lastEvaluatedShardId).limit(limit).build()).streamDescription();
             phoenixShards.addAll(phoenixStreamDesc.shards());
             lastEvaluatedShardId = phoenixStreamDesc.lastEvaluatedShardId();
+            pageCount++;
         } while (lastEvaluatedShardId != null);
         Assert.assertEquals(19, phoenixShards.size());
+        Assert.assertEquals(19/limit + 1, pageCount);
 
         int open = 0, closed = 0;
         for (Shard shard : phoenixShards) {

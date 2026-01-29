@@ -35,16 +35,20 @@ public class ListTablesService {
         String query = String.format(SYSCAT_QUERY, exclusiveStartTableNameClause, limit);
         LOGGER.debug("Query for List Tables: {}", query);
         List<String> tableNames = new ArrayList<>();
+        int count = 0;
+        boolean sizeLimitReached = false;
         String lastEvaluatedTableName = null;
         try (Connection connection = ConnectionUtil.getConnection(connectionUrl)) {
             ResultSet rs = connection.createStatement().executeQuery(query);
             int bytesSize = 0;
             while (rs.next()) {
+                count++;
                 lastEvaluatedTableName = rs.getString(1);
                 tableNames.add(lastEvaluatedTableName);
                 bytesSize +=
                         (int) rs.unwrap(PhoenixResultSet.class).getCurrentRow().getSerializedSize();
                 if (bytesSize >= ApiMetadata.MAX_BYTES_SIZE) {
+                    sizeLimitReached = true;
                     break;
                 }
             }
@@ -53,7 +57,9 @@ public class ListTablesService {
         }
         Map<String, Object> response = new HashMap<>();
         response.put(ApiMetadata.TABLE_NAMES, tableNames);
-        response.put(ApiMetadata.LAST_EVALUATED_TABLE_NAME, lastEvaluatedTableName);
+        if (count == limit || sizeLimitReached) {
+            response.put(ApiMetadata.LAST_EVALUATED_TABLE_NAME, lastEvaluatedTableName);
+        }
         return response;
     }
 }

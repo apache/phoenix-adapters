@@ -57,13 +57,17 @@ public class DescribeStreamService {
                 List<Map<String, Object>> shards = new ArrayList<>();
                 String lastEvaluatedShardId = null;
                 ResultSet rs = conn.createStatement().executeQuery(sb.toString());
+                int count = 0;
                 while (rs.next()) {
+                    count++;
                     Map<String, Object> shard = getShardMetadata(rs);
                     shards.add(shard);
                     lastEvaluatedShardId = (String) shard.get(ApiMetadata.SHARD_ID);
                 }
                 streamDesc.put(ApiMetadata.SHARDS, shards);
-                streamDesc.put(ApiMetadata.LAST_EVALUATED_SHARD_ID, lastEvaluatedShardId);
+                if (count == limit) {
+                    streamDesc.put(ApiMetadata.LAST_EVALUATED_SHARD_ID, lastEvaluatedShardId);
+                }
             }
         } catch (SQLException e) {
             throw new PhoenixServiceException(e);

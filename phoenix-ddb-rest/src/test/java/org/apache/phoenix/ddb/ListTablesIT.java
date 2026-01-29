@@ -109,12 +109,13 @@ public class ListTablesIT {
             dynamoDbClient.createTable(createTableRequest);
         }
 
-        ListTablesRequest.Builder listTablesRequest = ListTablesRequest.builder().limit(2);
+        ListTablesRequest.Builder listTablesRequest = ListTablesRequest.builder().limit(4);
         ListTablesResponse phoenixResponse, dynamoDbResponse;
         do {
             phoenixResponse = phoenixDBClientV2.listTables(listTablesRequest.build());
             dynamoDbResponse = dynamoDbClient.listTables(listTablesRequest.build());
             Assert.assertEquals(dynamoDbResponse.tableNames(), phoenixResponse.tableNames());
+            Assert.assertEquals(dynamoDbResponse.lastEvaluatedTableName(), phoenixResponse.lastEvaluatedTableName());
             listTablesRequest.exclusiveStartTableName(phoenixResponse.lastEvaluatedTableName());
         } while (phoenixResponse.lastEvaluatedTableName() != null);
 
