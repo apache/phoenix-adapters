@@ -18,13 +18,20 @@
 
 package org.apache.phoenix.ddb.service.utils;
 
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.phoenix.ddb.rest.metrics.ApiOperation;
 import org.apache.phoenix.ddb.service.ScanService;
 import org.apache.phoenix.ddb.service.exceptions.ValidationException;
 import org.apache.phoenix.ddb.utils.ApiMetadata;
+import org.apache.phoenix.ddb.utils.PhoenixUtils;
+import org.apache.phoenix.schema.PColumn;
 
 /**
  * Validation for various API requests.
@@ -34,16 +41,18 @@ public class ValidationUtil {
     private static final int BATCH_WRITE_LIMIT = 25;
     private static final int BATCH_GET_LIMIT = 100;
 
-    public static void validateBatchWriteItemRequest(Map<String, Object> request) {
+    public static void validateBatchWriteItemRequest(Connection conn, Map<String, Object> request)
+            throws SQLException {
         int numItems = 0;
         Map<String, Object> requestItems = (Map<String, Object>) request.get(ApiMetadata.REQUEST_ITEMS);
         for (Map.Entry<String, Object> entry : requestItems.entrySet()) {
-            List<Object> ops = (List<Object>) entry.getValue();
+            List<Map<String, Object>> ops = (List<Map<String, Object>>) entry.getValue();
             if (ops != null) {
                 numItems += ops.size();
                 if (numItems > BATCH_WRITE_LIMIT) {
-                    throw new ValidationException("Too many items requested for the BatchGetItem call.");
+                    throw new ValidationException("Too many items requested for the BatchWriteItem call");
                 }
+                validateNonDuplicateKeys(conn, (String)entry.getKey(), ops);
             }
         }
     }
@@ -57,7 +66,7 @@ public class ValidationUtil {
             if (keys != null) {
                 numItems += keys.size();
                 if (numItems > BATCH_GET_LIMIT) {
-                    throw new ValidationException("Too many items requested for the BatchGetItem call.");
+                    throw new ValidationException("Too many items requested for the BatchGetItem call");
                 }
             }
         }
@@ -217,5 +226,37 @@ public class ValidationUtil {
         }
         validateReturnValues(returnValue, apiOperation);
         validateReturnValuesOnConditionCheckFailure(returnValuesOnConditionCheckFailure);
+    }
+
+    private static void validateNonDuplicateKeys(Connection conn, String tableName,
+                                                 List<Map<String, Object>> ops)
+            throws SQLException {
+        List<PColumn> pkCols = PhoenixUtils.getPKColumns(conn, tableName);
+        Set<Map<String, Object>> keys = new HashSet<>();
+        for (Map<String, Object> op : ops) {
+            Map<String, Object> key;
+            if (op.containsKey(ApiMetadata.PUT_REQUEST)) {
+                Map<String, Object> item = (Map<String, Object>)
+                        ((Map<String, Object>) op.get(ApiMetadata.PUT_REQUEST)).get(ApiMetadata.ITEM);
+                key = getKey(item, pkCols);
+            } else if (op.containsKey(ApiMetadata.DELETE_REQUEST)) {
+                key = (Map<String, Object>)
+                        ((Map<String, Object>)op.get(ApiMetadata.DELETE_REQUEST)).get(ApiMetadata.KEY);
+            } else {
+                throw new ValidationException("Unsupported request type for BatchWriteItem");
+            }
+            if (!keys.add(key)) {
+                throw new ValidationException("Provided list of item keys contains duplicates");
+            }
+        }
+    }
+
+    private static Map<String, Object> getKey(Map<String, Object> item, List<PColumn> pkCols) {
+        Map<String,Object> key = new HashMap<>();
+        for (PColumn pkCol : pkCols) {
+            String pkName = pkCol.getName().toString();
+            key.put(pkName, item.get(pkName));
+        }
+        return key;
     }
 }

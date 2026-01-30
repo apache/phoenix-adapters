@@ -17,8 +17,8 @@ public class BatchWriteItemService {
 
     public static Map<String, Object> batchWriteItem(Map<String, Object> request,
             String connectionUrl) {
-        ValidationUtil.validateBatchWriteItemRequest(request);
         try (Connection connection = ConnectionUtil.getConnection(connectionUrl)) {
+            ValidationUtil.validateBatchWriteItemRequest(connection, request);
             connection.setAutoCommit(false);
             Map<String, List<Map<String, Object>>> requestItems =
                     (Map<String, List<Map<String, Object>>>) request.get(ApiMetadata.REQUEST_ITEMS);
