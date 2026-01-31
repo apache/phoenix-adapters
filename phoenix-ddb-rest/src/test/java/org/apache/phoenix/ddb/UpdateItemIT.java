@@ -366,23 +366,26 @@ public class UpdateItemIT extends UpdateItemBaseTests {
         // Condition "attribute_exists(someField)" should be false on empty document
         UpdateItemRequest updateRequest = UpdateItemRequest.builder().tableName(tableName).key(key)
                 .updateExpression("SET newField = :val")
+                .returnValuesOnConditionCheckFailure(ALL_OLD)
                 .conditionExpression("attribute_exists(someField)").expressionAttributeValues(
                         Collections.singletonMap(":val",
                                 AttributeValue.builder().s("shouldNotCreate").build())).build();
 
         // Both should throw ConditionalCheckFailedException
+        ConditionalCheckFailedException ddbException = null;
         try {
             dynamoDbClient.updateItem(updateRequest);
             Assert.fail("DynamoDB should throw ConditionalCheckFailedException");
         } catch (ConditionalCheckFailedException e) {
-            // Expected
+            ddbException = e;
         }
 
         try {
             phoenixDBClientV2.updateItem(updateRequest);
             Assert.fail("Phoenix should throw ConditionalCheckFailedException");
         } catch (ConditionalCheckFailedException e) {
-            // Expected
+            Assert.assertEquals(ddbException.hasItem(), e.hasItem());
+            Assert.assertEquals(ddbException.item(), e.item());
         }
 
         // Verify final state by querying both Phoenix and DDB
@@ -524,7 +527,7 @@ public class UpdateItemIT extends UpdateItemBaseTests {
         // Test ALL_NEW - should succeed
         updateRequest = UpdateItemRequest.builder().tableName(tableName).key(key)
             .updateExpression("SET stringField = :val")
-            .expressionAttributeValues(expressionAttributeValues).returnValues(ReturnValue.ALL_NEW)
+            .expressionAttributeValues(expressionAttributeValues).returnValues(ALL_NEW)
             .build();
         UpdateItemResponse dynamoResult3 = dynamoDbClient.updateItem(updateRequest);
         UpdateItemResponse phoenixResult3 = phoenixDBClientV2.updateItem(updateRequest);
@@ -608,7 +611,7 @@ public class UpdateItemIT extends UpdateItemBaseTests {
         updateRequest = UpdateItemRequest.builder().tableName(tableName).key(key)
             .updateExpression("SET stringField = :val")
             .expressionAttributeValues(expressionAttributeValues)
-            .returnValuesOnConditionCheckFailure(ReturnValuesOnConditionCheckFailure.ALL_OLD)
+            .returnValuesOnConditionCheckFailure(ALL_OLD)
             .build();
         UpdateItemResponse dynamoResult2 = dynamoDbClient.updateItem(updateRequest);
         UpdateItemResponse phoenixResult2 = phoenixDBClientV2.updateItem(updateRequest);

@@ -94,8 +94,10 @@ public class DMLUtils {
                         new ConditionCheckFailedException();
                     if (ApiMetadata.ALL_OLD.equals(returnValuesOnConditionCheckFailure) &&
                         apiOperation != ApiOperation.DELETE_ITEM) {
-                        conditionalCheckFailedException.setItem(
-                            BsonDocumentToMap.getFullItem(rawBsonDocument));
+                        if (rawBsonDocument != null) {
+                            conditionalCheckFailedException.setItem(
+                                    BsonDocumentToMap.getFullItem(rawBsonDocument));
+                        }
                     }
                     throw conditionalCheckFailedException;
                 }
