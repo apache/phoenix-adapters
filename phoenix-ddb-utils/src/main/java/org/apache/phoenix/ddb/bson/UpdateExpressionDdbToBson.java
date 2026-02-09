@@ -21,13 +21,11 @@ package org.apache.phoenix.ddb.bson;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.bson.BsonArray;
 import org.bson.BsonDocument;
 import org.bson.BsonNull;
-import org.bson.BsonNumber;
 import org.bson.BsonString;
 import org.bson.BsonValue;
-
-import org.apache.phoenix.expression.util.bson.UpdateExpressionUtils;
 
 /**
  * Utility to convert DynamoDB UpdateExpression into BSON Update Expression.
@@ -38,10 +36,12 @@ public class UpdateExpressionDdbToBson {
   private static final String removeRegExPattern = "REMOVE\\s+(.+?)(?=\\s+(SET|ADD|DELETE)\\b|$)";
   private static final String addRegExPattern = "ADD\\s+(.+?)(?=\\s+(SET|REMOVE|DELETE)\\b|$)";
   private static final String deleteRegExPattern = "DELETE\\s+(.+?)(?=\\s+(SET|REMOVE|ADD)\\b|$)";
+  private static final String ifNotExistsPattern = "if_not_exists\\s*\\(\\s*([^,]+)\\s*,\\s*([^)]+)\\s*\\)";
   private static final Pattern SET_PATTERN = Pattern.compile(setRegExPattern);
   private static final Pattern REMOVE_PATTERN = Pattern.compile(removeRegExPattern);
   private static final Pattern ADD_PATTERN = Pattern.compile(addRegExPattern);
   private static final Pattern DELETE_PATTERN = Pattern.compile(deleteRegExPattern);
+  private static final Pattern IF_NOT_EXISTS_PATTERN = Pattern.compile(ifNotExistsPattern);
 
   public static BsonDocument getBsonDocumentForUpdateExpression(
       final String updateExpression,
@@ -75,7 +75,8 @@ public class UpdateExpressionDdbToBson {
     BsonDocument bsonDocument = new BsonDocument();
     if (!setString.isEmpty()) {
       BsonDocument setBsonDoc = new BsonDocument();
-      String[] setExpressions = setString.split(",");
+      // split by comma only if comma is not within ()
+      String[] setExpressions = setString.split(",(?![^()]*+\\))");
       for (int i = 0; i < setExpressions.length; i++) {
         String setExpression = setExpressions[i].trim();
         String[] keyVal = setExpression.split("\\s*=\\s*");
@@ -83,19 +84,9 @@ public class UpdateExpressionDdbToBson {
           String attributeKey = keyVal[0].trim();
           String attributeVal = keyVal[1].trim();
           if (attributeVal.contains("+") || attributeVal.contains("-")) {
-            setBsonDoc.put(attributeKey, getArithmeticExpVal(attributeVal, comparisonValue));
+            setBsonDoc.put(attributeKey, getArithmeticDoc(attributeVal, comparisonValue));
           } else if (attributeVal.startsWith("if_not_exists")) {
-            // attributeVal --> if_not_exists ( path
-            String ifNotExistsPath = attributeVal.split("\\(")[1].trim();
-            // next setExpression --> value)
-            String fallBackValue = setExpressions[i+1].split("\\)")[0].trim();
-            BsonValue fallBackValueBson = comparisonValue.get(fallBackValue);
-            BsonDocument fallBackDoc = new BsonDocument();
-            fallBackDoc.put(ifNotExistsPath, fallBackValueBson);
-            BsonDocument ifNotExistsDoc = new BsonDocument();
-            ifNotExistsDoc.put("$IF_NOT_EXISTS", fallBackDoc);
-            setBsonDoc.put(attributeKey, ifNotExistsDoc);
-            i++;
+            setBsonDoc.put(attributeKey, getIfNotExistsDoc(attributeVal, comparisonValue));
           } else {
             setBsonDoc.put(attributeKey, comparisonValue.get(attributeVal));
           }
@@ -153,36 +144,52 @@ public class UpdateExpressionDdbToBson {
     return bsonDocument;
   }
 
-  private static BsonString getArithmeticExpVal(String attributeVal,
-      BsonDocument comparisonValuesDocument) {
-    String[] tokens = attributeVal.split("\\s+");
-    Pattern pattern = Pattern.compile("[#:$]?[^\\s\\n]+");
-    StringBuilder val = new StringBuilder();
-    for (String token : tokens) {
-      if (token.equals("+")) {
-        val.append(" + ");
-        continue;
-      } else if (token.equals("-")) {
-        val.append(" - ");
-        continue;
+  private static BsonDocument getArithmeticDoc(String expr, BsonDocument comparisonValue) {
+      BsonDocument arithmeticDoc = new BsonDocument();
+      String op;
+      String[] operands;
+      if (expr.contains("+")) {
+          op = "$ADD";
+          operands = expr.split("\\+");
+      } else if (expr.contains("-")) {
+          op = "$SUBTRACT";
+          operands = expr.split("-");
+      } else {
+          throw new IllegalArgumentException("Unsupported arithmetic operator for SET");
       }
-      Matcher matcher = pattern.matcher(token);
-      if (matcher.find()) {
-        String operand = matcher.group();
-        if (operand.startsWith(":") || operand.startsWith("$") || operand.startsWith("#")) {
-          BsonValue bsonValue = comparisonValuesDocument.get(operand);
-          if (!bsonValue.isNumber() && !bsonValue.isDecimal128()) {
-            throw new IllegalArgumentException(
-                "Operand " + operand + " is not provided as number type");
+      BsonArray bsonOperands = new BsonArray();
+      for (String operand : operands) {
+          operand = operand.trim();
+          if (operand.startsWith("if_not_exists")) {
+              bsonOperands.add(getIfNotExistsDoc(operand, comparisonValue));
+          } else if (operand.startsWith(":") || operand.startsWith("$") || operand.startsWith("#")) {
+              BsonValue bsonValue = comparisonValue.get(operand);
+              if (!bsonValue.isNumber() && !bsonValue.isDecimal128()) {
+                  throw new IllegalArgumentException(
+                          "Operand " + operand + " is not provided as number type");
+              }
+              bsonOperands.add(bsonValue);
+          } else {
+              bsonOperands.add(new BsonString(operand));
           }
-          Number numVal = UpdateExpressionUtils.getNumberFromBsonNumber((BsonNumber) bsonValue);
-          val.append(numVal);
-        } else {
-          val.append(operand);
-        }
       }
-    }
-    return new BsonString(val.toString());
+      arithmeticDoc.put(op, bsonOperands);
+      return arithmeticDoc;
   }
 
+  private static BsonDocument getIfNotExistsDoc(String expr, BsonDocument comparisonValue) {
+      Matcher m = IF_NOT_EXISTS_PATTERN.matcher(expr);
+      if (m.find()) {
+          String ifNotExistsPath = m.group(1).trim();
+          String fallBackValue = m.group(2).trim();
+          BsonValue fallBackValueBson = comparisonValue.get(fallBackValue);
+          BsonDocument fallBackDoc = new BsonDocument();
+          fallBackDoc.put(ifNotExistsPath, fallBackValueBson);
+          BsonDocument ifNotExistsDoc = new BsonDocument();
+          ifNotExistsDoc.put("$IF_NOT_EXISTS", fallBackDoc);
+          return ifNotExistsDoc;
+      } else {
+          throw new RuntimeException("Invalid format for if_not_exists(path, value)");
+      }
+  }
 }

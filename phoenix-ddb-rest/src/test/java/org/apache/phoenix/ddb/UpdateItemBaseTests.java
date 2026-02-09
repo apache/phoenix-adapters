@@ -143,7 +143,7 @@ public class UpdateItemBaseTests {
      * attribute that is of type Number.
      */
     @Test(timeout = 120000)
-    public void testSet() {
+    public void testSet1() {
         final String tableName = testName.getMethodName().replaceAll("[\\[\\]]", "");
         createTableAndPutItem(tableName, true);
 
@@ -164,6 +164,45 @@ public class UpdateItemBaseTests {
         exprAttrVal.put(":v3", AttributeValue.builder().n("89.34").build());
         exprAttrVal.put(":v4",
                 AttributeValue.builder().b(SdkBytes.fromByteArray(new byte[] {1, -1})).build());
+        uir.expressionAttributeValues(exprAttrVal);
+        dynamoDbClient.updateItem(uir.build());
+        phoenixDBClientV2.updateItem(uir.build());
+
+        validateItem(tableName, key);
+    }
+
+    /**
+     * SET: test arithmetic operations with if_not_exists function.
+     */
+    @Test(timeout = 120000)
+    public void testSet2() {
+        final String tableName = testName.getMethodName().replaceAll("[\\[\\]]", "");
+        createTableAndPutItem(tableName, true);
+
+        // update item
+        Map<String, AttributeValue> key = getKey();
+        UpdateItemRequest.Builder uir = UpdateItemRequest.builder().tableName(tableName).key(key);
+        uir.updateExpression("SET #1 = if_not_exists(#1, :v100) + :v1, " +
+                "#4 = :v100 - if_not_exists( #4, :v100), " +
+                "#n1 = if_not_exists(#n1, :v0) + :v100,  " +
+                "#n2 = if_not_exists(#n2, :v110)- :v10, " +
+                "#n5 = if_not_exists(#n5, :v10)  + if_not_exists(#5,  :v0), " +
+                "NEWCOL6 = if_not_exists(NEWCOL6, :v10)");
+
+        Map<String, String> exprAttrNames = new HashMap<>();
+        exprAttrNames.put("#1", "COL1");
+        exprAttrNames.put("#4", "COL4");
+        exprAttrNames.put("#n1", "NEWCOL1");
+        exprAttrNames.put("#n2", "NEWCOL2");
+        exprAttrNames.put("#5", "COL5");
+        exprAttrNames.put("#n5", "NEWCOL5");
+        uir.expressionAttributeNames(exprAttrNames);
+        Map<String, AttributeValue> exprAttrVal = new HashMap<>();
+        exprAttrVal.put(":v1", AttributeValue.builder().n("1").build());
+        exprAttrVal.put(":v10", AttributeValue.builder().n("10").build());
+        exprAttrVal.put(":v100", AttributeValue.builder().n("100").build());
+        exprAttrVal.put(":v110", AttributeValue.builder().n("110").build());
+        exprAttrVal.put(":v0", AttributeValue.builder().n("0").build());
         uir.expressionAttributeValues(exprAttrVal);
         dynamoDbClient.updateItem(uir.build());
         phoenixDBClientV2.updateItem(uir.build());
@@ -404,6 +443,7 @@ public class UpdateItemBaseTests {
         item.put("COL2", AttributeValue.builder().s("Title1").build());
         item.put("COL3", AttributeValue.builder().s("Description1").build());
         item.put("COL4", AttributeValue.builder().n("34").build());
+        item.put("COL5", AttributeValue.builder().n("67").build());
         item.put("TopLevelSet", AttributeValue.builder().ss("setMember1").build());
         Map<String, AttributeValue> reviewMap1 = new HashMap<>();
         reviewMap1.put("reviewer", AttributeValue.builder().s("Alice").build());
