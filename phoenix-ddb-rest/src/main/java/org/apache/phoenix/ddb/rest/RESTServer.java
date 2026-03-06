@@ -90,7 +90,7 @@ public class RESTServer {
     private static final String START = "start";
     private static final String STOP = "stop";
     private static final String SERVER_NOT_RUNNING_ERR_MSG = "Server is not running";
-    private static final int VALIDATE_SYSCAT_CONNECTION_MAX_RETRIES = 10;
+    private static final int VALIDATE_SYSCAT_CONNECTION_MAX_RETRIES = 5;
     private static final long VALIDATE_SYSCAT_CONNECTION_RETRY_INTERVAL_MS = 1_000;
 
     public RESTServer(Configuration conf) {
