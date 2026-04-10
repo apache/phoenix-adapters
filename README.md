@@ -46,6 +46,8 @@ endpoint.
     - GetShardIterator
     - GetRecords
 
+**For detailed project overview and API reference (including request/response parameters, validations, and examples), see the [DynamoDB API Reference](DDB_API_REFERENCE.md)**
+
 ### Connecting with AWS SDK
 
 The Phoenix DynamoDB REST service is fully compatible with AWS SDKs. You can connect to it by simply configuring the endpoint URL to point to your Phoenix REST service instead of the standard DynamoDB endpoint.
