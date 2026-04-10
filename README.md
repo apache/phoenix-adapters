@@ -42,7 +42,7 @@ endpoint.
     - DeleteItem
 - **Change Stream**:
     - ListStreams
-    - DescribeStreams
+    - DescribeStream
     - GetShardIterator
     - GetRecords
 
@@ -120,13 +120,13 @@ Logging can be configured in `conf/log4j.properties`. The default configuration 
 To start the REST server as a daemon:
 
 ```bash
-bin/phoenix-adapters start rest
+bin/phoenix-adapters rest start
 ```
 
 To start in foreground mode (for debugging):
 
 ```bash
-bin/phoenix-adapters rest
+bin/phoenix-adapters rest foreground_start
 ```
 
 ### Checking Server Status
@@ -134,7 +134,7 @@ bin/phoenix-adapters rest
 To check if the server is running:
 
 ```bash
-bin/phoenix-adapters status rest
+bin/phoenix-adapters rest status
 ```
 
 ### Stopping the Server
@@ -142,7 +142,7 @@ bin/phoenix-adapters status rest
 To stop the server:
 
 ```bash
-bin/phoenix-adapters stop rest
+bin/phoenix-adapters rest stop
 ```
 
 ### Restarting the Server
@@ -150,7 +150,7 @@ bin/phoenix-adapters stop rest
 To restart the server:
 
 ```bash
-bin/phoenix-adapters restart rest
+bin/phoenix-adapters rest restart
 ```
 
 ## Logs

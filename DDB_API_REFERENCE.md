@@ -114,7 +114,7 @@ Client applications using **any AWS SDK** (Java, Python, Node.js, Go, etc.) only
 └───────────────────────────────┘
 ```
 
-### Key Design Decisions
+### High Level Design Components
 
 1. **Single POST Endpoint**: All operations hit `POST /`. The operation is determined by the `X-Amz-Target` header (e.g., `DynamoDB_20120810.CreateTable`).
 2. **BSON Column Storage**: Each DynamoDB item is stored as a single BSON document in a Phoenix column named `COL`. Primary key and Secondary key columns are stored separately for indexing.
@@ -371,7 +371,7 @@ All list/query/scan operations support pagination:
 | GetRecords response size | 1 MB | GetRecords |
 | Query result limit (max per page) | 100 items OR 1 MB, whichever comes first | Query |
 | Scan result limit (max per page) | 100 items OR 1 MB, whichever comes first | Scan |
-| GetRecords limit (max per page) | 50 records | GetRecords |
+| GetRecords limit (max per page) | 50 records OR 1 MB, whichever comes first | GetRecords |
 | ListTables default limit | 100 tables | ListTables |
 | ListStreams default limit | 100 streams | ListStreams |
 | DescribeStream shard limit | 100 shards | DescribeStream |
@@ -478,7 +478,7 @@ CREATE TABLE IF NOT EXISTS "SCHEMA"."MyTable" (
   "id" VARCHAR NOT NULL,
   "COL" BSON,
   CONSTRAINT pk PRIMARY KEY ("id")
-) IS_STRICT_TTL=false, UPDATE_CACHE_FREQUENCY=1800000, ...
+) IS_STRICT_TTL=false, UPDATE_CACHE_FREQUENCY=60000, ...
 ```
 
 For tables with a sort key:
@@ -1700,11 +1700,11 @@ bin/phoenix-adapters rest start -p <port> -z <zk-quorum>
 | `phoenix.ddb.rest.dns.interface` | `default` | DNS interface for hostname resolution |
 | `phoenix.ddb.rest.dns.nameserver` | `default` | DNS nameserver |
 
-### Phoenix Table Configuration (phoenix-table-options.properties)
+### Phoenix Table Default Configuration (phoenix-table-options.properties)
 
 ```properties
 IS_STRICT_TTL=false
-UPDATE_CACHE_FREQUENCY=1800000
+UPDATE_CACHE_FREQUENCY=60000
 phoenix.max.lookback.age.seconds=97200
 hbase.hregion.majorcompaction=172800000
 org.apache.hadoop.hbase.index.lazy.post_batch.write=true
@@ -1809,9 +1809,9 @@ Each API operation tracks:
 
 ---
 
-## Quick Reference:
+## API Reference:
 
-| # | Category | Operation | X-Amz-Target Suffix |
+| # | Category | Operation | X-Amz-Target |
 |---|---|---|---|
 | 1 | DDL | CreateTable | `DynamoDB_20120810.CreateTable` |
 | 2 | DDL | DeleteTable | `DynamoDB_20120810.DeleteTable` |
