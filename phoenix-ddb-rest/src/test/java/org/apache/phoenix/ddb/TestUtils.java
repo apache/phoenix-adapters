@@ -446,6 +446,7 @@ public class TestUtils {
             sr.exclusiveStartKey(phoenixResponse.lastEvaluatedKey());
         } while (phoenixResponse.hasLastEvaluatedKey());
 
+        sr.exclusiveStartKey(null);
         List<Map<String, AttributeValue>> ddbResult = new ArrayList<>();
         ScanResponse ddbResponse;
         do {
