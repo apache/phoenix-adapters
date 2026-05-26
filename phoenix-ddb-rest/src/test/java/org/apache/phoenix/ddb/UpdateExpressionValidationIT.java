@@ -18,7 +18,10 @@
 package org.apache.phoenix.ddb;
 
 import java.sql.DriverManager;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.junit.After;
@@ -758,5 +761,619 @@ public class UpdateExpressionValidationIT {
         GetItemResponse dynamoResult = dynamoDbClient.getItem(gir);
         Assert.assertTrue("Item should be identical in DynamoDB and Phoenix",
                 ItemComparator.areItemsEqual(dynamoResult.item(), phoenixResult.item()));
+    }
+
+    // ---------------------------------------------------------------------------------
+    // Grammar / structure validation: malformed UpdateExpression strings should be
+    // rejected with HTTP 400 by both DynamoDB and the Phoenix adapter.
+    // ---------------------------------------------------------------------------------
+
+    @Test(timeout = 120000)
+    public void testEmptySetClauseBody() {
+        testUpdateExpressionFailure(tableName, "SET ", null, null, "empty SET body");
+    }
+
+    @Test(timeout = 120000)
+    public void testEmptyRemoveClauseBody() {
+        testUpdateExpressionFailure(tableName, "REMOVE ", null, null, "empty REMOVE body");
+    }
+
+    @Test(timeout = 120000)
+    public void testEmptyAddClauseBody() {
+        testUpdateExpressionFailure(tableName, "ADD ", null, null, "empty ADD body");
+    }
+
+    @Test(timeout = 120000)
+    public void testEmptyDeleteClauseBody() {
+        testUpdateExpressionFailure(tableName, "DELETE ", null, null, "empty DELETE body");
+    }
+
+    @Test(timeout = 120000)
+    public void testDuplicatePathInSet() {
+        Map<String, AttributeValue> v = new HashMap<>();
+        v.put(":v1", AttributeValue.builder().s("x").build());
+        v.put(":v2", AttributeValue.builder().s("y").build());
+        testUpdateExpressionFailure(tableName, "SET a = :v1, a = :v2", null, v,
+                "duplicate path in SET");
+    }
+
+    @Test(timeout = 120000)
+    public void testPathOverlapInSet() {
+        Map<String, AttributeValue> v = new HashMap<>();
+        v.put(":v1", AttributeValue.builder().s("x").build());
+        v.put(":v2", AttributeValue.builder().s("y").build());
+        testUpdateExpressionFailure(tableName, "SET a.b = :v1, a = :v2", null, v,
+                "overlapping paths in SET");
+    }
+
+    @Test(timeout = 120000)
+    public void testPathOverlapInRemove() {
+        testUpdateExpressionFailure(tableName, "REMOVE a, a.b", null, null,
+                "overlapping paths in REMOVE");
+    }
+
+    @Test(timeout = 120000)
+    public void testDuplicateClauseKeyword() {
+        Map<String, AttributeValue> v = new HashMap<>();
+        v.put(":v1", AttributeValue.builder().s("x").build());
+        v.put(":v2", AttributeValue.builder().s("y").build());
+        testUpdateExpressionFailure(tableName, "SET a = :v1 SET b = :v2", null, v,
+                "duplicate SET keyword");
+    }
+
+    /**
+     * SET keyword appears twice with another clause interleaved between the two SETs.
+     * Different parse path than the back-to-back duplicate; both DDB and adapter still 400.
+     */
+    @Test(timeout = 120000)
+    public void testDuplicateClauseKeywordInterleaved() {
+        Map<String, AttributeValue> v = new HashMap<>();
+        v.put(":v1", AttributeValue.builder().s("x").build());
+        v.put(":v2", AttributeValue.builder().s("y").build());
+        testUpdateExpressionFailure(tableName,
+                "SET a = :v1 REMOVE c SET b = :v2", null, v,
+                "duplicate SET keyword interleaved with REMOVE");
+    }
+
+    @Test(timeout = 120000)
+    public void testIfNotExistsArityThree() {
+        Map<String, AttributeValue> v = new HashMap<>();
+        v.put(":v", AttributeValue.builder().s("x").build());
+        v.put(":v2", AttributeValue.builder().s("y").build());
+        testUpdateExpressionFailure(tableName, "SET a = if_not_exists(a, :v, :v2)", null, v,
+                "if_not_exists arity 3");
+    }
+
+    @Test(timeout = 120000)
+    public void testIfNotExistsArityOne() {
+        testUpdateExpressionFailure(tableName, "SET a = if_not_exists(a)", null, null,
+                "if_not_exists arity 1");
+    }
+
+    @Test(timeout = 120000)
+    public void testIfNotExistsOutsideSet() {
+        Map<String, AttributeValue> v = Collections.singletonMap(":v",
+                AttributeValue.builder().n("1").build());
+        testUpdateExpressionFailure(tableName, "ADD a if_not_exists(a, :v)", null, v,
+                "if_not_exists in ADD");
+    }
+
+    @Test(timeout = 120000)
+    public void testListAppendOutsideSet() {
+        Map<String, AttributeValue> v = Collections.singletonMap(":v",
+                AttributeValue.builder().l(AttributeValue.builder().s("x").build()).build());
+        testUpdateExpressionFailure(tableName, "ADD a list_append(a, :v)", null, v,
+                "list_append in ADD");
+    }
+
+    @Test(timeout = 120000)
+    public void testUndeclaredExpressionAttributeName() {
+        Map<String, AttributeValue> v = Collections.singletonMap(":v",
+                AttributeValue.builder().s("x").build());
+        testUpdateExpressionFailure(tableName, "SET #unknown = :v", null, v,
+                "undeclared expression attribute name");
+    }
+
+    @Test(timeout = 120000)
+    public void testUndeclaredExpressionAttributeValueInSet() {
+        testUpdateExpressionFailure(tableName, "SET a = :missing", null, null,
+                "undeclared expression attribute value in SET");
+    }
+
+    @Test(timeout = 120000)
+    public void testUndeclaredExpressionAttributeValueInAdd() {
+        testUpdateExpressionFailure(tableName, "ADD a :missing", null, null,
+                "undeclared expression attribute value in ADD");
+    }
+
+    @Test(timeout = 120000)
+    public void testUndeclaredExpressionAttributeValueInDelete() {
+        testUpdateExpressionFailure(tableName, "DELETE a :missing", null, null,
+                "undeclared expression attribute value in DELETE");
+    }
+
+    @Test(timeout = 120000)
+    public void testRemoveAndSetOnSamePath() {
+        Map<String, AttributeValue> v = Collections.singletonMap(":v",
+                AttributeValue.builder().s("x").build());
+        testUpdateExpressionFailure(tableName, "SET a = :v REMOVE a", null, v,
+                "SET and REMOVE on same path");
+    }
+
+    /**
+     * {@code list_append(...) + list_append(...)} — list values cannot be arithmetic operands.
+     * Both DDB and the adapter return 400.
+     */
+    @Test(timeout = 120000)
+    public void testListAppendAsArithmeticOperandRejected() {
+        Map<String, AttributeValue> v = new HashMap<>();
+        v.put(":v", AttributeValue.builder().l(
+                AttributeValue.builder().s("x").build()).build());
+        v.put(":w", AttributeValue.builder().l(
+                AttributeValue.builder().s("y").build()).build());
+        testUpdateExpressionFailure(tableName,
+                "SET col = list_append(a, :v) + list_append(:w, b)", null, v,
+                "list_append cannot be an arithmetic operand");
+    }
+
+    /**
+     * Arithmetic where the {@code if_not_exists} fallback resolves to a non-numeric placeholder.
+     * The visitor type-checks the placeholder at parse time so the 400 is anchored at the
+     * adapter's parser layer; DDB rejects with the same status.
+     */
+    @Test(timeout = 120000)
+    public void testArithmeticIfNotExistsNonNumericFallbackRejected() {
+        Map<String, AttributeValue> v = new HashMap<>();
+        v.put(":s", AttributeValue.builder().s("notANumber").build());
+        v.put(":one", AttributeValue.builder().n("1").build());
+        testUpdateExpressionFailure(tableName,
+                "SET counter = if_not_exists(c, :s) + :one", null, v,
+                "arithmetic with non-numeric if_not_exists fallback");
+    }
+
+    /**
+     * Probe DDB and the adapter for case-sensitivity of clause keywords and function names.
+     * Asserts parity (both backends return the same status) for each variant. If DDB accepts
+     * a case-mixed form that the adapter rejects (or vice versa), this test fails with a
+     * clear message naming the offending input — that's how we discover whether our grammar
+     * is in fact stricter or looser than DDB.
+     */
+    @Test(timeout = 120000)
+    public void testCaseSensitivityParity() {
+        // Re-seed the item before each iteration since some cases may mutate it.
+        Map<String, AttributeValue> seed = getKey();
+        seed.put("a", AttributeValue.builder().ss("x").build());
+        seed.put("evt", AttributeValue.builder().l(
+                AttributeValue.builder().s("e0").build()).build());
+
+        AttributeValue numV = AttributeValue.builder().n("1").build();
+        AttributeValue ssV = AttributeValue.builder().ss("y").build();
+        AttributeValue listV = AttributeValue.builder().l(
+                AttributeValue.builder().s("e1").build()).build();
+        AttributeValue emptyL = AttributeValue.builder().l(java.util.Collections.emptyList()).build();
+
+        // Each case: input expression -> the values map sized to exactly what it references.
+        Map<String, Map<String, AttributeValue>> cases = new java.util.LinkedHashMap<>();
+        cases.put("SET a = :v",            singleValue(":v", numV));
+        cases.put("set a = :v",            singleValue(":v", numV));
+        cases.put("Set a = :v",            singleValue(":v", numV));
+        cases.put("REMOVE a",              null);
+        cases.put("remove a",              null);
+        cases.put("Remove a",              null);
+        cases.put("ADD a :v",              singleValue(":v", ssV));
+        cases.put("add a :v",              singleValue(":v", ssV));
+        cases.put("Add a :v",              singleValue(":v", ssV));
+        cases.put("DELETE a :v",           singleValue(":v", ssV));
+        cases.put("delete a :v",           singleValue(":v", ssV));
+        cases.put("Delete a :v",           singleValue(":v", ssV));
+        cases.put("SET myCounter = if_not_exists(myCounter, :one)",
+                singleValue(":one", numV));
+        cases.put("SET myCounter = If_Not_Exists(myCounter, :one)",
+                singleValue(":one", numV));
+        cases.put("SET myCounter = IF_NOT_EXISTS(myCounter, :one)",
+                singleValue(":one", numV));
+        cases.put("SET evt = list_append(evt, :more)",
+                singleValue(":more", listV));
+        cases.put("SET evt = List_Append(evt, :more)",
+                singleValue(":more", listV));
+        cases.put("SET evt = LIST_APPEND(evt, :more)",
+                singleValue(":more", listV));
+
+        StringBuilder mismatches = new StringBuilder();
+        for (Map.Entry<String, Map<String, AttributeValue>> e : cases.entrySet()) {
+            String expr = e.getKey();
+            // Reset the seed before every probe so prior mutations don't influence later cases.
+            putTestItem(tableName, seed);
+
+            UpdateItemRequest req = buildUpdateItemRequest(tableName, expr, null, e.getValue());
+            int ddbStatus = invokeStatus(() -> dynamoDbClient.updateItem(req));
+            int phxStatus = invokeStatus(() -> phoenixDBClientV2.updateItem(req));
+            if (ddbStatus != phxStatus) {
+                mismatches.append("\n  expr=`").append(expr)
+                        .append("`  ddb=").append(ddbStatus).append("  phoenix=").append(phxStatus);
+            }
+        }
+        Assert.assertEquals("Case-sensitivity parity mismatches:" + mismatches,
+                0, mismatches.length());
+    }
+
+    private static Map<String, AttributeValue> singleValue(String name, AttributeValue v) {
+        return Collections.singletonMap(name, v);
+    }
+
+    /**
+     * One UpdateItem call combining all four clause keywords in mixed case. Confirms the
+     * lexer handles every clause's case-insensitivity end-to-end and that DDB and the adapter
+     * end up with byte-equal items.
+     */
+    @Test(timeout = 120000)
+    public void testAllClausesMixedCaseRoundTrip() {
+        Map<String, AttributeValue> seed = getKey();
+        seed.put("myCounter", AttributeValue.builder().n("10").build());
+        seed.put("rmField", AttributeValue.builder().s("removeMe").build());
+        seed.put("addCnt", AttributeValue.builder().n("5").build());
+        seed.put("delSet", AttributeValue.builder().ss("a", "b", "c").build());
+        putTestItem(tableName, seed);
+
+        Map<String, AttributeValue> values = new HashMap<>();
+        values.put(":inc", AttributeValue.builder().n("3").build());
+        values.put(":addV", AttributeValue.builder().n("7").build());
+        values.put(":delV", AttributeValue.builder().ss("a").build());
+        testUpdateExpressionSuccess(tableName,
+                "Set myCounter = myCounter + :inc remove rmField ADD addCnt :addV dElEtE delSet :delV",
+                null, values, "all four clauses in mixed case");
+    }
+
+    /** Returns 200 if the action succeeded, otherwise the DynamoDbException status code. */
+    private int invokeStatus(Runnable action) {
+        try {
+            action.run();
+            return 200;
+        } catch (DynamoDbException e) {
+            return e.statusCode();
+        }
+    }
+
+    /**
+     * Bare attribute name cannot start with a digit per DDB's expression syntax. Aliased paths
+     * starting with a digit (e.g. {@code #5star}) are still accepted — covered separately by
+     * the nested-alias-path tests.
+     */
+    @Test(timeout = 120000)
+    public void testBareAttributeNameStartingWithDigitRejected() {
+        Map<String, AttributeValue> v = Collections.singletonMap(":v",
+                AttributeValue.builder().s("x").build());
+        testUpdateExpressionFailure(tableName, "SET 5col = :v", null, v,
+                "bare attribute name starting with digit");
+    }
+
+    @Test(timeout = 120000)
+    public void testEmptyUpdateExpression() {
+        testUpdateExpressionFailure(tableName, "", null, null, "empty UpdateExpression");
+    }
+
+    @Test(timeout = 120000)
+    public void testWhitespaceOnlyUpdateExpression() {
+        testUpdateExpressionFailure(tableName, "   ", null, null,
+                "whitespace-only UpdateExpression");
+    }
+
+    /**
+     * Parent vs nested-field overlap with seed where {@code a} is a Map. Without parser-level
+     * overlap detection this would have FAILED parity (DDB 400, Phoenix 200 with silent overwrite)
+     * because the BSON descent succeeds when the parent is actually a map.
+     */
+    @Test(timeout = 120000)
+    public void testPathOverlapInSetWhenParentIsMap() {
+        Map<String, AttributeValue> nested = new HashMap<>();
+        nested.put("b", AttributeValue.builder().s("inner").build());
+        Map<String, AttributeValue> item = getKey();
+        item.put("a", AttributeValue.builder().m(nested).build());
+        putTestItem(tableName, item);
+
+        Map<String, AttributeValue> v = new HashMap<>();
+        v.put(":v1", AttributeValue.builder().s("x").build());
+        v.put(":v2", AttributeValue.builder().s("y").build());
+        testUpdateExpressionFailure(tableName, "SET a.b = :v1, a = :v2", null, v,
+                "parent/nested-field overlap with map-typed parent");
+    }
+
+    /**
+     * Parent vs array-index overlap with seed where {@code a} is a List.
+     */
+    @Test(timeout = 120000)
+    public void testPathOverlapInSetWhenParentIsList() {
+        Map<String, AttributeValue> item = getKey();
+        item.put("a", AttributeValue.builder().l(
+                AttributeValue.builder().s("x").build()).build());
+        putTestItem(tableName, item);
+
+        Map<String, AttributeValue> v = new HashMap<>();
+        v.put(":v1", AttributeValue.builder().s("y").build());
+        v.put(":v2", AttributeValue.builder().l(
+                AttributeValue.builder().s("z").build()).build());
+        testUpdateExpressionFailure(tableName, "SET a[0] = :v1, a = :v2", null, v,
+                "parent/array-index overlap with list-typed parent");
+    }
+
+    /**
+     * Same-clause overlap between two nested paths where one is a strict prefix of the other.
+     */
+    @Test(timeout = 120000)
+    public void testPathOverlapNestedPrefixInSet() {
+        Map<String, AttributeValue> inner = new HashMap<>();
+        inner.put("c", AttributeValue.builder().s("z").build());
+        Map<String, AttributeValue> outer = new HashMap<>();
+        outer.put("b", AttributeValue.builder().m(inner).build());
+        Map<String, AttributeValue> item = getKey();
+        item.put("a", AttributeValue.builder().m(outer).build());
+        putTestItem(tableName, item);
+
+        Map<String, AttributeValue> v = new HashMap<>();
+        v.put(":v1", AttributeValue.builder().s("x").build());
+        v.put(":v2", AttributeValue.builder().s("y").build());
+        testUpdateExpressionFailure(tableName, "SET a.b = :v1, a.b.c = :v2", null, v,
+                "two paths in same SET clause where one is a strict prefix of the other");
+    }
+
+    /**
+     * Mixed alias + bare-name nested path on the SET LHS: {@code SET #a.bareField = :v} where
+     * {@code #a} resolves to a top-level Map.
+     */
+    @Test(timeout = 120000)
+    public void testAliasThenBareNamePathRoundTrip() {
+        Map<String, AttributeValue> nested = new HashMap<>();
+        nested.put("bareField", AttributeValue.builder().s("orig").build());
+        Map<String, AttributeValue> item = getKey();
+        item.put("topMap", AttributeValue.builder().m(nested).build());
+        putTestItem(tableName, item);
+
+        Map<String, String> aliases = Collections.singletonMap("#a", "topMap");
+        Map<String, AttributeValue> values = Collections.singletonMap(":v",
+                AttributeValue.builder().s("updated").build());
+        testUpdateExpressionSuccess(tableName, "SET #a.bareField = :v", aliases, values,
+                "alias.bareName SET");
+    }
+
+    /**
+     * {@code SET bareName.#a = :v} — bare top-level name then alias step.
+     */
+    @Test(timeout = 120000)
+    public void testBareNameThenAliasPathRoundTrip() {
+        Map<String, AttributeValue> nested = new HashMap<>();
+        nested.put("deepField", AttributeValue.builder().s("orig").build());
+        Map<String, AttributeValue> item = getKey();
+        item.put("topMap", AttributeValue.builder().m(nested).build());
+        putTestItem(tableName, item);
+
+        Map<String, String> aliases = Collections.singletonMap("#a", "deepField");
+        Map<String, AttributeValue> values = Collections.singletonMap(":v",
+                AttributeValue.builder().s("updated").build());
+        testUpdateExpressionSuccess(tableName, "SET topMap.#a = :v", aliases, values,
+                "bareName.alias SET");
+    }
+
+    /**
+     * {@code SET #l[0].#nested = :v} — alias with index then alias.
+     */
+    @Test(timeout = 120000)
+    public void testAliasArrayIndexThenAliasPathRoundTrip() {
+        Map<String, AttributeValue> inner = new HashMap<>();
+        inner.put("deepField", AttributeValue.builder().s("orig").build());
+        Map<String, AttributeValue> item = getKey();
+        item.put("myList", AttributeValue.builder().l(
+                AttributeValue.builder().m(inner).build()).build());
+        putTestItem(tableName, item);
+
+        Map<String, String> aliases = new HashMap<>();
+        aliases.put("#l", "myList");
+        aliases.put("#nested", "deepField");
+        Map<String, AttributeValue> values = Collections.singletonMap(":v",
+                AttributeValue.builder().s("updated").build());
+        testUpdateExpressionSuccess(tableName, "SET #l[0].#nested = :v", aliases, values,
+                "alias[idx].alias SET");
+    }
+
+    /**
+     * {@code SET col = if_not_exists(#a.b, :v)} where {@code #a.b} does NOT exist; fallback wins.
+     */
+    @Test(timeout = 120000)
+    public void testAliasPathInsideIfNotExistsRoundTrip() {
+        putTestItem(tableName, getKey());
+
+        Map<String, String> aliases = Collections.singletonMap("#a", "topMap");
+        Map<String, AttributeValue> values = Collections.singletonMap(":v",
+                AttributeValue.builder().s("fallback").build());
+        testUpdateExpressionSuccess(tableName,
+                "SET col = if_not_exists(#a.b, :v)", aliases, values,
+                "alias path inside if_not_exists");
+    }
+
+    /**
+     * {@code SET col = list_append(if_not_exists(#l, :empty), :items)}.
+     */
+    @Test(timeout = 120000)
+    public void testAliasInsideIfNotExistsInsideListAppendRoundTrip() {
+        putTestItem(tableName, getKey());
+
+        Map<String, String> aliases = Collections.singletonMap("#l", "events");
+        Map<String, AttributeValue> values = new HashMap<>();
+        values.put(":empty", AttributeValue.builder().l(Collections.emptyList()).build());
+        values.put(":items", AttributeValue.builder().l(
+                AttributeValue.builder().s("a").build(),
+                AttributeValue.builder().s("b").build()).build());
+        testUpdateExpressionSuccess(tableName,
+                "SET col = list_append(if_not_exists(#l, :empty), :items)", aliases, values,
+                "alias inside if_not_exists inside list_append");
+    }
+
+    /**
+     * Multi-step alias-heavy nested path on LHS, mirroring the AWS docs example shape.
+     */
+    @Test(timeout = 120000)
+    public void testNestedAliasPathRoundTrip() {
+        Map<String, AttributeValue> reviewerEntry = new HashMap<>();
+        reviewerEntry.put("reviewer", AttributeValue.builder().s("alice").build());
+        Map<String, AttributeValue> reviews = new HashMap<>();
+        reviews.put("FiveStar", AttributeValue.builder().l(
+                AttributeValue.builder().m(reviewerEntry).build(),
+                AttributeValue.builder().m(reviewerEntry).build()).build());
+        Map<String, AttributeValue> item = getKey();
+        item.put("ProductReviews", AttributeValue.builder().m(reviews).build());
+        putTestItem(tableName, item);
+
+        Map<String, String> aliases = new HashMap<>();
+        aliases.put("#pr", "ProductReviews");
+        aliases.put("#5star", "FiveStar");
+        Map<String, AttributeValue> values = Collections.singletonMap(":v",
+                AttributeValue.builder().s("bob").build());
+        testUpdateExpressionSuccess(tableName,
+                "SET #pr.#5star[1].reviewer = :v", aliases, values,
+                "alias.alias[idx].bareName SET");
+    }
+
+    /**
+     * Alias paths used in REMOVE / ADD / DELETE in a single expression. Pins parity for the
+     * non-SET clauses since the rest of the alias-path tests target SET LHS only.
+     */
+    @Test(timeout = 120000)
+    public void testAliasPathsInRemoveAddDeleteRoundTrip() {
+        Map<String, AttributeValue> nested = new HashMap<>();
+        nested.put("leafField", AttributeValue.builder().s("orig").build());
+        Map<String, AttributeValue> item = getKey();
+        item.put("topMap", AttributeValue.builder().m(nested).build());
+        item.put("counter", AttributeValue.builder().n("5").build());
+        item.put("myStringSet", AttributeValue.builder().ss("a", "b").build());
+        putTestItem(tableName, item);
+
+        Map<String, String> aliases = new HashMap<>();
+        aliases.put("#a", "topMap");
+        aliases.put("#leaf", "leafField");
+        aliases.put("#c", "counter");
+        aliases.put("#s", "myStringSet");
+        Map<String, AttributeValue> values = new HashMap<>();
+        values.put(":n", AttributeValue.builder().n("3").build());
+        values.put(":subset", AttributeValue.builder().ss("a").build());
+        testUpdateExpressionSuccess(tableName,
+                "REMOVE #a.#leaf ADD #c :n DELETE #s :subset", aliases, values,
+                "alias paths in REMOVE/ADD/DELETE");
+    }
+
+    /**
+     * Alias-as-keyword parity: an ExpressionAttributeName whose value is the literal string
+     * {@code "ADD"} (a clause keyword) must produce byte-equal items between DDB and the
+     * adapter. Pre-ANTLR the regex parser misclassified the substituted token and corrupted
+     * the resulting BSON.
+     */
+    @Test(timeout = 120000)
+    public void testAliasResolvingToClauseKeywordRoundTrip() {
+        Map<String, String> aliases = new HashMap<>();
+        aliases.put("#attr", "ADD");
+
+        Map<String, AttributeValue> values = new HashMap<>();
+        values.put(":v", AttributeValue.builder().s("hello").build());
+
+        UpdateItemRequest req = UpdateItemRequest.builder().tableName(tableName).key(getKey())
+                .updateExpression("SET #attr = :v REMOVE oldField")
+                .expressionAttributeNames(aliases)
+                .expressionAttributeValues(values).build();
+        dynamoDbClient.updateItem(req);
+        phoenixDBClientV2.updateItem(req);
+        validateItem(tableName, getKey());
+    }
+
+    // ---------------------------------------------------------------------------------
+    // Clause ordering: every non-empty subset of {SET,REMOVE,ADD,DELETE} in every
+    // ordering, asserting DDB and Phoenix end up with byte-equal items. Looped in a
+    // single test method to avoid the per-test table create/drop and another mini-cluster.
+    // ---------------------------------------------------------------------------------
+
+    @Test(timeout = 600000)
+    public void testAllClauseOrderingsProduceIdenticalItem() {
+        String[] all = {"SET", "REMOVE", "ADD", "DELETE"};
+        for (int mask = 1; mask < (1 << all.length); mask++) {
+            List<String> chosen = new ArrayList<>();
+            for (int i = 0; i < all.length; i++) {
+                if ((mask & (1 << i)) != 0) {
+                    chosen.add(all[i]);
+                }
+            }
+            for (List<String> ordering : permutations(chosen)) {
+                runClauseOrdering(ordering);
+            }
+        }
+    }
+
+    private void runClauseOrdering(List<String> clauseOrder) {
+        // PutItem fully replaces, so this resets any attributes a prior iteration mutated.
+        Map<String, AttributeValue> seed = getKey();
+        seed.put("cnt", AttributeValue.builder().n("10").build());
+        seed.put("rmField", AttributeValue.builder().s("removeMe").build());
+        seed.put("addCnt", AttributeValue.builder().n("5").build());
+        seed.put("delSet", AttributeValue.builder().ss("a", "b", "c").build());
+        putTestItem(tableName, seed);
+
+        StringBuilder expr = new StringBuilder();
+        for (String clause : clauseOrder) {
+            if (expr.length() > 0) {
+                expr.append(' ');
+            }
+            expr.append(clause).append(' ').append(clauseBody(clause));
+        }
+
+        Map<String, AttributeValue> values = new HashMap<>();
+        if (clauseOrder.contains("SET")) {
+            values.put(":inc", AttributeValue.builder().n("3").build());
+        }
+        if (clauseOrder.contains("ADD")) {
+            values.put(":addV", AttributeValue.builder().n("7").build());
+        }
+        if (clauseOrder.contains("DELETE")) {
+            values.put(":delV", AttributeValue.builder().ss("a").build());
+        }
+
+        UpdateItemRequest.Builder rb = UpdateItemRequest.builder().tableName(tableName).key(getKey())
+                .updateExpression(expr.toString());
+        if (!values.isEmpty()) {
+            rb.expressionAttributeValues(values);
+        }
+        UpdateItemRequest req = rb.build();
+        dynamoDbClient.updateItem(req);
+        phoenixDBClientV2.updateItem(req);
+
+        GetItemRequest gir = GetItemRequest.builder().tableName(tableName).key(getKey()).build();
+        GetItemResponse ddb = dynamoDbClient.getItem(gir);
+        GetItemResponse phx = phoenixDBClientV2.getItem(gir);
+        Assert.assertTrue("Items should match for ordering " + clauseOrder + " expr=" + expr,
+                ItemComparator.areItemsEqual(ddb.item(), phx.item()));
+    }
+
+    private static String clauseBody(String clause) {
+        switch (clause) {
+            case "SET":    return "cnt = cnt + :inc";
+            case "REMOVE": return "rmField";
+            case "ADD":    return "addCnt :addV";
+            case "DELETE": return "delSet :delV";
+            default: throw new IllegalArgumentException(clause);
+        }
+    }
+
+    private static List<List<String>> permutations(List<String> in) {
+        List<List<String>> out = new ArrayList<>();
+        if (in.size() == 1) {
+            out.add(new ArrayList<>(in));
+            return out;
+        }
+        for (int i = 0; i < in.size(); i++) {
+            List<String> rest = new ArrayList<>(in);
+            String head = rest.remove(i);
+            for (List<String> tail : permutations(rest)) {
+                List<String> p = new ArrayList<>();
+                p.add(head);
+                p.addAll(tail);
+                out.add(p);
+            }
+        }
+        return out;
     }
 }

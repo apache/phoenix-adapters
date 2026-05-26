@@ -58,6 +58,7 @@
     <test.output.tofile>true</test.output.tofile>
     <numForkedIT>1</numForkedIT>
     <surefire.version>3.0.0-M6</surefire.version>
+    <antlr4.version>4.9.3</antlr4.version>
   </properties>
 
   <build>
@@ -152,6 +153,11 @@
         <groupId>org.apache.phoenixadapters</groupId>
         <artifactId>phoenix-ddb-rest</artifactId>
         <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.antlr</groupId>
+        <artifactId>antlr4-runtime</artifactId>
+        <version>${antlr4.version}</version>
       </dependency>
     </dependencies>
   </dependencyManagement>

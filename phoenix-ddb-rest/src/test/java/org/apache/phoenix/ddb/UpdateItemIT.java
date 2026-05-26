@@ -33,6 +33,7 @@ import software.amazon.awssdk.services.dynamodb.model.ConditionalCheckFailedExce
 import software.amazon.awssdk.services.dynamodb.model.DynamoDbException;
 import software.amazon.awssdk.services.dynamodb.model.GetItemRequest;
 import software.amazon.awssdk.services.dynamodb.model.GetItemResponse;
+import software.amazon.awssdk.services.dynamodb.model.PutItemRequest;
 import software.amazon.awssdk.services.dynamodb.model.ReturnValue;
 import software.amazon.awssdk.services.dynamodb.model.ReturnValuesOnConditionCheckFailure;
 import software.amazon.awssdk.services.dynamodb.model.UpdateItemRequest;
@@ -671,6 +672,254 @@ public class UpdateItemIT extends UpdateItemBaseTests {
                 dynamoResponse.attributes(), phoenixResponse.attributes());
 
         // Verify final state by querying both Phoenix and DDB
+        validateItem(tableName, key);
+    }
+
+    // ---------------------------------------------------------------------------------
+    // Canonical DynamoDB UpdateExpression docs examples. Each test seeds a custom item
+    // and asserts the adapter and real DDB end up with byte-equal items.
+    // ---------------------------------------------------------------------------------
+
+    /**
+     * Docs example: SET that simultaneously updates a list element and a scalar.
+     * "SET RelatedItems[1] = :newValue, Price = :newPrice"
+     */
+    @Test(timeout = 120000)
+    public void testDocsSetListElementAndScalarTogether() {
+        final String tableName = testName.getMethodName().replaceAll("[\\[\\]]", "");
+        createTableAndPutItem(tableName, false);
+        Map<String, AttributeValue> key = getKey();
+
+        Map<String, AttributeValue> item = new HashMap<>(key);
+        item.put("Price", AttributeValue.builder().n("52").build());
+        item.put("RelatedItems", AttributeValue.builder().l(
+                AttributeValue.builder().s("Hammer").build(),
+                AttributeValue.builder().s("Nails").build()).build());
+        seedItem(tableName, item);
+
+        Map<String, AttributeValue> values = new HashMap<>();
+        values.put(":newValue", AttributeValue.builder().s("Screwdriver").build());
+        values.put(":newPrice", AttributeValue.builder().n("60").build());
+        runUpdateAndCompare(tableName, key,
+                "SET RelatedItems[1] = :newValue, Price = :newPrice", values);
+    }
+
+    /**
+     * Docs example: SET arithmetic combined with REMOVE in the same expression.
+     * "SET Price = Price - :p REMOVE InStock"
+     */
+    @Test(timeout = 120000)
+    public void testDocsSetArithmeticAndRemoveTogether() {
+        final String tableName = testName.getMethodName().replaceAll("[\\[\\]]", "");
+        createTableAndPutItem(tableName, false);
+        Map<String, AttributeValue> key = getKey();
+
+        Map<String, AttributeValue> item = new HashMap<>(key);
+        item.put("Price", AttributeValue.builder().n("60").build());
+        item.put("InStock", AttributeValue.builder().bool(true).build());
+        seedItem(tableName, item);
+
+        Map<String, AttributeValue> values = Collections.singletonMap(":p",
+                AttributeValue.builder().n("15").build());
+        runUpdateAndCompare(tableName, key,
+                "SET Price = Price - :p REMOVE InStock", values);
+    }
+
+    /**
+     * Docs example: REMOVE multiple list elements in one expression. The remaining
+     * elements compact (shift), matching the documented behaviour.
+     */
+    @Test(timeout = 120000)
+    public void testDocsRemoveMultipleListElements() {
+        final String tableName = testName.getMethodName().replaceAll("[\\[\\]]", "");
+        createTableAndPutItem(tableName, false);
+        Map<String, AttributeValue> key = getKey();
+
+        Map<String, AttributeValue> item = new HashMap<>(key);
+        item.put("RelatedItems", AttributeValue.builder().l(
+                AttributeValue.builder().s("Chisel").build(),
+                AttributeValue.builder().s("Hammer").build(),
+                AttributeValue.builder().s("Nails").build(),
+                AttributeValue.builder().s("Screwdriver").build(),
+                AttributeValue.builder().s("Hacksaw").build()).build());
+        seedItem(tableName, item);
+        runUpdateAndCompare(tableName, key,
+                "REMOVE RelatedItems[1], RelatedItems[2]", null);
+    }
+
+    /**
+     * Remove first (head) element of a list.
+     */
+    @Test(timeout = 120000)
+    public void testDocsRemoveListHead() {
+        final String tableName = testName.getMethodName().replaceAll("[\\[\\]]", "");
+        createTableAndPutItem(tableName, false);
+        Map<String, AttributeValue> key = getKey();
+
+        Map<String, AttributeValue> item = new HashMap<>(key);
+        item.put("L", AttributeValue.builder().l(
+                AttributeValue.builder().s("a").build(),
+                AttributeValue.builder().s("b").build(),
+                AttributeValue.builder().s("c").build()).build());
+        seedItem(tableName, item);
+        runUpdateAndCompare(tableName, key, "REMOVE L[0]", null);
+    }
+
+    /**
+     * Remove last (tail) element of a list.
+     */
+    @Test(timeout = 120000)
+    public void testDocsRemoveListTail() {
+        final String tableName = testName.getMethodName().replaceAll("[\\[\\]]", "");
+        createTableAndPutItem(tableName, false);
+        Map<String, AttributeValue> key = getKey();
+
+        Map<String, AttributeValue> item = new HashMap<>(key);
+        item.put("L", AttributeValue.builder().l(
+                AttributeValue.builder().s("a").build(),
+                AttributeValue.builder().s("b").build(),
+                AttributeValue.builder().s("c").build()).build());
+        seedItem(tableName, item);
+        runUpdateAndCompare(tableName, key, "REMOVE L[2]", null);
+    }
+
+    /**
+     * if_not_exists where the path DOES exist returns the existing value, not the fallback.
+     */
+    @Test(timeout = 120000)
+    public void testDocsIfNotExistsBranchExisting() {
+        final String tableName = testName.getMethodName().replaceAll("[\\[\\]]", "");
+        createTableAndPutItem(tableName, false);
+        Map<String, AttributeValue> key = getKey();
+
+        Map<String, AttributeValue> item = new HashMap<>(key);
+        item.put("Title", AttributeValue.builder().s("OriginalTitle").build());
+        seedItem(tableName, item);
+
+        Map<String, AttributeValue> values = Collections.singletonMap(":t",
+                AttributeValue.builder().s("FallbackTitle").build());
+        runUpdateAndCompare(tableName, key,
+                "SET Title = if_not_exists(Title, :t)", values);
+    }
+
+    /**
+     * if_not_exists where the path is missing returns the fallback value.
+     */
+    @Test(timeout = 120000)
+    public void testDocsIfNotExistsBranchMissing() {
+        final String tableName = testName.getMethodName().replaceAll("[\\[\\]]", "");
+        createTableAndPutItem(tableName, false);
+        Map<String, AttributeValue> key = getKey();
+
+        seedItem(tableName, new HashMap<>(key));
+
+        Map<String, AttributeValue> values = Collections.singletonMap(":t",
+                AttributeValue.builder().s("FallbackTitle").build());
+        runUpdateAndCompare(tableName, key,
+                "SET Title = if_not_exists(Title, :t)", values);
+    }
+
+    /**
+     * DELETE elements from a Number Set (NS).
+     */
+    @Test(timeout = 120000)
+    public void testDocsDeleteFromNumberSet() {
+        final String tableName = testName.getMethodName().replaceAll("[\\[\\]]", "");
+        createTableAndPutItem(tableName, false);
+        Map<String, AttributeValue> key = getKey();
+
+        Map<String, AttributeValue> item = new HashMap<>(key);
+        item.put("Scores", AttributeValue.builder().ns("1", "2", "3", "4").build());
+        seedItem(tableName, item);
+
+        Map<String, AttributeValue> values = Collections.singletonMap(":r",
+                AttributeValue.builder().ns("2", "4").build());
+        runUpdateAndCompare(tableName, key, "DELETE Scores :r", values);
+    }
+
+    /**
+     * DELETE elements from a Binary Set (BS).
+     */
+    @Test(timeout = 120000)
+    public void testDocsDeleteFromBinarySet() {
+        final String tableName = testName.getMethodName().replaceAll("[\\[\\]]", "");
+        createTableAndPutItem(tableName, false);
+        Map<String, AttributeValue> key = getKey();
+
+        Map<String, AttributeValue> item = new HashMap<>(key);
+        item.put("BinSet", AttributeValue.builder().bs(
+                SdkBytes.fromByteArray(new byte[] {1}),
+                SdkBytes.fromByteArray(new byte[] {2}),
+                SdkBytes.fromByteArray(new byte[] {3})).build());
+        seedItem(tableName, item);
+
+        Map<String, AttributeValue> values = Collections.singletonMap(":r",
+                AttributeValue.builder().bs(SdkBytes.fromByteArray(new byte[] {2})).build());
+        runUpdateAndCompare(tableName, key, "DELETE BinSet :r", values);
+    }
+
+    /**
+     * ADD into a Binary Set (BS) on an existing set.
+     */
+    @Test(timeout = 120000)
+    public void testDocsAddBinarySet() {
+        final String tableName = testName.getMethodName().replaceAll("[\\[\\]]", "");
+        createTableAndPutItem(tableName, false);
+        Map<String, AttributeValue> key = getKey();
+
+        Map<String, AttributeValue> item = new HashMap<>(key);
+        item.put("BinSet", AttributeValue.builder().bs(
+                SdkBytes.fromByteArray(new byte[] {1})).build());
+        seedItem(tableName, item);
+
+        Map<String, AttributeValue> values = Collections.singletonMap(":a",
+                AttributeValue.builder().bs(
+                        SdkBytes.fromByteArray(new byte[] {2}),
+                        SdkBytes.fromByteArray(new byte[] {3})).build());
+        runUpdateAndCompare(tableName, key, "ADD BinSet :a", values);
+    }
+
+    /**
+     * list_append on a list whose elements are themselves Maps.
+     */
+    @Test(timeout = 120000)
+    public void testDocsListAppendOnListOfMaps() {
+        final String tableName = testName.getMethodName().replaceAll("[\\[\\]]", "");
+        createTableAndPutItem(tableName, false);
+        Map<String, AttributeValue> key = getKey();
+
+        Map<String, AttributeValue> existing = new HashMap<>();
+        existing.put("name", AttributeValue.builder().s("alice").build());
+        Map<String, AttributeValue> item = new HashMap<>(key);
+        item.put("Audit", AttributeValue.builder().l(
+                AttributeValue.builder().m(existing).build()).build());
+        seedItem(tableName, item);
+
+        Map<String, AttributeValue> appended = new HashMap<>();
+        appended.put("name", AttributeValue.builder().s("bob").build());
+        Map<String, AttributeValue> values = Collections.singletonMap(":new",
+                AttributeValue.builder().l(
+                        AttributeValue.builder().m(appended).build()).build());
+        runUpdateAndCompare(tableName, key,
+                "SET Audit = list_append(Audit, :new)", values);
+    }
+
+    private void seedItem(String tableName, Map<String, AttributeValue> item) {
+        PutItemRequest put = PutItemRequest.builder().tableName(tableName).item(item).build();
+        dynamoDbClient.putItem(put);
+        phoenixDBClientV2.putItem(put);
+    }
+
+    private void runUpdateAndCompare(String tableName, Map<String, AttributeValue> key,
+            String updateExpression, Map<String, AttributeValue> values) {
+        UpdateItemRequest.Builder b = UpdateItemRequest.builder().tableName(tableName).key(key)
+                .updateExpression(updateExpression);
+        if (values != null) {
+            b.expressionAttributeValues(values);
+        }
+        UpdateItemRequest req = b.build();
+        dynamoDbClient.updateItem(req);
+        phoenixDBClientV2.updateItem(req);
         validateItem(tableName, key);
     }
 }

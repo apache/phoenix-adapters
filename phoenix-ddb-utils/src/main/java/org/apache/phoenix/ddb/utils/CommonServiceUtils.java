@@ -24,9 +24,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.dynamodb.model.ScalarAttributeType;
 
-import org.apache.commons.lang3.StringUtils;
 import org.apache.phoenix.ddb.bson.MapToBsonDocument;
-import org.apache.phoenix.ddb.bson.UpdateExpressionDdbToBson;
+import org.apache.phoenix.ddb.update.UpdateExpressionToBson;
 import org.apache.phoenix.schema.PColumn;
 import org.apache.phoenix.schema.types.PDataType;
 import org.apache.phoenix.schema.types.PDecimal;
@@ -152,11 +151,8 @@ public class CommonServiceUtils {
      */
     public static BsonDocument getBsonUpdateExpressionFromMap(String updateExpr,
             Map<String, String> exprAttrNames, Map<String, Object> exprAttrVals) {
-        if (StringUtils.isEmpty(updateExpr))
-            return new BsonDocument();
-        updateExpr = replaceExpressionAttributeNames(updateExpr, exprAttrNames);
-        return UpdateExpressionDdbToBson.getBsonDocumentForUpdateExpression(updateExpr,
-                MapToBsonDocument.getBsonDocument(exprAttrVals));
+        return UpdateExpressionToBson.toBsonUpdateDocument(updateExpr,
+                MapToBsonDocument.getBsonDocument(exprAttrVals), exprAttrNames);
     }
 
     /**
