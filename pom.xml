@@ -57,6 +57,7 @@
     <mockito.version>4.11.0</mockito.version>
     <test.output.tofile>true</test.output.tofile>
     <numForkedIT>1</numForkedIT>
+    <surefire.version>3.0.0-M6</surefire.version>
   </properties>
 
   <build>
@@ -74,11 +75,8 @@
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-surefire-plugin</artifactId>
+          <version>${surefire.version}</version>
           <configuration>
-            <includes>
-              <include>*IT.java</include>
-              <include>*Test.java</include>
-            </includes>
             <redirectTestOutputToFile>${test.output.tofile}</redirectTestOutputToFile>
             <failIfNoTests>false</failIfNoTests>
           </configuration>
@@ -86,6 +84,7 @@
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-failsafe-plugin</artifactId>
+          <version>${surefire.version}</version>
           <!-- Common settings for all executions -->
           <configuration>
             <encoding>UTF-8</encoding>
