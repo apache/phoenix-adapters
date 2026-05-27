@@ -1,0 +1,63 @@
+# syntax=docker/dockerfile:1
+FROM eclipse-temurin:8-jdk-jammy
+
+ARG HBASE_VERSION=2.5.14
+ARG HBASE_FLAVOR=hadoop3
+ARG PHOENIX_HBASE_LINE=2.5
+ARG PHOENIX_VERSION=5.3.1
+
+ENV HBASE_VERSION=${HBASE_VERSION} \
+    HBASE_FLAVOR=${HBASE_FLAVOR} \
+    PHOENIX_HBASE_LINE=${PHOENIX_HBASE_LINE} \
+    PHOENIX_VERSION=${PHOENIX_VERSION} \
+    JAVA_HOME=/opt/java/openjdk \
+    HBASE_HOME=/opt/hbase \
+    HBASE_CONF_DIR=/opt/hbase/conf \
+    PHOENIX_HOME=/opt/phoenix \
+    HBASE_MANAGES_ZK=false \
+    PATH=/opt/hbase/bin:/opt/phoenix/bin:/opt/java/openjdk/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+RUN set -eux; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends \
+        bash curl ca-certificates netcat-openbsd procps tini less; \
+    rm -rf /var/lib/apt/lists/*
+
+RUN set -eux; \
+    mkdir -p "${HBASE_HOME}"; \
+    curl -fSL --retry 5 --retry-delay 5 \
+        "https://archive.apache.org/dist/hbase/${HBASE_VERSION}/hbase-${HBASE_VERSION}-${HBASE_FLAVOR}-bin.tar.gz" \
+        -o /tmp/hbase.tar.gz; \
+    tar -xzf /tmp/hbase.tar.gz -C "${HBASE_HOME}" --strip-components=1; \
+    rm /tmp/hbase.tar.gz; \
+    mkdir -p /var/log/hbase /var/run/hbase
+
+# phoenix-server JAR is copied into HBase's lib so the coprocessors and
+# the IndexedWALEditCodec are visible to both the master and every RS.
+RUN set -eux; \
+    mkdir -p "${PHOENIX_HOME}"; \
+    curl -fSL --retry 5 --retry-delay 5 \
+        "https://archive.apache.org/dist/phoenix/phoenix-${PHOENIX_VERSION}/phoenix-hbase-${PHOENIX_HBASE_LINE}-${PHOENIX_VERSION}-bin.tar.gz" \
+        -o /tmp/phoenix.tar.gz; \
+    tar -xzf /tmp/phoenix.tar.gz -C "${PHOENIX_HOME}" --strip-components=1; \
+    rm /tmp/phoenix.tar.gz; \
+    cp "${PHOENIX_HOME}/phoenix-server-hbase-${PHOENIX_HBASE_LINE}-${PHOENIX_VERSION}.jar" "${HBASE_HOME}/lib/"
+
+# Kept below the tarball downloads to preserve their (multi-hundred-MB) cache.
+# python3 is required by /opt/phoenix/bin/sqlline.py.
+RUN set -eux; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends python3; \
+    rm -rf /var/lib/apt/lists/*; \
+    ln -sf /usr/bin/python3 /usr/local/bin/python
+
+COPY conf/hbase/hbase-site.xml ${HBASE_HOME}/conf/hbase-site.xml
+COPY conf/hbase/hbase-env.sh   ${HBASE_HOME}/conf/hbase-env.sh
+
+COPY scripts/hbase-entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+WORKDIR /opt
+
+ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/entrypoint.sh"]
+CMD ["help"]

@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+<!-- Must match the WAL codec and RPC controller settings on the server. -->
+<configuration>
+    <property>
+        <name>hbase.regionserver.wal.codec</name>
+        <value>org.apache.hadoop.hbase.regionserver.wal.IndexedWALEditCodec</value>
+    </property>
+    <property>
+        <name>hbase.rpc.controllerfactory.class</name>
+        <value>org.apache.hadoop.hbase.ipc.controller.ClientRpcControllerFactory</value>
+    </property>
+    <property>
+        <name>phoenix.task.handling.interval.ms</name>
+        <value>10</value>
+    </property>
+    <property>
+        <name>phoenix.task.handling.initial.delay.ms</name>
+        <value>1</value>
+    </property>
+</configuration>

@@ -1,0 +1,186 @@
+# Bring up from the project root:
+#   docker compose -f docker/docker-compose.yml up --build
+#
+# Cluster only (no REST):
+#   docker compose -f docker/docker-compose.yml up --build \
+#       zookeeper namenode datanode hbase-master hbase-regionserver
+
+name: phoenix-adapters
+
+services:
+
+  zookeeper:
+    image: zookeeper:3.8.4
+    container_name: phx-zookeeper
+    hostname: zookeeper
+    environment:
+      ZOO_4LW_COMMANDS_WHITELIST: "srvr,ruok,mntr,conf"
+      ZOO_ADMINSERVER_ENABLED: "false"
+      ZOO_AUTOPURGE_PURGEINTERVAL: 24
+      ZOO_AUTOPURGE_SNAPRETAINCOUNT: 3
+    ports:
+      # Host port shifted off the default; 2181 is often busy on dev machines.
+      - "12181:2181"
+    volumes:
+      - zookeeper-data:/data
+      - zookeeper-datalog:/datalog
+    healthcheck:
+      test: ["CMD-SHELL", "echo ruok | nc -w 2 localhost 2181 | grep -q imok"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks: [phoenix-net]
+
+  # apache/hadoop:3.3.6 is amd64-only; on Apple Silicon Docker emulates
+  # via Rosetta/qemu (slower but functional).
+  namenode:
+    image: apache/hadoop:3.3.6
+    platform: linux/amd64
+    container_name: phx-namenode
+    hostname: namenode
+    environment:
+      # Triggers a first-time `hdfs namenode -format` when this dir is empty.
+      ENSURE_NAMENODE_DIR: /data/namenode
+      # The apache/hadoop image templates *-SITE.XML files from these env vars.
+      CORE-SITE.XML_fs.defaultFS: "hdfs://namenode:9000"
+      HDFS-SITE.XML_dfs.replication: "1"
+      HDFS-SITE.XML_dfs.namenode.name.dir: "file:///data/namenode"
+      HDFS-SITE.XML_dfs.datanode.data.dir: "file:///data/datanode"
+      HDFS-SITE.XML_dfs.permissions.enabled: "false"
+      HDFS-SITE.XML_dfs.namenode.datanode.registration.ip-hostname-check: "false"
+      HDFS-SITE.XML_dfs.client.use.datanode.hostname: "true"
+      HDFS-SITE.XML_dfs.datanode.use.datanode.hostname: "true"
+    command: ["hdfs", "namenode"]
+    ports:
+      - "9870:9870"
+      # Host port shifted off 9000 (macOS AirPlay et al).
+      - "19000:9000"
+    volumes:
+      - namenode-data:/data
+    healthcheck:
+      # Hadoop binds to the hostname, not localhost.
+      test: ["CMD-SHELL", "nc -z namenode 9000 || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    networks: [phoenix-net]
+
+  datanode:
+    image: apache/hadoop:3.3.6
+    platform: linux/amd64
+    container_name: phx-datanode
+    hostname: datanode
+    depends_on:
+      namenode:
+        condition: service_healthy
+    environment:
+      WAITFOR: namenode:9000
+      CORE-SITE.XML_fs.defaultFS: "hdfs://namenode:9000"
+      HDFS-SITE.XML_dfs.replication: "1"
+      HDFS-SITE.XML_dfs.namenode.name.dir: "file:///data/namenode"
+      HDFS-SITE.XML_dfs.datanode.data.dir: "file:///data/datanode"
+      HDFS-SITE.XML_dfs.permissions.enabled: "false"
+      HDFS-SITE.XML_dfs.client.use.datanode.hostname: "true"
+      HDFS-SITE.XML_dfs.datanode.use.datanode.hostname: "true"
+    command: ["hdfs", "datanode"]
+    ports:
+      - "9864:9864"
+    volumes:
+      - datanode-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z datanode 9866 || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    networks: [phoenix-net]
+
+  hbase-master:
+    image: phoenix-adapters/hbase-phoenix:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.hbase-phoenix
+    container_name: phx-hbase-master
+    hostname: hbase-master
+    command: ["hbase-master"]
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+      namenode:
+        condition: service_healthy
+      datanode:
+        condition: service_started
+    ports:
+      - "16000:16000"
+      - "16010:16010"
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z hbase-master 16000 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+    networks: [phoenix-net]
+
+  hbase-regionserver:
+    image: phoenix-adapters/hbase-phoenix:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.hbase-phoenix
+    container_name: phx-hbase-regionserver
+    hostname: hbase-regionserver
+    command: ["hbase-regionserver"]
+    depends_on:
+      hbase-master:
+        condition: service_healthy
+    ports:
+      - "16020:16020"
+      - "16030:16030"
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z hbase-regionserver 16020 || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    networks: [phoenix-net]
+
+  phoenix-adapters-rest:
+    image: phoenix-adapters/rest:latest
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.phoenix-adapters
+    container_name: phx-adapters-rest
+    hostname: phoenix-adapters-rest
+    depends_on:
+      hbase-master:
+        condition: service_healthy
+      hbase-regionserver:
+        condition: service_healthy
+    environment:
+      - ZOO_KEEPER_QUORUM=zookeeper:2181
+      - PHOENIX_REST_PORT=8842
+      - HBASE_MASTER_HOST=hbase-master
+      - HBASE_MASTER_PORT=16000
+    ports:
+      - "8842:8842"
+    # Probes the real API: only "healthy" once Phoenix has bootstrapped
+    # SYSTEM.* tables and Jetty is accepting POSTs.
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - >-
+          curl -fs -m 3 -X POST http://localhost:8842/
+          -H 'Content-Type: application/x-amz-json-1.0'
+          -H 'X-Amz-Target: DynamoDB_20120810.ListTables'
+          -d '{}' || exit 1
+      interval: 5s
+      timeout: 5s
+      retries: 60
+      start_period: 30s
+    networks: [phoenix-net]
+
+volumes:
+  zookeeper-data:
+  zookeeper-datalog:
+  namenode-data:
+  datanode-data:
+
+networks:
+  phoenix-net:
+    driver: bridge

@@ -1,0 +1,89 @@
+# syntax=docker/dockerfile:1
+#
+# Build context: project root (the Maven reactor needs every module).
+#
+FROM maven:3.9-eclipse-temurin-8 AS builder
+
+WORKDIR /workspace
+
+# Copy poms first to maximise dep-layer cache hits on rebuild.
+COPY pom.xml ./
+COPY phoenix-ddb-utils/pom.xml      phoenix-ddb-utils/pom.xml
+COPY phoenix-ddb-rest/pom.xml       phoenix-ddb-rest/pom.xml
+COPY phoenix-ddb-assembly/pom.xml   phoenix-ddb-assembly/pom.xml
+COPY coverage-report/pom.xml        coverage-report/pom.xml
+
+# `|| true` because the cross-module reactor can't resolve siblings yet;
+# this step is only here to warm ~/.m2.
+RUN --mount=type=cache,target=/root/.m2 \
+    mvn -B -q -DskipTests \
+        -pl phoenix-ddb-utils,phoenix-ddb-rest,phoenix-ddb-assembly -am \
+        dependency:go-offline || true
+
+COPY phoenix-ddb-utils      phoenix-ddb-utils
+COPY phoenix-ddb-rest       phoenix-ddb-rest
+COPY phoenix-ddb-assembly   phoenix-ddb-assembly
+COPY coverage-report        coverage-report
+COPY bin                    bin
+COPY conf                   conf
+COPY README.md DDB_API_REFERENCE.md ./
+
+RUN --mount=type=cache,target=/root/.m2 \
+    mvn -B -DskipTests \
+        -pl phoenix-ddb-assembly -am \
+        clean package
+
+RUN set -eux; \
+    tarball=$(ls phoenix-ddb-assembly/target/phoenix-adapters-*-bin.tar.gz | head -n1); \
+    cp "${tarball}" /tmp/phoenix-adapters-bin.tar.gz
+
+FROM eclipse-temurin:8-jdk-jammy
+
+ENV JAVA_HOME=/opt/java/openjdk \
+    PHOENIX_ADAPTERS_HOME=/opt/phoenix-adapters \
+    PHOENIX_ADAPTERS_CONF_DIR=/opt/phoenix-adapters/conf \
+    PHOENIX_ADAPTERS_LOG_DIR=/var/log/phoenix-adapters \
+    PHOENIX_ADAPTERS_PID_DIR=/var/run/phoenix-adapters \
+    PHOENIX_REST_PORT=8842 \
+    ZOO_KEEPER_QUORUM=zookeeper:2181 \
+    HBASE_MASTER_HOST=hbase-master \
+    HBASE_MASTER_PORT=16000
+
+RUN set -eux; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends \
+        bash curl ca-certificates netcat-openbsd tini procps; \
+    rm -rf /var/lib/apt/lists/*; \
+    mkdir -p "${PHOENIX_ADAPTERS_LOG_DIR}" "${PHOENIX_ADAPTERS_PID_DIR}"
+
+COPY --from=builder /tmp/phoenix-adapters-bin.tar.gz /tmp/phoenix-adapters-bin.tar.gz
+
+RUN set -eux; \
+    mkdir -p "${PHOENIX_ADAPTERS_HOME}"; \
+    tar -xzf /tmp/phoenix-adapters-bin.tar.gz -C "${PHOENIX_ADAPTERS_HOME}" --strip-components=1; \
+    rm /tmp/phoenix-adapters-bin.tar.gz; \
+    chmod -R +x "${PHOENIX_ADAPTERS_HOME}/bin"; \
+    # The assembly ships a mix of hadoop-common 3.3.6 (declared in pom.xml)
+    # and hadoop-hdfs/yarn/mapreduce 3.4.x (transitive from phoenix-core-client
+    # via hbase-server:2.5.14-hadoop3). The 3.4.x jars register FileSystem
+    # impls that reference `WithErasureCoding`, a class only present in
+    # hadoop-common 3.4.x. When HBase returns a remote exception during
+    # bootstrap, the client's classloader tries to enumerate FileSystem
+    # impls, hits NoClassDefFoundError, and poisons the JVM. The REST
+    # server only talks to HBase via RPC and never opens HDFS directly,
+    # so we strip the 3.4.x hadoop client jars to break the cycle.
+    rm -f "${PHOENIX_ADAPTERS_HOME}/lib/hadoop-hdfs-"*.jar \
+          "${PHOENIX_ADAPTERS_HOME}/lib/hadoop-hdfs-client-"*.jar \
+          "${PHOENIX_ADAPTERS_HOME}/lib/hadoop-yarn-"*.jar \
+          "${PHOENIX_ADAPTERS_HOME}/lib/hadoop-mapreduce-client-"*.jar \
+          "${PHOENIX_ADAPTERS_HOME}/lib/hadoop-distcp-"*.jar
+
+# Client-side WAL codec / RPC controller must match the server cluster.
+COPY docker/conf/phoenix-adapters/hbase-site.xml ${PHOENIX_ADAPTERS_CONF_DIR}/hbase-site.xml
+
+COPY docker/scripts/phoenix-adapters-entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+EXPOSE 8842
+
+ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/entrypoint.sh"]

@@ -67,6 +67,39 @@ The Phoenix DynamoDB REST service is fully compatible with AWS SDKs. You can con
    port 8842 with zk-quorum localhost:2181.
    Alternative to `-z <zk-quorum>` is env variable `ZOO_KEEPER_QUORUM`.
 
+#### One-shot Docker setup (recommended for first-time users)
+
+Skip steps 1-2 above with the bundled Docker cluster. From a fresh clone:
+
+**Prerequisites:** Docker Desktop running; `jq` and `curl` on `PATH`
+(`brew install jq` on macOS).
+
+```bash
+# 1. Bring up the full stack at the versions pinned in pom.xml and BLOCK
+#    until every container reports healthy (REST is ~30-60s on cold start).
+#    First time: ~8-12 min total; subsequent runs are cached.
+docker compose -f docker/docker-compose.yml up -d --build --wait
+
+# 2. Validate it works end-to-end (CRUD + UpdateItem + BatchWriteItem + streams).
+bash docker/scripts/smoke.sh
+# -> "Result: 20 checks PASSED across 18 API calls"
+
+# 3. Use it. The DynamoDB-compatible endpoint is at http://localhost:8842 .
+#    Point any AWS SDK at it (Java/Python/Node.js snippets in
+#    phoenix-ddb-rest/README.md), or hit it with curl:
+curl -s -X POST http://localhost:8842/ \
+    -H 'Content-Type: application/x-amz-json-1.0' \
+    -H 'X-Amz-Target: DynamoDB_20120810.ListTables' -d '{}'
+
+# 4. Tear down when you're done.
+docker compose -f docker/docker-compose.yml down -v
+```
+
+See [`docker/README.md`](docker/README.md) for the full reference: port
+mappings, the developer inner loop for code changes, the smoke-test
+breakdown, troubleshooting, and how to run the REST server outside
+Docker against the dockerized cluster.
+
 ### Building Distribution Tarball
 
 To build a distribution tarball that includes all components:
