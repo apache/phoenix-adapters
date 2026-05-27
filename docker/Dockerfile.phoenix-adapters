@@ -34,8 +34,16 @@ RUN --mount=type=cache,target=/root/.m2 \
         clean package
 
 RUN set -eux; \
-    tarball=$(ls phoenix-ddb-assembly/target/phoenix-adapters-*-bin.tar.gz | head -n1); \
-    cp "${tarball}" /tmp/phoenix-adapters-bin.tar.gz
+    # If the assembly module ever ships an additional *-bin.tar.gz (e.g.
+    # with a classifier), fail loudly rather than silently picking one.
+    count=$(find phoenix-ddb-assembly/target -maxdepth 1 -type f -name 'phoenix-adapters-*-bin.tar.gz' | wc -l); \
+    if [ "$count" -ne 1 ]; then \
+        echo "Expected exactly one phoenix-adapters-*-bin.tar.gz, found $count:" >&2; \
+        find phoenix-ddb-assembly/target -maxdepth 1 -type f -name 'phoenix-adapters-*-bin.tar.gz' >&2; \
+        exit 1; \
+    fi; \
+    tarball=$(find phoenix-ddb-assembly/target -maxdepth 1 -type f -name 'phoenix-adapters-*-bin.tar.gz'); \
+    cp "$tarball" /tmp/phoenix-adapters-bin.tar.gz
 
 FROM eclipse-temurin:8-jdk-jammy
 

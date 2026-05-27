@@ -9,6 +9,9 @@ export HBASE_HEAPSIZE=1G
 export HBASE_OFFHEAPSIZE=256m
 
 # Strip JDK11-specific GC flags HBase ships with; we run on JDK8.
+# This intentionally REPLACES the upstream value (rather than appending),
+# so any future upstream flag drops out of the container -- add new flags
+# to this list directly instead of re-deriving from upstream's HBASE_OPTS.
 export HBASE_OPTS="-XX:+UseG1GC -XX:+UnlockExperimentalVMOptions"
 export HBASE_MASTER_OPTS="${HBASE_OPTS} -Xms256m"
 export HBASE_REGIONSERVER_OPTS="${HBASE_OPTS} -Xms512m"

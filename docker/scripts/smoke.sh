@@ -65,11 +65,22 @@ show_json() {
 LAST_RESP=""
 
 # Prints request + response visually and stashes the raw JSON in LAST_RESP.
+# Aborts immediately if the response is a DDB error envelope (has __type),
+# so per-step assertions don't have to translate confusing "expected X got
+# null" failures back into the underlying Phoenix error.
 ddb() {
     local action="$1" body="$2"
     show_json "request " "$body"
     LAST_RESP=$(curl -sS -X POST "$URL/" -H "$CT" -H "$TARGET.$action" -d "$body")
     show_json "response" "$LAST_RESP"
+    if printf '%s' "$LAST_RESP" | jq -e 'type == "object" and has("__type")' >/dev/null 2>&1; then
+        local err_type err_msg
+        err_type=$(printf '%s' "$LAST_RESP" | jq -r '.__type // "?"')
+        err_msg=$(printf  '%s' "$LAST_RESP" | jq -r '.Message // .message // ""')
+        printf "  ${RED}✗${RESET}  %s returned error ${B}%s${RESET}: %s\n" \
+            "$action" "$err_type" "$err_msg" >&2
+        exit 1
+    fi
 }
 
 assert_eq() {
@@ -97,7 +108,10 @@ assert_nonempty() {
 
 assert_ge() {
     local label="$1" actual="$2" threshold="$3"
-    if [[ "$actual" -ge "$threshold" ]]; then
+    # Coerce non-numeric (null, empty, "true", etc.) to 0 so the arithmetic
+    # comparison can't abort the script with "integer expression expected".
+    [[ "$actual" =~ ^-?[0-9]+$ ]] || actual=0
+    if (( actual >= threshold )); then
         printf "  ${GREEN}✓${RESET}  %s ${B}>=${RESET} %s (got %s)\n" "$label" "$threshold" "$actual"
         PASS=$((PASS + 1))
     else
@@ -280,7 +294,7 @@ iter=$(jq -r '.ShardIterator // empty' <<<"$LAST_RESP")
 assert_nonempty "ShardIterator" "$iter"
 
 step "GetRecords  (drain pages until empty)"
-total=0; pages=0; seen_keys=""
+total=0; pages=0; seen_keys=""; advanced=false
 while [[ -n "$iter" && "$iter" != "null" && $pages -lt 10 ]]; do
     pages=$((pages + 1))
     ddb GetRecords "{\"ShardIterator\":\"$iter\"}"
@@ -290,16 +304,27 @@ while [[ -n "$iter" && "$iter" != "null" && $pages -lt 10 ]]; do
     total=$((total + n))
     printf "  ${DIM}page %d: %d record(s)  keys=[%s]${RESET}\n" "$pages" "$n" "$keys"
     next=$(jq -r '.NextShardIterator // empty' <<<"$LAST_RESP")
-    if [[ "$next" == "$iter" || -z "$next" || "$next" == "null" ]]; then
+    # Iterator stuck-at-position guard: if NextShardIterator equals the
+    # current one across consecutive empty pages, the stream isn't actually
+    # being consumed, so further pages would just spin.
+    if [[ -z "$next" || "$next" == "null" || "$next" == "$iter" ]]; then
         break
     fi
+    advanced=true
     iter="$next"
     [[ $n -eq 0 ]] && break
 done
 printf "  ${DIM}total records: %d  keys=[%s]${RESET}\n" "$total" "$seen_keys"
 # Expect >= 4 mutations (PutItem-a, UpdateItem-a, PutItem-b, DeleteItem-b) plus
-# 3 from the batch (delete-a, put-c, put-d).
+# 3 from the batch (delete-a, put-c, put-d) -- 7 total in steady state.
 assert_ge "stream record count" "$total" "4"
+if $advanced; then
+    printf "  ${GREEN}✓${RESET}  ShardIterator advanced across pages\n"
+    PASS=$((PASS + 1))
+else
+    printf "  ${RED}✗${RESET}  ShardIterator never advanced; stream appears stuck\n" >&2
+    exit 1
+fi
 
 step "DeleteTable  (cleanup)"
 ddb DeleteTable "{\"TableName\":\"$TBL\"}"

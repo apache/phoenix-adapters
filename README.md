@@ -77,12 +77,14 @@ Skip steps 1-2 above with the bundled Docker cluster. From a fresh clone:
 ```bash
 # 1. Bring up the full stack at the versions pinned in pom.xml and BLOCK
 #    until every container reports healthy (REST is ~30-60s on cold start).
-#    First time: ~8-12 min total; subsequent runs are cached.
+#    First time: ~8-12 min total -- most of that is Maven downloading
+#    ~1.5 GB of dependencies into the BuildKit cache mount. Subsequent
+#    runs reuse the cache and rebuild in seconds.
 docker compose -f docker/docker-compose.yml up -d --build --wait
 
 # 2. Validate it works end-to-end (CRUD + UpdateItem + BatchWriteItem + streams).
 bash docker/scripts/smoke.sh
-# -> "Result: 20 checks PASSED across 18 API calls"
+# -> "Result: 21 checks PASSED across 18 API calls"
 
 # 3. Use it. The DynamoDB-compatible endpoint is at http://localhost:8842 .
 #    Point any AWS SDK at it (Java/Python/Node.js snippets in

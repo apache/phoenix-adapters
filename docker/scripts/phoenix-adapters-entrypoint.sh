@@ -3,6 +3,26 @@ set -euo pipefail
 
 log() { echo "[phoenix-adapters][$(date -u +%H:%M:%S)] $*"; }
 
+# Guard against accidental reintroduction of the 3.4.x hadoop client jars.
+# Dockerfile.phoenix-adapters strips them because they reference
+# org.apache.hadoop.fs.WithErasureCoding (only present in hadoop-common
+# 3.4+), which poisons the client JVM via FileSystem ServiceLoader the
+# first time HBase returns a remote exception. If anyone re-adds them,
+# fail fast with a clear pointer instead of dying mid-bootstrap.
+shopt -s nullglob
+stray=( "${PHOENIX_ADAPTERS_HOME}/lib/hadoop-hdfs-"*.jar \
+        "${PHOENIX_ADAPTERS_HOME}/lib/hadoop-hdfs-client-"*.jar \
+        "${PHOENIX_ADAPTERS_HOME}/lib/hadoop-yarn-"*.jar \
+        "${PHOENIX_ADAPTERS_HOME}/lib/hadoop-mapreduce-client-"*.jar \
+        "${PHOENIX_ADAPTERS_HOME}/lib/hadoop-distcp-"*.jar )
+shopt -u nullglob
+if [[ ${#stray[@]} -gt 0 ]]; then
+    log "ERROR: assembly contains hadoop 3.4.x jars that must be stripped:"
+    for j in "${stray[@]}"; do log "  - ${j##*/}"; done
+    log "See the 'rm -f hadoop-hdfs-*' block in docker/Dockerfile.phoenix-adapters."
+    exit 1
+fi
+
 wait_for() {
     local host="$1" port="$2"
     log "Waiting for ${host}:${port} ..."

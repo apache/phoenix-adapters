@@ -17,6 +17,11 @@
         <name>hbase.zookeeper.property.clientPort</name>
         <value>2181</value>
     </property>
+    <!--
+        Dev-only: disables the HDFS hflush/hsync capability check so the
+        single-replica datanode in this stack can serve HBase WAL writes.
+        Do NOT copy this property into a production hbase-site.xml.
+    -->
     <property>
         <name>hbase.unsafe.stream.capability.enforce</name>
         <value>false</value>
@@ -47,9 +52,15 @@
         <name>hbase.rpc.controllerfactory.class</name>
         <value>org.apache.hadoop.hbase.ipc.controller.ServerRpcControllerFactory</value>
     </property>
+    <!--
+        Phoenix default is 60000 ms; we cut it to 1000 ms so dev-cluster
+        background tasks (index state transitions, dropped-table GC, etc.)
+        run quickly enough to keep iteration tight, without the laptop
+        CPU cost of a ~10 ms poll loop.
+    -->
     <property>
         <name>phoenix.task.handling.interval.ms</name>
-        <value>10</value>
+        <value>1000</value>
     </property>
     <property>
         <name>phoenix.task.handling.initial.delay.ms</name>

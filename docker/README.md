@@ -48,13 +48,14 @@ From the **project root**:
 # 1. Bring up the full stack (ZK + HDFS + HBase+Phoenix + REST) and BLOCK
 #    until every service reports healthy (REST takes ~30-60s on a cold
 #    start because Phoenix has to bootstrap SYSTEM.* tables).
-#    First time: ~8-12 min (pulls upstream images + builds HBase/Phoenix + REST).
-#    Subsequent runs: cached.
+#    First time: ~8-12 min -- most of that is Maven downloading ~1.5 GB
+#    of dependencies into the BuildKit cache mount; subsequent runs reuse
+#    the cache and rebuild in seconds.
 docker compose -f docker/docker-compose.yml up -d --build --wait
 
 # 2. Validate it works end-to-end (CRUD + UpdateItem + BatchWriteItem + streams).
 bash docker/scripts/smoke.sh
-# -> "Result: 20 checks PASSED across 18 API calls"
+# -> "Result: 21 checks PASSED across 18 API calls"
 
 # 3. Use it. The DynamoDB-compatible REST endpoint is at http://localhost:8842 .
 #    Point any AWS SDK at it (Java/Python/Node.js snippets in
@@ -91,7 +92,7 @@ Inter-container traffic still uses the standard ports.
 ### Bring up just the cluster (no REST)
 
 ```bash
-docker compose -f docker/docker-compose.yml up -d --build \
+docker compose -f docker/docker-compose.yml up -d --build --wait \
     zookeeper namenode datanode hbase-master hbase-regionserver
 ```
 
@@ -224,6 +225,7 @@ HBase data persists across full `down`/`up` cycles.
 | Added a Maven dep to `phoenix-ddb-rest/pom.xml` | `--build phoenix-adapters-rest`. New dep downloads once; cache warms after. |
 | Clean slate | `docker compose ... down -v` then `up -d --build`. |
 | Code doesn't seem picked up | You ran `restart` instead of `up --build`. `restart` does not rebuild. |
+| Stack left running for days / many smoke iterations | HBase + REST logs grow unbounded inside the containers. `down -v` periodically to reclaim disk. |
 
 ### Pre-PR checklist
 
@@ -240,7 +242,7 @@ bash docker/scripts/smoke.sh
 docker compose -f docker/docker-compose.yml down -v
 ```
 
-If `smoke.sh` finishes with `Result: 20 checks PASSED across 18 API calls`,
+If `smoke.sh` finishes with `Result: 21 checks PASSED across 18 API calls`,
 your change is wire-compatible end to end through Phoenix on dockerized
 HBase across CRUD, batch, and the change-stream chain.
 
@@ -277,7 +279,7 @@ RPC controller:
 | `hbase.regionserver.wal.codec` | `…IndexedWALEditCodec` |
 | `hbase.region.server.rpc.scheduler.factory.class` | `…PhoenixRpcSchedulerFactory` |
 | `hbase.rpc.controllerfactory.class` | `…ServerRpcControllerFactory` |
-| `phoenix.task.handling.interval.ms` | `10` |
+| `phoenix.task.handling.interval.ms` | `1000` |
 | `phoenix.task.handling.initial.delay.ms` | `1` |
 
 `phoenix-server-hbase-2.5-5.3.1.jar` is copied into `${HBASE_HOME}/lib/` so

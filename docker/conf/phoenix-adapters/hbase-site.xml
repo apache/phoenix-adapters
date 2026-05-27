@@ -12,7 +12,7 @@
     </property>
     <property>
         <name>phoenix.task.handling.interval.ms</name>
-        <value>10</value>
+        <value>1000</value>
     </property>
     <property>
         <name>phoenix.task.handling.initial.delay.ms</name>

@@ -7,6 +7,11 @@
 
 name: phoenix-adapters
 
+# The container_name keys below pin each service to a fixed name (phx-*).
+# Combined with the fixed host ports (8842/9870/12181/etc.), this means
+# only one copy of the stack can run on a workstation at a time. That's
+# intentional given the host-port collisions; if you need parallel stacks,
+# drop the container_name keys AND change the host-port mappings.
 services:
 
   zookeeper:
