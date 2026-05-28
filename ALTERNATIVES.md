@@ -27,7 +27,6 @@ Several open-source projects provide DynamoDB-compatible APIs on non-AWS infrast
 | Backup / Restore | ❌ | ❌ | ✅ |
 | Import / Export | ❌ | ❌ | ✅ |
 | Tagging | ❌ | ✅ | ✅ |
-| PartiQL | ❌ | ❌ | ❌ |
 
 ## Expressions & Query Features
 
