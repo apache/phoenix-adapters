@@ -241,13 +241,14 @@ Several open-source projects provide DynamoDB-compatible APIs on non-AWS infrast
 
 ### Scalability & Operations
 
-| | Phoenix-Adapters | Alternator | ExtendDB |
-|---|---|---|---|
-| **Horizontal scale** | Petabytes (HBase regions) | Petabytes (ScyllaDB vnodes) | Single node server (PG vertical) |
-| **Multi-instance safe** | ✅ Stateless tier | ✅ Native (peer-to-peer) | ❌ No coordination (documented gap) |
-| **Write distribution** | Across HBase region servers | Across ScyllaDB nodes | Single PG writer |
-| **Consistency** | Configurable (HBase) | Tunable (LOCAL_ONE / LOCAL_QUORUM) | Strong (PG default) |
-| **Operational complexity** | Medium (HBase + Phoenix) | Medium (ScyllaDB cluster) | Low (binary + PG) |
+|                            | Phoenix-Adapters            | Alternator                            | ExtendDB |
+|----------------------------|-----------------------------|---------------------------------------|---|
+| **Horizontal scale**       | Petabytes (HBase regions)   | Petabytes (ScyllaDB vnodes)           | Single node server (PG vertical) |
+| **Multi-instance safe**    | ✅ Stateless tier            | ✅ Native (peer-to-peer)               | ❌ No coordination (documented gap) |
+| **Write distribution**     | Across HBase region servers | Across ScyllaDB nodes                 | Single PG writer |
+| **Data Consistency**       | Configurable (HBase)        | Tunable (LOCAL_ONE / LOCAL_QUORUM)    | Strong (PG default) |
+| **Index Consistency**      | Eventual GSI / Strong LSI   | Eventual GSI / Strong or Eventual LSI | Strong (PG default) |
+| **Operational complexity** | Medium (HBase + Phoenix)    | Medium (ScyllaDB cluster)             | Low (binary + PG) |
 
 ### Design Philosophy
 
