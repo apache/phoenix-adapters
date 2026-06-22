@@ -97,11 +97,11 @@ public class GetItemService {
         String partitionKeyPKCol = tablePKCols.get(0).toString();
         Map<String, Object> keyAttributes = (Map<String, Object>) request.get(ApiMetadata.KEY);
         DQLUtils.setKeyValueOnStatement(stmt, 1,
-                (Map<String, Object>) keyAttributes.get(partitionKeyPKCol), false);
+                (Map<String, Object>) keyAttributes.get(partitionKeyPKCol), partitionKeyPKCol, false);
         if (tablePKCols.size() > 1) {
             String sortKeyPKCol = tablePKCols.get(1).toString();
             DQLUtils.setKeyValueOnStatement(stmt, 2,
-                    (Map<String, Object>) keyAttributes.get(sortKeyPKCol), false);
+                    (Map<String, Object>) keyAttributes.get(sortKeyPKCol), sortKeyPKCol, false);
         }
     }
 

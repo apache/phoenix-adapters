@@ -259,32 +259,4 @@ public class ValidationUtil {
         }
         return key;
     }
-
-    /**
-     * Validates and retrieves an AttributeValue from ExpressionAttributeValues.
-     * Throws ValidationException with AWS-compatible error messages if validation fails.
-     *
-     * @param exprAttrVals The ExpressionAttributeValues map
-     * @param placeholder The placeholder key (e.g., ":v0")
-     * @param context Description of where the placeholder is used (e.g., "KeyConditionExpression")
-     * @return The AttributeValue map
-     * @throws ValidationException if placeholder is null, missing, or invalid
-     */
-    public static Map<String, Object> requireExpressionAttributeValue(
-            Map<String, Object> exprAttrVals, String placeholder, String context) {
-        if (placeholder == null) {
-            throw new ValidationException(
-                    "Invalid " + context + ": missing required key condition");
-        }
-        if (!exprAttrVals.containsKey(placeholder) || exprAttrVals.get(placeholder) == null) {
-            throw new ValidationException(
-                    "Value provided in ExpressionAttributeValues unused in expressions: keys: {" + placeholder + "}");
-        }
-        Object raw = exprAttrVals.get(placeholder);
-        if (!(raw instanceof Map)) {
-            throw new ValidationException(
-                    "ExpressionAttributeValues contains invalid value: " + placeholder + " must be a map");
-        }
-        return (Map<String, Object>) raw;
-    }
 }

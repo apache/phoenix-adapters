@@ -916,6 +916,130 @@ public class QueryIT {
         }
     }
 
+    // PHOENIX-7900: Test missing ExpressionAttributeValues
+    @Test(timeout = 120000)
+    public void testQueryWithMissingPartitionKeyValue() throws Exception {
+        final String tableName = testName.getMethodName();
+        CreateTableRequest createTableRequest =
+                DDLTestUtils.getCreateTableRequest(tableName, "pk",
+                        ScalarAttributeType.S, "sk", ScalarAttributeType.S);
+        phoenixDBClientV2.createTable(createTableRequest);
+        dynamoDbClient.createTable(createTableRequest);
+
+        Map<String, AttributeValue> item = new HashMap<>();
+        item.put("pk", AttributeValue.builder().s("test-pk").build());
+        item.put("sk", AttributeValue.builder().s("test-sk").build());
+        phoenixDBClientV2.putItem(PutItemRequest.builder().tableName(tableName).item(item).build());
+
+        // Query with KeyConditionExpression that references :v0, but don't provide :v0
+        Map<String, AttributeValue> exprAttrVals = new HashMap<>();
+        // :v0 is missing!
+        QueryRequest queryRequest = QueryRequest.builder()
+                .tableName(tableName)
+                .keyConditionExpression("pk = :v0")
+                .expressionAttributeValues(exprAttrVals)
+                .build();
+
+        // Verify both DynamoDB and Phoenix return 400
+        try {
+            dynamoDbClient.query(queryRequest);
+            Assert.fail("Expected DynamoDbException for DynamoDB");
+        } catch (DynamoDbException e) {
+            Assert.assertEquals(400, e.statusCode());
+        }
+
+        try {
+            phoenixDBClientV2.query(queryRequest);
+            Assert.fail("Expected DynamoDbException for Phoenix");
+        } catch (DynamoDbException e) {
+            Assert.assertEquals(400, e.statusCode());
+            Assert.assertTrue(e.awsErrorDetails().errorCode().contains("ValidationException"));
+        }
+    }
+
+    @Test(timeout = 120000)
+    public void testQueryWithMissingSortKeyValue() throws Exception {
+        final String tableName = testName.getMethodName();
+        CreateTableRequest createTableRequest =
+                DDLTestUtils.getCreateTableRequest(tableName, "pk",
+                        ScalarAttributeType.S, "sk", ScalarAttributeType.N);
+        phoenixDBClientV2.createTable(createTableRequest);
+        dynamoDbClient.createTable(createTableRequest);
+
+        Map<String, AttributeValue> item = new HashMap<>();
+        item.put("pk", AttributeValue.builder().s("test-pk").build());
+        item.put("sk", AttributeValue.builder().n("10").build());
+        phoenixDBClientV2.putItem(PutItemRequest.builder().tableName(tableName).item(item).build());
+
+        // Query with pk = :v0 AND sk < :v1, provide :v0 but not :v1
+        Map<String, AttributeValue> exprAttrVals = new HashMap<>();
+        exprAttrVals.put(":v0", AttributeValue.builder().s("test-pk").build());
+        // :v1 is missing!
+        QueryRequest queryRequest = QueryRequest.builder()
+                .tableName(tableName)
+                .keyConditionExpression("pk = :v0 AND sk < :v1")
+                .expressionAttributeValues(exprAttrVals)
+                .build();
+
+        // Verify both DynamoDB and Phoenix return 400
+        try {
+            dynamoDbClient.query(queryRequest);
+            Assert.fail("Expected DynamoDbException for DynamoDB");
+        } catch (DynamoDbException e) {
+            Assert.assertEquals(400, e.statusCode());
+        }
+
+        try {
+            phoenixDBClientV2.query(queryRequest);
+            Assert.fail("Expected DynamoDbException for Phoenix");
+        } catch (DynamoDbException e) {
+            Assert.assertEquals(400, e.statusCode());
+            Assert.assertTrue(e.awsErrorDetails().errorCode().contains("ValidationException"));
+        }
+    }
+
+    @Test(timeout = 120000)
+    public void testQueryWithMissingBetweenValue() throws Exception {
+        final String tableName = testName.getMethodName();
+        CreateTableRequest createTableRequest =
+                DDLTestUtils.getCreateTableRequest(tableName, "pk",
+                        ScalarAttributeType.S, "sk", ScalarAttributeType.N);
+        phoenixDBClientV2.createTable(createTableRequest);
+        dynamoDbClient.createTable(createTableRequest);
+
+        Map<String, AttributeValue> item = new HashMap<>();
+        item.put("pk", AttributeValue.builder().s("test-pk").build());
+        item.put("sk", AttributeValue.builder().n("10").build());
+        phoenixDBClientV2.putItem(PutItemRequest.builder().tableName(tableName).item(item).build());
+
+        // Query with BETWEEN but missing second value
+        Map<String, AttributeValue> exprAttrVals = new HashMap<>();
+        exprAttrVals.put(":v0", AttributeValue.builder().s("test-pk").build());
+        exprAttrVals.put(":v1", AttributeValue.builder().n("5").build());
+        // :v2 is missing!
+        QueryRequest queryRequest = QueryRequest.builder()
+                .tableName(tableName)
+                .keyConditionExpression("pk = :v0 AND sk BETWEEN :v1 AND :v2")
+                .expressionAttributeValues(exprAttrVals)
+                .build();
+
+        // Verify both DynamoDB and Phoenix return 400
+        try {
+            dynamoDbClient.query(queryRequest);
+            Assert.fail("Expected DynamoDbException for DynamoDB");
+        } catch (DynamoDbException e) {
+            Assert.assertEquals(400, e.statusCode());
+        }
+
+        try {
+            phoenixDBClientV2.query(queryRequest);
+            Assert.fail("Expected DynamoDbException for Phoenix");
+        } catch (DynamoDbException e) {
+            Assert.assertEquals(400, e.statusCode());
+            Assert.assertTrue(e.awsErrorDetails().errorCode().contains("ValidationException"));
+        }
+    }
+
     public static Map<String, AttributeValue> getItem4() {
         Map<String, AttributeValue> item = new HashMap<>();
         item.put("attr_0", AttributeValue.builder().s("B").build());
