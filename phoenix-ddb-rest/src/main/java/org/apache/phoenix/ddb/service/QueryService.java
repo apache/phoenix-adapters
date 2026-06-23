@@ -184,25 +184,25 @@ public class QueryService {
                 (Map<String, Object>) request.get(ApiMetadata.EXPRESSION_ATTRIBUTE_VALUES);
 
         // Bind partition key value
-        String partitionPlaceholder = keyConditions.getPartitionValue();
-        Map<String, Object> partitionAttrVal = (Map<String, Object>) exprAttrVals.get(partitionPlaceholder);
-        DQLUtils.setKeyValueOnStatement(stmt, index++, partitionAttrVal, partitionPlaceholder, false);
+        Map<String, Object> partitionAttrVal =
+                (Map<String, Object>) exprAttrVals.get(keyConditions.getPartitionValue());
+        DQLUtils.setKeyValueOnStatement(stmt, index++, partitionAttrVal, false);
 
         // Bind sort key values from key condition expression
         if (keyConditions.hasSortKey()) {
             if (keyConditions.hasBeginsWith()) {
-                String sortPlaceholder = keyConditions.getBeginsWithSortKeyVal();
-                Map<String, Object> sortAttrVal = (Map<String, Object>) exprAttrVals.get(sortPlaceholder);
-                DQLUtils.setKeyValueOnStatement(stmt, index++, sortAttrVal, sortPlaceholder, true);
+                Map<String, Object> sortAttrVal = (Map<String, Object>) exprAttrVals.get(
+                        keyConditions.getBeginsWithSortKeyVal());
+                DQLUtils.setKeyValueOnStatement(stmt, index++, sortAttrVal, true);
                 index++; // we set 2 parameters for SUBSTR/SUBBINARY
             } else {
-                String sortPlaceholder1 = keyConditions.getSortKeyValue1();
-                Map<String, Object> sortAttrVal1 = (Map<String, Object>) exprAttrVals.get(sortPlaceholder1);
-                DQLUtils.setKeyValueOnStatement(stmt, index++, sortAttrVal1, sortPlaceholder1, false);
+                Map<String, Object> sortAttrVal1 =
+                        (Map<String, Object>) exprAttrVals.get(keyConditions.getSortKeyValue1());
+                DQLUtils.setKeyValueOnStatement(stmt, index++, sortAttrVal1, false);
                 if (keyConditions.hasBetween()) {
-                    String sortPlaceholder2 = keyConditions.getSortKeyValue2();
-                    Map<String, Object> sortAttrVal2 = (Map<String, Object>) exprAttrVals.get(sortPlaceholder2);
-                    DQLUtils.setKeyValueOnStatement(stmt, index++, sortAttrVal2, sortPlaceholder2, false);
+                    Map<String, Object> sortAttrVal2 = (Map<String, Object>) exprAttrVals.get(
+                            keyConditions.getSortKeyValue2());
+                    DQLUtils.setKeyValueOnStatement(stmt, index++, sortAttrVal2, false);
                 }
             }
         }
@@ -213,19 +213,19 @@ public class QueryService {
                 if (indexPKCols.size() > 1) {
                     String iskName = CommonServiceUtils.getKeyNameFromBsonValueFunc(indexPKCols.get(1).getName().toString());
                     DQLUtils.setKeyValueOnStatement(stmt, index++,
-                            (Map<String, Object>) exclusiveStartKey.get(iskName), iskName, false);
+                            (Map<String, Object>) exclusiveStartKey.get(iskName), false);
                 }
                 for (PColumn tablePkCol : tablePKCols) {
                     String pkName = tablePkCol.getName().getString();
                     DQLUtils.setKeyValueOnStatement(stmt, index++,
-                            (Map<String, Object>) exclusiveStartKey.get(pkName), pkName, false);
+                            (Map<String, Object>) exclusiveStartKey.get(pkName), false);
                 }
             } else {
                 // Table query: only bind sort key if table has one
                 if (tablePKCols.size() > 1) {
                     String skName = tablePKCols.get(1).getName().getString();
                     DQLUtils.setKeyValueOnStatement(stmt, index++,
-                            (Map<String, Object>) exclusiveStartKey.get(skName), skName, false);
+                            (Map<String, Object>) exclusiveStartKey.get(skName), false);
                 }
             }
         }

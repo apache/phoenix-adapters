@@ -249,13 +249,13 @@ public class ScanService {
                 for (PColumn indexPkCol : config.getIndexPKCols()) {
                     String keyName = CommonServiceUtils.getColumnNameFromPCol(indexPkCol, true);
                     DQLUtils.setKeyValueOnStatement(stmt, paramIndex++,
-                            (Map<String, Object>) exclusiveStartKey.get(keyName), keyName, false);
+                            (Map<String, Object>) exclusiveStartKey.get(keyName), false);
                 }
             }
             for (PColumn tablePkCol : config.getTablePKCols()) {
                 String keyName = tablePkCol.getName().getString();
                 DQLUtils.setKeyValueOnStatement(stmt, paramIndex++,
-                        (Map<String, Object>) exclusiveStartKey.get(keyName), keyName, false);
+                        (Map<String, Object>) exclusiveStartKey.get(keyName), false);
             }
         }
 

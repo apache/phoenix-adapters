@@ -174,13 +174,13 @@ public class BatchGetItemService {
             Map<String, Object> valueForPartitionCol =
                     (Map<String, Object>) ((List<Map<String, Object>>) requestItemMap.get(
                             ApiMetadata.KEYS)).get(j).get(partitionKeyPKCol);
-            DQLUtils.setKeyValueOnStatement(stmt, index++, valueForPartitionCol, partitionKeyPKCol, false);
+            DQLUtils.setKeyValueOnStatement(stmt, index++, valueForPartitionCol, false);
             if (tablePKCols.size() > 1) {
                 String sortKeyPKCol = tablePKCols.get(1).toString();
                 Map<String, Object> valueForSortCol =
                         (Map<String, Object>) ((List<Map<String, Object>>) requestItemMap.get(
                                 ApiMetadata.KEYS)).get(j).get(sortKeyPKCol);
-                DQLUtils.setKeyValueOnStatement(stmt, index++, valueForSortCol, sortKeyPKCol, false);
+                DQLUtils.setKeyValueOnStatement(stmt, index++, valueForSortCol, false);
             }
         }
     }

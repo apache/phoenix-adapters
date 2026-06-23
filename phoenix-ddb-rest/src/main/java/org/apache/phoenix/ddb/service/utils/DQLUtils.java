@@ -186,11 +186,10 @@ public class DQLUtils {
      * Set the given AttributeValue on the PreparedStatement at the given index based on type.
      */
     public static void setKeyValueOnStatement(PreparedStatement stmt, int index,
-            Map<String, Object> attrVal, String placeholderName, boolean isBeginsWith) throws SQLException {
+            Map<String, Object> attrVal, boolean isBeginsWith) throws SQLException {
         if (attrVal == null) {
             throw new ValidationException(
-                    "Value provided in ExpressionAttributeValues unused in expressions: keys: {"
-                    + placeholderName + "}");
+                    "Value provided in ExpressionAttributeValues is misssing or invalid");
         }
         if (attrVal.containsKey("N")) {
             stmt.setDouble(index, Double.parseDouble((String) attrVal.get("N")));
