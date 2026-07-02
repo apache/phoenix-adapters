@@ -304,6 +304,10 @@ public class DQLUtils {
      */
     public static void setKeyValueOnStatement(PreparedStatement stmt, int index,
             Map<String, Object> attrVal, boolean isBeginsWith) throws SQLException {
+        if (attrVal == null) {
+            throw new ValidationException(
+                    "An expression attribute value used is not defined.");
+        }
         if (attrVal.containsKey("N")) {
             stmt.setDouble(index, Double.parseDouble((String) attrVal.get("N")));
         } else if (attrVal.containsKey("S")) {
