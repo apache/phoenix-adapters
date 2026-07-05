@@ -43,7 +43,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <java.version>1.8</java.version>
     <aws.sdk.version>2.30.22</aws.sdk.version>
-    <phoenix.version>5.3.1</phoenix.version>
+    <phoenix.version>5.3.2</phoenix.version>
     <junit.version>4.13.1</junit.version>
     <jetty.version>9.4.53.v20231009</jetty.version>
     <javax.servlet-api.version>3.1.0</javax.servlet-api.version>
