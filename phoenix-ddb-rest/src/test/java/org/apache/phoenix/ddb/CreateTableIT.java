@@ -352,12 +352,16 @@ public class CreateTableIT {
                 DDLTestUtils.getCreateTableRequest(tableName, "PK1", ScalarAttributeType.B, "PK2",
                         ScalarAttributeType.S);
         final String gsi = "IDX1_" + tableName;
+        final String lsi = "IDX2_" + tableName;
         createTableRequest = DDLTestUtils.addIndexToRequest(true, createTableRequest, gsi, "COL1",
                 ScalarAttributeType.N, "COL2", ScalarAttributeType.B);
+        createTableRequest = DDLTestUtils.addIndexToRequest(false, createTableRequest, lsi, "PK1",
+                ScalarAttributeType.B, "LCOL2", ScalarAttributeType.S);
 
         phoenixDBClientV2.createTable(createTableRequest);
 
         assertIndexConsistency(tableName, gsi, IndexConsistency.EVENTUAL);
+        assertIndexConsistency(tableName, lsi, IndexConsistency.EVENTUAL);
     }
 
     private static void assertIndexConsistency(String tableName, String indexName,
