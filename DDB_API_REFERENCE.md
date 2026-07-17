@@ -439,6 +439,7 @@ Creates a new table in Phoenix with the specified key schema, attributes, option
 | `GlobalSecondaryIndexes` | List | No | Global secondary indexes to create |
 | `LocalSecondaryIndexes` | List | No | Local secondary indexes to create |
 | `StreamSpecification` | Map | No | Enable change data capture stream |
+| `Tags` | List | No | Key/value tags. Recognized tags can override table-level behavior (see [Tags](#tags)) |
 
 **KeySchema element structure:**
 ```json
@@ -484,6 +485,38 @@ Creates a new table in Phoenix with the specified key schema, attributes, option
 - `StreamViewType` values: `NEW_IMAGE`, `OLD_IMAGE`, `NEW_AND_OLD_IMAGES`
 - Required when `StreamEnabled` is `true`
 
+#### Tags
+
+`Tags` is an optional list of key/value pairs. Specific recognized tag keys let you override
+table-level behavior at creation time.
+
+**Tags element structure:**
+```json
+{
+  "Tags": [
+    {"Key": "phoenix.index.consistency", "Value": "STRONG"}
+  ]
+}
+```
+
+**Recognized tags:**
+
+| Tag Key | Allowed Values | Default | Effect |
+|---|---|---|---|
+| `phoenix.index.consistency` | `STRONG` | `EVENTUAL` | Overrides the consistency of **all** secondary indexes (GSIs and LSIs) created in this `CreateTable` request |
+
+**Secondary index consistency (`phoenix.index.consistency`):**
+
+- By default, secondary indexes are created with **eventual** consistency.
+- Setting the `phoenix.index.consistency` tag to `STRONG` makes every GSI and LSI defined in
+  the same `CreateTable` request **strongly** consistent. The override applies table-wide to all
+  indexes in that request; per-index granularity is not supported.
+- The value is case-insensitive. Only `STRONG` is accepted as an override — any other value
+  (e.g. `EVENTUAL`, `weak`) throws `400` with a `ValidationException`. To use eventual
+  consistency, simply omit the tag.
+- The tag only affects indexes created by this request. Indexes added later via `UpdateTable`
+  are created with the configured default consistency.
+
 #### Response
 
 ```json
@@ -510,6 +543,7 @@ Creates a new table in Phoenix with the specified key schema, attributes, option
 - All key attributes in `KeySchema` must have a matching `AttributeDefinitions` entry
 - Attribute types must be `S`, `N`, or `B`
 - If `StreamEnabled` is `true`, `StreamViewType` must be non-empty
+- If the `phoenix.index.consistency` tag is present, its value must be `STRONG` (case-insensitive); any other value throws 400 with `ValidationException`
 - If the table already exists (created more than 5 seconds ago), throws 400 with `ResourceInUseException`
 
 #### Phoenix SQL Generated
@@ -537,6 +571,15 @@ For indexes:
 CREATE UNCOVERED INDEX IF NOT EXISTS "status-index"
   ON "SCHEMA"."MyTable" (BSON_VALUE("COL", 'status', 'VARCHAR'), BSON_VALUE("COL", 'created_at', 'DOUBLE'))
   WHERE BSON_VALUE("COL", 'status', 'VARCHAR') IS NOT NULL
+```
+
+When the `phoenix.index.consistency` tag is set to `STRONG`, a `CONSISTENCY=STRONG` option is
+appended to the index DDL for every index in the request:
+```sql
+CREATE UNCOVERED INDEX IF NOT EXISTS "status-index"
+  ON "SCHEMA"."MyTable" (BSON_VALUE("COL", 'status', 'VARCHAR'), BSON_VALUE("COL", 'created_at', 'DOUBLE'))
+  WHERE BSON_VALUE("COL", 'status', 'VARCHAR') IS NOT NULL
+  CONSISTENCY=STRONG
 ```
 
 ---
@@ -1867,7 +1910,7 @@ Each API operation tracks:
 | **Stream shard iterators** | Expire after 15 minutes               | No automatic expiry                                                                         |
 | **KCL consumer compatibility** | KCL                                   | KCL compatible (via `dynamodb-streams-kinesis-adapter`)                                     |
 | **Item storage** | Native DynamoDB format                | BSON document in a single Phoenix column                                                    |
-| **Consistency** | Eventual + (Strong for local indexes) | Depends on Phoenix/HBase configuration                                                      |
+| **Consistency** | Eventual + (Strong for local indexes) | Secondary indexes default to eventual; can be made strong table-wide at CreateTable via the `phoenix.index.consistency=STRONG` tag |
 
 ### Key Schema Constraints
 
