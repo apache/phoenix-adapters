@@ -46,6 +46,7 @@ import org.apache.phoenix.ddb.rest.RESTServer;
 import org.apache.phoenix.end2end.ServerMetadataCacheTestImpl;
 import org.apache.phoenix.jdbc.PhoenixDriver;
 import org.apache.phoenix.jdbc.PhoenixTestDriver;
+import org.apache.phoenix.util.PhoenixRuntime;
 import org.apache.phoenix.util.ServerUtil;
 
 import static org.apache.phoenix.ddb.TestUtils.verifyItemsEqual;
@@ -99,7 +100,11 @@ public class QueryIndexExclusiveStartKeyIT {
         utility = new HBaseTestingUtility(conf);
         setUpConfigForMiniCluster(conf);
         utility.startMiniCluster();
+        String zkQuorum = "127.0.0.1:" + utility.getZkCluster().getClientPort();
+        String url = PhoenixRuntime.JDBC_PROTOCOL + PhoenixRuntime.JDBC_PROTOCOL_SEPARATOR + zkQuorum;
         DriverManager.registerDriver(new PhoenixTestDriver());
+        TestUtils.awaitPhoenixReady(url);
+
         restServer = new RESTServer(utility.getConfiguration());
         restServer.run();
         dynamoDbClient = LocalDynamoDbTestBase.localDynamoDb().createV2Client();

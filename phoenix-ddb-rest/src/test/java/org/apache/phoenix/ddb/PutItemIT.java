@@ -87,6 +87,8 @@ public class PutItemIT {
         String zkQuorum = "localhost:" + utility.getZkCluster().getClientPort();
         url = PhoenixRuntime.JDBC_PROTOCOL + PhoenixRuntime.JDBC_PROTOCOL_SEPARATOR + zkQuorum;
 
+        TestUtils.awaitPhoenixReady(url);
+
         restServer = new RESTServer(utility.getConfiguration());
         restServer.run();
 

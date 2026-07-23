@@ -134,6 +134,9 @@ public class GetRecordsMultipleProducersIT {
         restServer = new RESTServer(utility.getConfiguration());
         restServer.run();
 
+        String url = "http://" + restServer.getServerAddress();
+        TestUtils.awaitPhoenixReady(url);
+
         LOGGER.info("started {} on port {}", restServer.getClass().getName(), restServer.getPort());
         phoenixDBClientV2 = LocalDynamoDB.createV2Client("http://" + restServer.getServerAddress());
         phoenixDBStreamsClientV2 = LocalDynamoDB.createV2StreamsClient("http://" + restServer.getServerAddress());
