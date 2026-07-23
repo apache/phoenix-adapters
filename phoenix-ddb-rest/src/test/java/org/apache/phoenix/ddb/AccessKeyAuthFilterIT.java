@@ -48,6 +48,7 @@ import org.apache.phoenix.ddb.rest.auth.UserCredentials;
 import org.apache.phoenix.ddb.rest.util.Constants;
 import org.apache.phoenix.end2end.ServerMetadataCacheTestImpl;
 import org.apache.phoenix.jdbc.PhoenixDriver;
+import org.apache.phoenix.util.PhoenixRuntime;
 import org.apache.phoenix.util.ServerUtil;
 
 import static org.apache.phoenix.query.BaseTest.setUpConfigForMiniCluster;
@@ -89,8 +90,12 @@ public class AccessKeyAuthFilterIT {
         utility = new HBaseTestingUtility(conf);
         setUpConfigForMiniCluster(conf);
         utility.startMiniCluster();
-        
+        String zkQuorum = "localhost:" + utility.getZkCluster().getClientPort();
+        String url = PhoenixRuntime.JDBC_PROTOCOL + PhoenixRuntime.JDBC_PROTOCOL_SEPARATOR + zkQuorum;
+
         conf.set(Constants.AUTH_CREDENTIAL_STORE_CLASS, TestCredentialStore.class.getName());
+
+        TestUtils.awaitPhoenixReady(url);
 
         restServer = new RESTServer(conf);
         restServer.run();

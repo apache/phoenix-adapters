@@ -107,6 +107,9 @@ public class RandomizedIndexParityIT {
         utility.startMiniCluster();
         DriverManager.registerDriver(new PhoenixTestDriver());
 
+        String url = "jdbc:phoenix:localhost:" + utility.getZkCluster().getClientPort();
+        TestUtils.awaitPhoenixReady(url);
+
         restServer = new RESTServer(utility.getConfiguration());
         restServer.run();
 

@@ -27,6 +27,7 @@ import org.apache.phoenix.jdbc.PhoenixDriver;
 import org.apache.phoenix.jdbc.PhoenixTestDriver;
 import org.apache.phoenix.query.QueryServices;
 import org.apache.phoenix.thirdparty.com.google.common.collect.Maps;
+import org.apache.phoenix.util.PhoenixRuntime;
 import org.apache.phoenix.util.ReadOnlyProps;
 import org.apache.phoenix.util.ServerUtil;
 import org.junit.AfterClass;
@@ -129,7 +130,11 @@ public class GetRecordsMultipleProducersIT {
         setUpConfigForMiniCluster(conf, new ReadOnlyProps(props.entrySet().iterator()));
 
         utility.startMiniCluster();
+        String zkQuorum = "localhost:" + utility.getZkCluster().getClientPort();
+        String url = PhoenixRuntime.JDBC_PROTOCOL + PhoenixRuntime.JDBC_PROTOCOL_SEPARATOR + zkQuorum;
         DriverManager.registerDriver(new PhoenixTestDriver());
+
+        TestUtils.awaitPhoenixReady(url);
 
         restServer = new RESTServer(utility.getConfiguration());
         restServer.run();

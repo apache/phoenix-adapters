@@ -87,6 +87,8 @@ public class MiscIT {
         url = PhoenixRuntime.JDBC_PROTOCOL + PhoenixRuntime.JDBC_PROTOCOL_SEPARATOR + zkQuorum;
         DriverManager.registerDriver(new PhoenixTestDriver());
 
+        TestUtils.awaitPhoenixReady(url);
+
         restServer = new RESTServer(utility.getConfiguration());
         restServer.run();
 

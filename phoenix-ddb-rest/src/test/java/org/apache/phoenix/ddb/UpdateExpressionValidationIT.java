@@ -52,6 +52,7 @@ import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.phoenix.ddb.rest.RESTServer;
 import org.apache.phoenix.end2end.ServerMetadataCacheTestImpl;
 import org.apache.phoenix.jdbc.PhoenixDriver;
+import org.apache.phoenix.util.PhoenixRuntime;
 import org.apache.phoenix.util.ServerUtil;
 
 import static org.apache.phoenix.query.BaseTest.setUpConfigForMiniCluster;
@@ -82,6 +83,10 @@ public class UpdateExpressionValidationIT {
         setUpConfigForMiniCluster(conf);
 
         utility.startMiniCluster();
+
+        String zkQuorum = "localhost:" + utility.getZkCluster().getClientPort();
+        String url = PhoenixRuntime.JDBC_PROTOCOL + PhoenixRuntime.JDBC_PROTOCOL_SEPARATOR + zkQuorum;
+        TestUtils.awaitPhoenixReady(url);
 
         restServer = new RESTServer(utility.getConfiguration());
         restServer.run();
