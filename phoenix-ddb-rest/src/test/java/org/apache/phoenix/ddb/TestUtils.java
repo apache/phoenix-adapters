@@ -297,6 +297,11 @@ public class TestUtils {
      * may take several seconds to come up. Poll until ready or 30s elapses.
      */
     public static void awaitPhoenixReady(String jdbcUrl) {
+        try {
+            DriverManager.getDriver(jdbcUrl);
+        } catch (SQLException e) {
+            PhoenixUtils.registerDriver();
+        }
         final int maxAttempts = 30;
         SQLException last = null;
         for (int attempt = 1; attempt <= maxAttempts; attempt++) {
